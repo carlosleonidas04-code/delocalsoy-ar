@@ -8,6 +8,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      # Prisma exige la variable al generar; en CI no hay BD real, valor dummy.
+      DATABASE_URL: "postgresql://ci:ci@localhost:5432/ci?schema=public"
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -17,6 +20,6 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
-      - run: pnpm install --frozen-lockfile || pnpm install
+      - run: pnpm install --no-frozen-lockfile
       - run: pnpm --filter @delocalsoy/db db:generate
       - run: pnpm run build
