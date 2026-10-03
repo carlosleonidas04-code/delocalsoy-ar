@@ -13,13 +13,12 @@ jobs:
       DATABASE_URL: "postgresql://ci:ci@localhost:5432/ci?schema=public"
     steps:
       - uses: actions/checkout@v4
+      # La versión de pnpm la gobierna packageManager en package.json (única fuente de verdad).
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          # Sin cache: pnpm — requiere pnpm-lock.yaml, que aún no está commiteado.
+          # Sin cache: pnpm — requiere pnpm-lock.yaml, que aún no está commiteado aún.
       - run: pnpm install --no-frozen-lockfile
       - run: pnpm --filter @delocalsoy/db db:generate
       - run: pnpm run build
