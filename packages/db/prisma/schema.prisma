@@ -1,0 +1,46 @@
+// DELocalSoy.AR — núcleo Track A v7.1
+// Convenciones: ids `cuid`, columnas mapeadas a snake_case con @map(),
+// `events_raw` con hash único para idempotencia.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Eventos crudos del sistema (fuente de verdad, append-only, idempotentes).
+model events_raw {
+  id             String   @id @default(cuid())
+  type           String   @map("type")
+  payload        Json     @map("payload")
+  hash           String   @unique @map("hash") // hash único → idempotencia
+  occurred_at    DateTime @map("occurred_at")
+  ingested_at    DateTime @default(now()) @map("ingested_at")
+
+  @@map("events_raw")
+}
+
+/// Registro de evidencias ejecutables (EV-xxx).
+model evidencias {
+  id          String   @id @default(cuid())
+  code        String   @unique @map("code") // e.g. "EV-001"
+  title       String   @map("title")
+  status      String   @default("pendiente") @map("status") // pendiente | ok | fallido
+  result      Json?    @map("result")
+  verified_at DateTime? @map("verified_at")
+
+  @@map("evidencias")
+}
+
+/// Entidades territoriales mínimas del núcleo (PostGIS-ready).
+model territorios {
+  id        String  @id @default(cuid())
+  nombre    String  @map("nombre")
+  provincia String  @map("provincia")
+  activo    Boolean @default(true) @map("activo")
+
+  @@map("territorios")
+}

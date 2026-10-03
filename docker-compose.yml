@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    container_name: delocalsoy-db
+    environment:
+      POSTGRES_USER: delocalsoy
+      POSTGRES_PASSWORD: delocalsoy
+      POSTGRES_DB: delocalsoy
+    ports:
+      - '5432:5432'
+    volumes:
+      - delocalsoy_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U delocalsoy']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  delocalsoy_pgdata:

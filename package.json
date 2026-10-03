@@ -1,0 +1,14 @@
+{
+  "name": "delocalsoy-ar",
+  "private": true,
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "db:migrate": "pnpm --filter @delocalsoy/db prisma:migrate"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0"
+  }
+}
