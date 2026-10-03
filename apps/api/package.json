@@ -9,7 +9,8 @@
   },
   "dependencies": {
     "@delocalsoy/db": "workspace:*",
-    "express": "^4.19.0"
+    "express": "^4.19.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",
