@@ -9,6 +9,7 @@
     "db:migrate": "pnpm --filter @delocalsoy/db prisma:migrate"
   },
   "devDependencies": {
+    "@prisma/client": "5.22.0",
     "turbo": "^2.0.0"
   }
 }

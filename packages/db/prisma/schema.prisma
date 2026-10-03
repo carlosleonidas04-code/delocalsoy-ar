@@ -1,6 +1,14 @@
-// DELocalSoy.AR — núcleo Track A v7.1
-// Convenciones: ids `cuid`, columnas mapeadas a snake_case con @map(),
-// `events_raw` con hash único para idempotencia.
+// DELocalSoy.AR - Schema Principal v8.0
+// Nucleo Track A - Arquitectura de Innovacion Territorial
+// Convenciones:
+//   - ids: CUID (generados automaticamente)
+//   - columnas: snake_case con @map()
+//   - eventos: events_raw append-only con hash unico para idempotencia
+//   - Relaciones: unidireccionales para simplificar
+
+// ============================================================================
+// CONFIGURACION GENERAL
+// ============================================================================
 
 generator client {
   provider = "prisma-client-js"
@@ -11,36 +19,534 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-/// Eventos crudos del sistema (fuente de verdad, append-only, idempotentes).
+// ============================================================================
+// MODELOS CORE - DOMINIO TERRITORIAL
+// ============================================================================
+
+/// Territorio - Entidad geografica base del sistema
+model Territorio {
+  id            String    @id @default(cuid())
+  nombre        String    @map("nombre")
+  tipo          String    @default("municipio") @map("tipo") // municipio | provincia | region | pais
+  geometria     Json      @map("geometria")    // GeoJSON Polygon o MultiPolygon
+  centroide     Json      @map("centroide")    // GeoJSON Point
+  codigoIne     String?   @map("codigo_ine")
+  provincia     String    @default("Buenos Aires") @map("provincia")
+  pais          String    @default("Argentina") @map("pais")
+  poblacion     Int?      @map("poblacion")
+  densidad      Float?    @map("densidad")
+  areaKm2       Float?    @map("area_km2")
+  activo        Boolean   @default(true) @map("activo")
+  nivel         Int       @default(1) @map("nivel")
+  metadata      Json?     @map("metadata")
+  creadoEn      DateTime  @default(now()) @map("creado_en")
+  actualizadoEn DateTime  @updatedAt @map("actualizado_en")
+  
+  @@map("territorios")
+  @@index([provincia])
+  @@index([pais])
+  @@index([activo])
+}
+
+/// Nodo - Punto de activacion territorial
+model Nodo {
+  id              String    @id @default(cuid())
+  territorioId     String    @map("territorio_id")
+  nombre           String    @map("nombre")
+  codigo           String?   @unique @map("codigo")
+  tipo             String    @default("activador") @map("tipo") // activador | colaborador | coordinador | observador
+  estado           String    @default("inactivo") @map("estado") // inactivo | pendiente | activo | pausado | cerrado
+  nivel            Int       @default(1) @map("nivel")
+  salud            String    @default("optimo") @map("salud") // optimo | bueno | regular | critico
+  capacidades      String[]  @default([]) @map("capacidades")
+  recursos         Json?     @map("recursos")
+  coordenadas      Json      @map("coordenadas") // GeoJSON Point
+  radioAccionKm   Float     @default(5.0) @map("radio_accion_km")
+  direccion        String?   @map("direccion")
+  localidad        String?   @map("localidad")
+  fechaActivacion  DateTime? @map("fecha_activacion")
+  fechaCierre      DateTime? @map("fecha_cierre")
+  ultimoHeartbeat  DateTime? @map("ultimo_heartbeat")
+  descripcion     String?   @map("descripcion")
+  objetivo         String?   @map("objetivo")
+  tags             String[]  @default([]) @map("tags")
+  metadata         Json?     @map("metadata")
+  creadoEn         DateTime @default(now()) @map("creado_en")
+  actualizadoEn    DateTime @updatedAt @map("actualizado_en")
+  
+  @@map("nodos")
+  @@unique([territorioId, codigo])
+  @@index([territorioId])
+  @@index([estado])
+  @@index([tipo])
+}
+
+/// Comunidad - Grupo de personas organizadas en un territorio
+model Comunidad {
+  id              String    @id @default(cuid())
+  nodoId           String    @map("nodo_id")
+  territorioId     String?   @map("territorio_id")
+  nombre           String    @map("nombre")
+  codigo           String?   @unique @map("codigo")
+  tipo             String    @default("vecinal") @map("tipo") // vecinal | tematica | profesional | mixta | juvenil | indigena
+  estado           String    @default("formando") @map("estado") // formando | activa | inactiva | disuelta
+  fase             String?   @map("fase")
+  miembros         Int       @default(0) @map("miembros")
+  miembrosActivos  Int       @default(0) @map("miembros_activos")
+  objetivo         String?   @map("objetivo")
+  descripcion      String?   @map("descripcion")
+  intereses        String[]  @default([]) @map("intereses")
+  canalComunicacion String? @map("canal_comunicacion")
+  frecuenciaReunion String? @map("frecuencia_reunion")
+  diaReunion       String?   @map("dia_reunion")
+  horaReunion      String?   @map("hora_reunion")
+  lugarReunion     String?   @map("lugar_reunion")
+  fechaCreacion    DateTime @default(now()) @map("fecha_creacion")
+  fechaUltimaActividad DateTime? @map("fecha_ultima_actividad")
+  fechaDisolucion  DateTime? @map("fecha_disolucion")
+  tags             String[]  @default([]) @map("tags")
+  metadata         Json?     @map("metadata")
+  creadoEn         DateTime @default(now()) @map("creado_en")
+  actualizadoEn    DateTime @updatedAt @map("actualizado_en")
+  
+  @@map("comunidades")
+  @@unique([nodoId, nombre])
+  @@index([nodoId])
+  @@index([territorioId])
+  @@index([estado])
+  @@index([tipo])
+}
+
+/// Proyecto - Iniciativa civica o territorial
+model Proyecto {
+  id              String    @id @default(cuid())
+  comunidadId      String?   @map("comunidad_id")
+  nodoId           String?   @map("nodo_id")
+  territorioId     String?   @map("territorio_id")
+  titulo           String    @map("titulo")
+  codigo           String?   @unique @map("codigo")
+  tipo             String    @default("social") @map("tipo") // social | ambiental | economico | educativo | tecnologico | cultural | salud | otro
+  categoria        String?   @map("categoria")
+  subtipo          String?   @map("subtipo")
+  estado           String    @default("idea") @map("estado") // idea | planificacion | busquedafondos | ejecucion | finalizado | cancelado | pausado
+  fase             String?   @map("fase")
+  descripcion     String?   @map("descripcion")
+  justificacion    String?   @map("justificacion")
+  objetivos        Json?     @map("objetivos")
+  fechaInicio      DateTime? @map("fecha_inicio")
+  fechaFinEstimada DateTime? @map("fecha_fin_estimada")
+  fechaFinReal     DateTime? @map("fecha_fin_real")
+  presupuesto      Float?    @map("presupuesto")
+  fondosRecaudados Float    @default(0) @map("fondos_recaudados")
+  fondosEjecutados Float    @default(0) @map("fondos_ejecutados")
+  moneda           String    @default("ARS") @map("moneda")
+  ubicacion        Json?     @map("ubicacion") // GeoJSON Point o Polygon
+  participantes    Json?     @map("participantes")
+  beneficiarios    Int?      @map("beneficiarios")
+  impacto          Json?     @map("impacto")
+  indicadores      Json?     @map("indicadores")
+  evidencia        Json?     @map("evidencia")
+  documentos       Json?     @map("documentos")
+  tags             String[]  @default([]) @map("tags")
+  prioridad        Int       @default(3) @map("prioridad")
+  visibilidad      String    @default("publico") @map("visibilidad") // publico | privado | interno
+  metadata         Json?     @map("metadata")
+  creadoEn         DateTime @default(now()) @map("creado_en")
+  actualizadoEn    DateTime @updatedAt @map("actualizado_en")
+  
+  @@map("proyectos")
+  @@unique([comunidadId, titulo])
+  @@index([comunidadId])
+  @@index([nodoId])
+  @@index([territorioId])
+  @@index([estado])
+  @@index([tipo])
+}
+
+/// Evento - Actividad o suceso en el territorio
+model Evento {
+  id              String    @id @default(cuid())
+  tipo             String    @map("tipo") // reunion | taller | charla | accion | celebracion | problema | otro
+  titulo           String    @map("titulo")
+  descripcion      String?   @map("descripcion")
+  territorioId     String?   @map("territorio_id")
+  nodoId           String?   @map("nodo_id")
+  comunidadId      String?   @map("comunidad_id")
+  proyectoId       String?   @map("proyecto_id")
+  fechaInicio      DateTime @map("fecha_inicio")
+  fechaFin         DateTime? @map("fecha_fin")
+  duracionMinutos  Int?      @map("duracion_minutos")
+  ubicacion        Json?     @map("ubicacion") // GeoJSON Point
+  organizador      String?   @map("organizador")
+  organizadorTipo  String?   @map("organizador_tipo")
+  participantes    Json?     @map("participantes")
+  participantesCount Int    @default(0) @map("participantes_count")
+  estado           String    @default("programado") @map("estado") // programado | en_curso | finalizado | cancelado | pospuesto
+  impacto          Json?     @map("impacto")
+  resultado        String?   @map("resultado")
+  evidencia        Json?     @map("evidencia")
+  tags             String[]  @default([]) @map("tags")
+  visibilidad      String    @default("publico") @map("visibilidad")
+  metadata         Json?     @map("metadata")
+  creadoEn         DateTime @default(now()) @map("creado_en")
+  actualizadoEn    DateTime @updatedAt @map("actualizado_en")
+  
+  @@unique([tipo, titulo, fechaInicio, territorioId])
+  @@map("eventos")
+  @@index([territorioId])
+  @@index([nodoId])
+  @@index([comunidadId])
+  @@index([proyectoId])
+  @@index([fechaInicio])
+  @@index([estado])
+  @@index([tipo])
+}
+
+/// Agente - Actor en el sistema (humano o IA)
+model Agente {
+  id              String    @id @default(cuid())
+  tipo             String    @map("tipo") // humano | ia | hibrido
+  nombre           String    @map("nombre")
+  usuarioId        String?   @unique @map("usuario_id")
+  rol              String    @map("rol") // coordinador | analista | facilitador | asistente | experto | generalista
+  habilidades      String[]  @default([]) @map("habilidades")
+  especialidades   String[]  @default([]) @map("especialidades")
+  territorioId     String?   @map("territorio_id")
+  nodoId           String?   @map("nodo_id")
+  comunidadId      String?   @map("comunidad_id")
+  estado           String    @default("activo") @map("estado") // activo | inactivo | ocupado | suspendido
+  configuracion    Json?     @map("configuracion")
+  modeloIA         String?   @map("modelo_ia")
+  temperatura      Float?    @default(0.7) @map("temperatura")
+  tareasCompletadas Int    @default(0) @map("tareas_completadas")
+  tareasFallidas    Int    @default(0) @map("tareas_fallidas")
+  tiempoActivoMin   Int    @default(0) @map("tiempo_activo_min")
+  contexto         Json?     @map("contexto")
+  memoria          Json?     @map("memoria")
+  descripcion      String?   @map("descripcion")
+  tags             String[]  @default([]) @map("tags")
+  metadata         Json?     @map("metadata")
+  creadoEn         DateTime @default(now()) @map("creado_en")
+  actualizadoEn    DateTime @updatedAt @map("actualizado_en")
+  
+  @@map("agentes")
+  @@unique([tipo, usuarioId])
+  @@index([territorioId])
+  @@index([nodoId])
+  @@index([comunidadId])
+  @@index([tipo])
+  @@index([estado])
+  @@index([rol])
+}
+
+/// Conocimiento - Informacion y saberes territoriales
+model Conocimiento {
+  id              String    @id @default(cuid())
+  titulo           String    @map("titulo")
+  tipo             String    @default("documento") @map("tipo") // documento | dato | experiencia | patron | leccion | guia | informe
+  contenido        String    @map("contenido")
+  resumen          String?   @map("resumen")
+  territorioId     String?   @map("territorio_id")
+  nodoId           String?   @map("nodo_id")
+  comunidadId      String?   @map("comunidad_id")
+  proyectoId       String?   @map("proyecto_id")
+  autorId          String?   @map("autor_id")
+  autorNombre      String?   @map("autor_nombre")
+  autorTipo       String?   @map("autor_tipo")
+  fuente           String?   @map("fuente")
+  url              String?   @map("url")
+  version          String    @default("1.0") @map("version")
+  estado           String    @default("borrador") @map("estado") // borrador | revisado | publicado | obsoleto | archivado
+  calidad          Float?    @map("calidad")
+  relevancia       Float?    @map("relevancia")
+  tags             String[]  @default([]) @map("tags")
+  palabrasClave    String[]  @default([]) @map("palabras_clave")
+  embeddings        Json?     @map("embeddings")
+  categoria        String?   @map("categoria")
+  subcategoria     String?   @map("subcategoria")
+  lenguaje         String    @default("es") @map("lenguaje")
+  fechaCreacion    DateTime @default(now()) @map("fecha_creacion")
+  fechaPublicacion DateTime? @map("fecha_publicacion")
+  fechaActualizacion DateTime? @map("fecha_actualizacion")
+  fechaExpiracion  DateTime? @map("fecha_expiracion")
+  vistas           Int       @default(0) @map("vistas")
+  descargas        Int       @default(0) @map("descargas")
+  metadata         Json?     @map("metadata")
+  
+  @@map("conocimientos")
+  @@index([territorioId])
+  @@index([nodoId])
+  @@index([comunidadId])
+  @@index([proyectoId])
+  @@index([tipo])
+  @@index([estado])
+  @@index([tags])
+}
+
+// ============================================================================
+// MODELOS DE SISTEMA - INFRAESTRUCTURA
+// ============================================================================
+
+/// Eventos crudos del sistema (Event Sourcing)
+/// Fuente de verdad, append-only, idempotentes via hash unico
 model events_raw {
   id             String   @id @default(cuid())
   type           String   @map("type")
+  aggregateType  String?  @map("aggregate_type")
+  aggregateId    String?  @map("aggregate_id")
   payload        Json     @map("payload")
-  hash           String   @unique @map("hash") // hash único → idempotencia
+  hash           String   @unique @map("hash") // SHA256 para idempotencia
   occurred_at    DateTime @map("occurred_at")
   ingested_at    DateTime @default(now()) @map("ingested_at")
-
+  processed_at   DateTime? @map("processed_at")
+  source         String?  @map("source")
+  userId         String?  @map("user_id")
+  agentId        String?  @map("agent_id")
+  correlationId  String?  @map("correlation_id")
+  
   @@map("events_raw")
+  @@index([type])
+  @@index([aggregateType, aggregateId])
+  @@index([occurred_at])
+  @@index([ingested_at])
 }
 
-/// Registro de evidencias ejecutables (EV-xxx).
+/// Registro de evidencias ejecutables (EV-xxx)
 model evidencias {
-  id          String   @id @default(cuid())
-  code        String   @unique @map("code") // e.g. "EV-001"
-  title       String   @map("title")
-  status      String   @default("pendiente") @map("status") // pendiente | ok | fallido
-  result      Json?    @map("result")
-  verified_at DateTime? @map("verified_at")
-
+  id           String   @id @default(cuid())
+  code         String   @map("code") // EV-001, EV-002, etc.
+  title        String   @map("title")
+  description  String?  @map("description")
+  status       String   @default("pendiente") @map("status") // pendiente | ok | fallido | error
+  result       Json?    @map("result")
+  errorMessage  String?  @map("error_message")
+  verified_at   DateTime? @map("verified_at")
+  verified_by   String?   @map("verified_by")
+  verification_method String? @map("verification_method")
+  sprint        String?  @map("sprint")
+  issueId       String?  @map("issue_id")
+  prId          String?  @map("pr_id")
+  ciRunId       String?  @map("ci_run_id")
+  attempts      Int      @default(0) @map("attempts")
+  lastAttemptAt  DateTime? @map("last_attempt_at")
+  metadata      Json?    @map("metadata")
+  creadoEn      DateTime @default(now()) @map("creado_en")
+  actualizadoEn DateTime @updatedAt @map("actualizado_en")
+  
   @@map("evidencias")
+  @@index([code])
+  @@index([status])
 }
 
-/// Entidades territoriales mínimas del núcleo (PostGIS-ready).
-model territorios {
-  id        String  @id @default(cuid())
-  nombre    String  @map("nombre")
-  provincia String  @map("provincia")
-  activo    Boolean @default(true) @map("activo")
+/// Cola de tareas para workers
+model queue_jobs {
+  id              String    @id @default(cuid())
+  queue           String    @map("queue")
+  jobType         String    @map("job_type")
+  payload         Json      @map("payload")
+  status          String    @default("pending") @map("status") // pending | processing | completed | failed | retrying
+  priority        Int       @default(0) @map("priority")
+  scheduledAt     DateTime? @map("scheduled_at")
+  startedAt       DateTime? @map("started_at")
+  completedAt     DateTime? @map("completed_at")
+  attempts        Int       @default(0) @map("attempts")
+  maxAttempts     Int       @default(3) @map("max_attempts")
+  lastError       String?   @map("last_error")
+  workerId        String?   @map("worker_id")
+  correlationId   String?   @map("correlation_id")
+  creadoEn        DateTime @default(now()) @map("creado_en")
+  actualizadoEn  DateTime @updatedAt @map("actualizado_en")
+  
+  @@map("queue_jobs")
+  @@index([queue])
+  @@index([status])
+  @@index([priority])
+  @@index([scheduledAt])
+}
 
-  @@map("territorios")
+/// Logs de auditoria del sistema
+model audit_log {
+  id              String    @id @default(cuid())
+  action          String    @map("action")
+  entityType      String    @map("entity_type")
+  entityId        String?   @map("entity_id")
+  userId          String?   @map("user_id")
+  agentId         String?   @map("agent_id")
+  ipAddress       String?   @map("ip_address")
+  userAgent       String?   @map("user_agent")
+  oldValues       Json?     @map("old_values")
+  newValues       Json?     @map("new_values")
+  metadata        Json?     @map("metadata")
+  success         Boolean   @default(true) @map("success")
+  errorMessage    String?   @map("error_message")
+  timestamp       DateTime @default(now()) @map("timestamp")
+  
+  @@map("audit_log")
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([timestamp])
+}
+
+// ============================================================================
+// MODELOS DE USUARIOS Y AUTENTICACION
+// ============================================================================
+
+/// Usuario del sistema
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique @map("email")
+  username        String?   @unique @map("username")
+  passwordHash    String    @map("password_hash")
+  salt            String?   @map("salt")
+  nombre          String?   @map("nombre")
+  apellido        String?   @map("apellido")
+  nombreCompleto  String?   @map("nombre_completo")
+  telefono        String?   @map("telefono")
+  territorioId    String?   @map("territorio_id")
+  nodoId          String?   @map("nodo_id")
+  comunidadId     String?   @map("comunidad_id")
+  rol             String    @default("miembro") @map("rol") // admin | coordinador | territorial | nodo | comunidad | miembro | publico
+  permisos        String[]  @default([]) @map("permisos")
+  estado          String    @default("pendiente") @map("estado") // pendiente | activo | inactivo | bloqueado | eliminado
+  emailVerificado Boolean   @default(false) @map("email_verificado")
+  idioma          String    @default("es") @map("idioma")
+  zonaHoraria     String    @default("America/Argentina/Buenos_Aires") @map("zona_horaria")
+  notificaciones  Json?     @map("notificaciones")
+  ultimoLogin     DateTime? @map("ultimo_login")
+  loginAttempts   Int       @default(0) @map("login_attempts")
+  lockedUntil     DateTime? @map("locked_until")
+  mfaEnabled      Boolean   @default(false) @map("mfa_enabled")
+  mfaSecret       String?   @map("mfa_secret")
+  avatar          String?   @map("avatar")
+  bio             String?   @map("bio")
+  tags            String[]  @default([]) @map("tags")
+  metadata        Json?     @map("metadata")
+  creadoEn        DateTime @default(now()) @map("creado_en")
+  actualizadoEn   DateTime @updatedAt @map("actualizado_en")
+  
+  @@map("users")
+  @@index([territorioId])
+  @@index([nodoId])
+  @@index([comunidadId])
+  @@index([rol])
+  @@index([estado])
+}
+
+/// Sesiones de usuario
+model UserSession {
+  id              String    @id @default(cuid())
+  userId          String    @map("user_id")
+  token           String    @unique @map("token")
+  ipAddress       String?   @map("ip_address")
+  userAgent       String?   @map("user_agent")
+  deviceType      String?   @map("device_type")
+  deviceId        String?   @map("device_id")
+  expiresAt       DateTime  @map("expires_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  isValid         Boolean   @default(true) @map("is_valid")
+  
+  @@map("user_sessions")
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+}
+
+/// Refresh Tokens
+model RefreshToken {
+  id              String    @id @default(cuid())
+  userId          String    @map("user_id")
+  token           String    @unique @map("token")
+  expiresAt       DateTime  @map("expires_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  isValid         Boolean   @default(true) @map("is_valid")
+  
+  @@map("refresh_tokens")
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+}
+
+// ============================================================================
+// MODELOS DE IA
+// ============================================================================
+
+/// Conversaciones con agentes de IA
+model ConversacionIA {
+  id              String    @id @default(cuid())
+  userId          String?   @map("user_id")
+  agentId         String    @map("agent_id")
+  sessionId       String    @unique @map("session_id")
+  titulo          String?   @map("titulo")
+  mensajes        Json      @default("[]") @map("mensajes")
+  contexto        Json?     @map("contexto")
+  objetivo        String?   @map("objetivo")
+  tokensTotal     Int       @default(0) @map("tokens_total")
+  costTotal       Float     @default(0) @map("cost_total")
+  fechaInicio     DateTime  @default(now()) @map("fecha_inicio")
+  fechaFin        DateTime? @map("fecha_fin")
+  estado          String    @default("activa") @map("estado") // activa | finalizada | archivada
+  tags            String[]  @default([]) @map("tags")
+  metadata        Json?     @map("metadata")
+  
+  @@map("conversaciones_ia")
+  @@index([userId])
+  @@index([agentId])
+  @@index([sessionId])
+  @@index([fechaInicio])
+  @@index([estado])
+}
+
+/// Tareas de agentes de IA
+model TareaIA {
+  id              String    @id @default(cuid())
+  agentId         String    @map("agent_id")
+  userId          String?   @map("user_id")
+  tipo            String    @map("tipo")
+  titulo          String    @map("titulo")
+  descripcion     String?   @map("descripcion")
+  payload         Json      @map("payload")
+  estado          String    @default("pendiente") @map("estado") // pendiente | en_progreso | completada | fallida | cancelada
+  prioridad       Int       @default(0) @map("prioridad")
+  resultado       Json?     @map("resultado")
+  errorMessage    String?   @map("error_message")
+  tokensInput     Int       @default(0) @map("tokens_input")
+  tokensOutput    Int       @default(0) @map("tokens_output")
+  cost            Float     @default(0) @map("cost")
+  durationMs      Int?      @map("duration_ms")
+  scheduledAt     DateTime? @map("scheduled_at")
+  startedAt       DateTime? @map("started_at")
+  completedAt     DateTime? @map("completed_at")
+  correlationId   String?   @map("correlation_id")
+  metadata        Json?     @map("metadata")
+  creadoEn        DateTime @default(now()) @map("creado_en")
+  actualizadoEn   DateTime @updatedAt @map("actualizado_en")
+  
+  @@map("tareas_ia")
+  @@index([agentId])
+  @@index([userId])
+  @@index([estado])
+  @@index([prioridad])
+  @@index([scheduledAt])
+  @@index([correlationId])
+}
+
+/// Vector Store para embeddings
+model VectorEmbedding {
+  id              String    @id @default(cuid())
+  content         String    @map("content")
+  contentType     String    @map("content_type")
+  embedding       Json      @map("embedding")
+  dimension       Int       @map("dimension")
+  conocimientoId  String?   @unique @map("conocimiento_id")
+  territorioId    String?   @map("territorio_id")
+  nodoId          String?   @map("nodo_id")
+  modelUsed       String?   @map("model_used")
+  metadata        Json?     @map("metadata")
+  creadoEn        DateTime @default(now()) @map("creado_en")
+  
+  @@map("vector_embeddings")
+  @@index([conocimientoId])
+  @@index([territorioId])
+  @@index([nodoId])
 }
