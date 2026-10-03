@@ -8,6 +8,8 @@
 
 ## Flujo sinérgico IA ↔ GitHub
 
+> El ciclo operativo completo está definido en `docs/HITUB.md` (manifiesto metodológico v1.0). Esta página retiene los principios; HITUB retiene el modo de trabajo.
+
 - Cada tarea relevante (sprint, evidencia, decisión) se registra como **issue** con plantilla.
 - Todo cambio va por **rama + PR**; el PR referencia la evidencia que produce o consume.
 - `main` está protegido: solo se fusiona con PR aprobado y CI verde.
