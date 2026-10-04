@@ -1,6 +1,6 @@
-import express, { type Express, type Router } from 'express';
-import territoriosRouter from './routes/territorios.js';
+import express, { type Express, type Request, type Response, type NextFunction } from 'express';
 import evidenciasRouter from './routes/evidencias.js';
+import eventsRouter from './routes/events.js';
 
 export function createApp(): Express {
   const app = express();
@@ -8,29 +8,19 @@ export function createApp(): Express {
 
   // Health check
   app.get('/health', (_req, res) => {
-    res.json({ status: 'ok', service: 'delocalsoy-ar-api', version: '0.1.0' });
+    res.json({ status: 'ok', service: 'delocalsoy-ar-api', version: '0.2.0' });
   });
 
-  // API Routes
-  app.use('/api/territorios', territoriosRouter);
-  app.use('/api/evidencias', evidenciasRouter);
+  // Dominio: registro de evidencias ejecutables (EV-xxx)
+  app.use('/evidencias', evidenciasRouter);
 
-  // 404 handler
-  app.use((_req, res) => {
-    res.status(404).json({
-      success: false,
-      error: 'Ruta no encontrada',
-    });
-  });
+  // Dominio: eventos crudos (fuente de verdad, append-only, idempotentes)
+  app.use('/events', eventsRouter);
 
-  // Error handler
-  app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-    console.error('Error:', err);
-    res.status(500).json({
-      success: false,
-      error: 'Error interno del servidor',
-      details: process.env.NODE_ENV === 'development' ? err.message : undefined,
-    });
+  // Manejo de errores centralizado
+  app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+    console.error('[delocalsoy-ar-api] error:', err.message);
+    res.status(500).json({ error: 'error interno', detail: err.message });
   });
 
   return app;
