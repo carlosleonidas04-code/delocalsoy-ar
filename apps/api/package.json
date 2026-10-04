@@ -8,7 +8,7 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@delocalsoy/db": "workspace:*",
+    "@delocalsoy/db": "*",
     "express": "^4.19.0",
     "zod": "^3.25.76"
   },
