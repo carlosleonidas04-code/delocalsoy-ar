@@ -56,3 +56,84 @@ pre {
 footer { margin-top: 2rem; opacity: 0.55; font-size: 0.85rem; }
 
 code { background: rgba(127, 127, 127, 0.2); padding: 0.1rem 0.35rem; border-radius: 4px; }
+
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+.tabs button {
+  padding: 0.5rem 1rem;
+  border: 1px solid rgba(127, 127, 127, 0.3);
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.tabs button.active {
+  background: rgba(127, 127, 127, 0.2);
+  font-weight: 600;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75rem 0 1rem;
+  font-size: 0.9rem;
+}
+
+th, td {
+  text-align: left;
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid rgba(127, 127, 127, 0.25);
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.badge.ok { background: rgba(46, 158, 91, 0.18); color: #2e9e5b; }
+.badge.fail { background: rgba(192, 57, 43, 0.18); color: #c0392b; }
+.badge.pend { background: rgba(127, 127, 127, 0.2); opacity: 0.85; }
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+.form input, .form textarea {
+  padding: 0.55rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid rgba(127, 127, 127, 0.4);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.form button, button.secondary {
+  padding: 0.45rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid rgba(127, 127, 127, 0.4);
+  background: rgba(127, 127, 127, 0.15);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  width: fit-content;
+}
