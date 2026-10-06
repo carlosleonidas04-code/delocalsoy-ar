@@ -1,12 +1,10 @@
 name: verify
 
-# Compuerta de acreditacion (T2-R15-02) — v3 tras diagnostico P2/P3 del 2026-10-06.
-# Causas raiz (introducidas por 68a8872, "improve db resiliency and build config"):
-#  P2: pnpm-lock.yaml fue eliminado del repo -> `cache: pnpm` en setup-node falla.
-#  P3: el campo packageManager fue eliminado -> pnpm/action-setup sin version falla.
-#  P3b: turbo.json no define tarea db:generate -> `turbo run db:generate` fallaria.
-# Seguimiento recomendado: commitear pnpm-lock.yaml + packageManager (pnpm@9) y
-# reactivar cache: pnpm.
+# Compuerta de acreditacion (T2-R15-02) — v4 tras diagnostico P4 del 2026-10-06.
+# P4: apps/api declaraba "@delocalsoy/db": "*" (68a8872) -> pnpm lo busca en el
+# registry publico y falla en segundos (no existe fuera del monorepo).
+# Fix: protocolo workspace:* (pnpm siempre lo resuelve al workspace, sin flags)
+# + flags de install en forma directa (no --config.).
 
 on:
   push:
@@ -25,9 +23,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          # Sin cache: pnpm hasta que se commitee un pnpm-lock.yaml (P2).
-      - name: Install dependencies (resolucion @prisma/client)
-        run: pnpm install --no-frozen-lockfile --config.shamefully-hoist=true --config.link-workspace-packages=true
+          # Sin cache: pnpm hasta que se commitee un pnpm-lock.yaml.
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile --shamefully-hoist=true --link-workspace-packages=true
       - name: Prisma generate (EV-003)
         run: pnpm --filter @delocalsoy/db db:generate
         env:
