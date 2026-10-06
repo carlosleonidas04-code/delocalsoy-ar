@@ -1,8 +1,12 @@
 name: verify
 
-# Compuerta de acreditacion (T2-R15-02) — endurecida tras diagnostico P1:
-# en runners ubuntu-latest, @prisma/client no resolvia sin shamefully-hoist
-# y pnpm install --no-frozen-lockfile, y db:generate necesita DATABASE_URL.
+# Compuerta de acreditacion (T2-R15-02) — v3 tras diagnostico P2/P3 del 2026-10-06.
+# Causas raiz (introducidas por 68a8872, "improve db resiliency and build config"):
+#  P2: pnpm-lock.yaml fue eliminado del repo -> `cache: pnpm` en setup-node falla.
+#  P3: el campo packageManager fue eliminado -> pnpm/action-setup sin version falla.
+#  P3b: turbo.json no define tarea db:generate -> `turbo run db:generate` fallaria.
+# Seguimiento recomendado: commitear pnpm-lock.yaml + packageManager (pnpm@9) y
+# reactivar cache: pnpm.
 
 on:
   push:
@@ -21,11 +25,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: pnpm
+          # Sin cache: pnpm hasta que se commitee un pnpm-lock.yaml (P2).
       - name: Install dependencies (resolucion @prisma/client)
         run: pnpm install --no-frozen-lockfile --config.shamefully-hoist=true --config.link-workspace-packages=true
       - name: Prisma generate (EV-003)
-        run: pnpm turbo run db:generate
+        run: pnpm --filter @delocalsoy/db db:generate
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://dummy:dummy@localhost:5432/dummy' }}
       - name: Build monorepo (EV-006)
