@@ -1,0 +1,32 @@
+name: verify
+
+# Compuerta de acreditacion (T2-R15-02): este workflow PRUEBA la sanidad de main.
+# El ci.yml existente solo dispara en pull_request; este agrega el trigger push
+# que hace verificable cada merge a main (R4: ningun "ok" sin run enlazado).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build monorepo (EV-006)
+        run: pnpm turbo run build
+      - name: Prisma generate (EV-003)
+        run: pnpm turbo run db:generate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
