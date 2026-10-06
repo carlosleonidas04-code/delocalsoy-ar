@@ -1,15 +1,12 @@
 {
   "name": "delocalsoy-ar",
   "private": true,
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
+  "packageManager": "pnpm@9.0.0",
   "scripts": {
-    "build": "npm run build --workspace=apps/web",
-    "dev": "npm run dev --workspace=apps/web",
-    "lint": "npm run typecheck --workspace=apps/web",
-    "db:migrate": "npm run prisma:migrate --workspace=packages/db"
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "db:migrate": "pnpm --filter @delocalsoy/db prisma:migrate"
   },
   "devDependencies": {
     "turbo": "^2.0.0"
