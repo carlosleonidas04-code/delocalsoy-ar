@@ -1,9 +1,10 @@
 name: CI
 
-# Pipeline espejo de la compuerta (verify.yml), con auto-report (R4).
-# Reescritura completa: la version anterior fallaba sin salida visible y su
-# contenido exacto no era verificable tras 68a8872. Pipeline identico al
-# compuerta; cualquier divergencia se resuelve a favor de verify.
+# v10: la version de pnpm la gobierna UNICAMENTE packageManager en package.json.
+# pnpm/action-setup@v4 falla con 'Multiple versions of pnpm specified' si se
+# declaran ambas (package.json y input version). El auto-report es un job
+# separado que corre tras concluir build: la API de logs solo sirve el log
+# completo de jobs terminados.
 
 on:
   push:
@@ -23,9 +24,8 @@ jobs:
       DATABASE_URL: "postgresql://ci:ci@localhost:5432/ci?schema=public"
     steps:
       - uses: actions/checkout@v4
+      # version gobernada por packageManager (pnpm@9.0.0) en package.json
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -41,71 +41,41 @@ jobs:
         run: |
           set -o pipefail
           pnpm turbo run build 2>&1 | tee build.log
-      - name: Auto-report del fallo al PR (R4)
-        if: failure() && github.event_name == 'pull_request'
+
+  report:
+    needs: build
+    if: failure() && github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publicar log del fallo en el PR (R4)
         uses: actions/github-script@v7
         with:
           script: |
-            let failedInfo = 'desconocido';
+            const { data: jobs } = await github.rest.actions.listJobsForWorkflowRun({
+              owner: context.repo.owner, repo: context.repo.repo, run_id: context.runId
+            });
+            const failed = jobs.jobs.filter(j => j.conclusion === 'failure');
+            const failedInfo = failed.length
+              ? failed.map(j => j.steps.filter(s => s.conclusion === 'failure').map(s => s.name).join(', ') || '(sin paso marcado)').join(' | ')
+              : 'ningun job marcado en fallo';
             let logText = '';
-            try {
-              const { data: jobs } = await github.rest.actions.listJobsForWorkflowRun({
-                owner: context.repo.owner, repo: context.repo.repo, run_id: context.runId
-              });
-              const job = jobs.jobs.find(j => j.name === context.job)
-                || jobs.jobs.find(j => j.conclusion === 'failure')
-                || jobs.jobs[0];
-              if (job) {
-                failedInfo = job.steps
-                  .filter(s => s.conclusion === 'failure')
-                  .map(s => s.name)
-                  .join(', ') || '(ningun paso marcado en fallo)';
-              } else {
-                failedInfo = 'no hay jobs en el run';
-              }
-            } catch (e) {
-              failedInfo = 'fallo al listar jobs: ' + e.message;
-            }
-            // Logs reales del workspace (tee por paso): mas fiable que la API
-            // (que falla con 'Unknown error' mientras el job esta en curso).
-            try {
-              const fs = require('fs');
-              for (const f of ['install.log', 'generate.log', 'build.log']) {
-                if (fs.existsSync(f)) {
-                  const t = fs.readFileSync(f, 'utf8');
-                  logText += '===== ' + f + ' (ultimas lineas) =====' + '\n' + t.slice(-2500) + '\n\n';
-                }
-              }
-            } catch (e) {
-              logText += 'fallo al leer logs locales: ' + e.message + '\n';
-            }
-            if (!logText) {
+            for (const j of failed) {
               try {
-                const { data: jobs } = await github.rest.actions.listJobsForWorkflowRun({
-                  owner: context.repo.owner, repo: context.repo.repo, run_id: context.runId
+                const res = await github.rest.actions.downloadJobLogsForWorkflowRun({
+                  owner: context.repo.owner, repo: context.repo.repo, job_id: j.id
                 });
-                const job = jobs.jobs.find(j => j.name === context.job) || jobs.jobs[0];
-                if (job) {
-                  const res = await github.rest.actions.downloadJobLogsForWorkflowRun({
-                    owner: context.repo.owner, repo: context.repo.repo, job_id: job.id
-                  });
-                  logText = typeof res.data === 'string'
-                    ? res.data
-                    : Buffer.from(res.data).toString('utf8');
-                }
+                const t = typeof res.data === 'string' ? res.data : Buffer.from(res.data).toString('utf8');
+                logText += '===== job ' + j.name + ' (ultimas lineas) =====' + '\n' + t.slice(-3500) + '\n\n';
               } catch (e) {
-                logText = 'sin logs locales y fallo la API: ' + e.message;
+                logText += 'log del job ' + j.name + ' no disponible: ' + e.message + '\n\n';
               }
             }
+            if (!logText) logText = '(sin logs)';
             const tail = logText.slice(-4500);
             const body = '## \u{1F534} Auto-report (R4, workflow ' + context.workflow + ') — pasos en fallo: ' + failedInfo + '\n\nLog del job:\n\n```\n' + tail + '\n```\n\n*La salida real acredita (R4): nada se cierra sin ella.*';
-            try {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner, repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body
-              });
-              core.info('auto-report publicado en el PR');
-            } catch (e) {
-              core.setFailed('createComment fallo: ' + e.message);
-            }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner, repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });
+            core.info('auto-report publicado en el PR');
