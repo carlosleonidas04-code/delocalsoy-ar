@@ -1,10 +1,9 @@
 name: verify
 
-# Compuerta de acreditacion (T2-R15-02) — v4 tras diagnostico P4 del 2026-10-06.
-# P4: apps/api declaraba "@delocalsoy/db": "*" (68a8872) -> pnpm lo busca en el
-# registry publico y falla en segundos (no existe fuera del monorepo).
-# Fix: protocolo workspace:* (pnpm siempre lo resuelve al workspace, sin flags)
-# + flags de install en forma directa (no --config.).
+# Compuerta de acreditacion (T2-R15-02) — v5 tras diagnostico P4/P5 del 2026-10-06.
+# v5: install minimo canonico (sin flags opcionales — los flags heredados del P1
+# nunca fueron validados porque todos los runs anteriores morian en el setup).
+# P2 (lockfile ausente -> sin cache:pnpm) y P3 (version pnpm explicita) ya resueltos.
 
 on:
   push:
@@ -23,9 +22,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          # Sin cache: pnpm hasta que se commitee un pnpm-lock.yaml.
+      - name: Diagnostico (estado del workspace antes del install)
+        run: |
+          ls -la
+          cat pnpm-workspace.yaml
+          node -e "console.log('node ok')"
+          pnpm --version
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile --shamefully-hoist=true --link-workspace-packages=true
+        run: pnpm install --no-frozen-lockfile
       - name: Prisma generate (EV-003)
         run: pnpm --filter @delocalsoy/db db:generate
         env:
