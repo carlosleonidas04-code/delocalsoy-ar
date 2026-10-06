@@ -1,10 +1,8 @@
 name: verify
 
-# v10: la version de pnpm la gobierna UNICAMENTE packageManager en package.json.
-# pnpm/action-setup@v4 falla con 'Multiple versions of pnpm specified' si se
-# declaran ambas (package.json y input version). El auto-report es un job
-# separado que corre tras concluir build: la API de logs solo sirve el log
-# completo de jobs terminados.
+# v11: igual que v10 (version pnpm gobernada por packageManager; auto-report
+# como job separado tras concluir build). v11 amplía el tail del log
+# publicado a 20000 chars: los errores de tsc quedaban fuera del tail de 3500.
 
 on:
   push:
@@ -73,13 +71,13 @@ jobs:
                   owner: context.repo.owner, repo: context.repo.repo, job_id: j.id
                 });
                 const t = typeof res.data === 'string' ? res.data : Buffer.from(res.data).toString('utf8');
-                logText += '===== job ' + j.name + ' (ultimas lineas) =====' + '\n' + t.slice(-3500) + '\n\n';
+                logText += '===== job ' + j.name + ' (ultimas lineas) =====' + '\n' + t.slice(-20000) + '\n\n';
               } catch (e) {
                 logText += 'log del job ' + j.name + ' no disponible: ' + e.message + '\n\n';
               }
             }
             if (!logText) logText = '(sin logs)';
-            const tail = logText.slice(-4500);
+            const tail = logText.slice(-20000);
             const body = '## \u{1F534} Auto-report (R4, workflow ' + context.workflow + ') — pasos en fallo: ' + failedInfo + '\n\nLog del job:\n\n```\n' + tail + '\n```\n\n*La salida real acredita (R4): nada se cierra sin ella.*';
             await github.rest.issues.createComment({
               owner: context.repo.owner, repo: context.repo.repo,
