@@ -31,7 +31,7 @@ Catálogo completo vive en staging (18/18 verificadas en sandbox). Nada de esto 
 ## Reglas
 
 1. Una evidencia pasa a `ok` solo con salida de comando o resultado verificable adjunto.
-2. Cambiar una decisión de `ARCHCHITECTURE_STATE_v7.1.md` requiere nueva evidencia.
+2. Cambiar una decisión de `ARCHITECTURE_STATE_v7.1.md` requiere nueva evidencia.
 3. Ninguna evidencia sin CI run en main se etiqueta como `ok` en main antes del merge de su PR (R15, ADR-019).
 4. Toda fila `ok` lleva SHA ancla; sin SHA, la fila es `unbound` (lección del desempate EV-003/EV-006, #23).
 
