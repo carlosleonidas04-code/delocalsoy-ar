@@ -1,12 +1,17 @@
 import express, { type Express, type Request, type Response, type NextFunction } from 'express';
 import evidenciasRouter from './routes/evidencias.js';
 import eventsRouter from './routes/events.js';
+import healthRouter from './routes/health.js';
 
 export function createApp(): Express {
   const app = express();
   app.use(express.json());
 
-  // Health check
+  // Salud honesta del sistema: mode real|synthetic|degraded, nunca OK silencioso (R5)
+  // Aterrizaje PR 1 — issue #20
+  app.use('/api/health', healthRouter);
+
+  // Health check legado (demo web)
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok', service: 'delocalsoy-ar-api', version: '0.2.0' });
   });
