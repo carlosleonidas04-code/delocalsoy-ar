@@ -1,5 +1,6 @@
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
+import { Prisma } from '@delocalsoy/db';
 import { z } from 'zod';
 
 const router: Router = Router();
@@ -11,10 +12,57 @@ const TerritorioSchema = z.object({
   activo: z.boolean().optional().default(true),
 });
 
+// Bbox para recorte espacial: minLng,minLat,maxLng,maxLat (SRID=4326) — issue #21
+const BboxSchema = z
+  .string()
+  .regex(/^-?\d+(\.\d+)?(,-?\d+(\.\d+)?){3}$/, 'bbox debe tener el formato minLng,minLat,maxLng,maxLat')
+  .transform((value) => value.split(',').map(Number) as [number, number, number, number])
+  .refine(
+    ([minLng, minLat, maxLng, maxLat]) =>
+      minLng >= -180 && maxLng <= 180 &&
+      minLat >= -90 && maxLat <= 90 &&
+      minLng < maxLng && minLat < maxLat,
+    'coordenadas fuera de rango o envolvente vacía (SRID=4326)'
+  );
+
 // GET /territorios - Listar todos los territorios (opcional: filtrar por activo)
+// Con ?bbox=minLng,minLat,maxLng,maxLat: recorte espacial sobre índice GiST (PostGIS)
 router.get('/', async (req, res) => {
   try {
-    const { activo } = req.query;
+    const { activo, bbox } = req.query;
+
+    if (bbox !== undefined) {
+      const parsedBbox = BboxSchema.safeParse(bbox);
+      if (!parsedBbox.success) {
+        return res.status(400).json({
+          success: false,
+          error: 'bbox inválido',
+          details: parsedBbox.error.errors,
+        });
+      }
+      const [minLng, minLat, maxLng, maxLat] = parsedBbox.data;
+      const activoFilter =
+        activo !== undefined ? Prisma.sql`AND activo = ${activo === 'true'}` : Prisma.empty;
+
+      // Recorte espacial: ST_Intersects sobre envolvente WGS84, servido por el índice GiST idx_territorios_geom_gist
+      const territorios = await prisma.$queryRaw`
+        SELECT id, nombre, provincia, activo,
+               ST_AsGeoJSON(geom)::json AS geometry
+        FROM territorios
+        WHERE geom IS NOT NULL
+          AND ST_Intersects(geom, ST_MakeEnvelope(${minLng}, ${minLat}, ${maxLng}, ${maxLat}, 4326))
+          ${activoFilter}
+        ORDER BY nombre ASC
+      `;
+
+      return res.json({
+        success: true,
+        data: territorios,
+        count: territorios.length,
+        bbox: { minLng, minLat, maxLng, maxLat },
+      });
+    }
+
     const where = activo !== undefined ? { activo: activo === 'true' } : {};
 
     const territorios = await prisma.territorios.findMany({
