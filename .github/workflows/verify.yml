@@ -1,15 +1,17 @@
 name: verify
 
-# Compuerta de acreditacion (T2-R15-02) — v5 tras diagnostico P4/P5 del 2026-10-06.
-# v5: install minimo canonico (sin flags opcionales — los flags heredados del P1
-# nunca fueron validados porque todos los runs anteriores morian en el setup).
-# P2 (lockfile ausente -> sin cache:pnpm) y P3 (version pnpm explicita) ya resueltos.
+# Compuerta de acreditacion (T2-R15-02) — v6: auto-report del log de fallo como
+# comentario del PR (R4). En fallo, el job publica sus ultimas lineas para que
+# la auditoria y la Direccion Humana vean la salida real sin abrir Actions.
 
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+
+permissions:
+  pull-requests: write
 
 jobs:
   build:
@@ -26,8 +28,8 @@ jobs:
         run: |
           ls -la
           cat pnpm-workspace.yaml
-          node -e "console.log('node ok')"
           pnpm --version
+          node -e "console.log('node ok')"
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
       - name: Prisma generate (EV-003)
@@ -38,3 +40,29 @@ jobs:
         run: pnpm turbo run build
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://dummy:dummy@localhost:5432/dummy' }}
+      - name: Auto-report del fallo al PR (R4)
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: jobs } = await github.rest.actions.listJobsForWorkflowRun({
+              owner: context.repo.owner, repo: context.repo.repo, run_id: context.runId
+            });
+            const job = jobs.jobs.find(j => j.id === context.job);
+            const failedSteps = job ? job.steps.filter(s => s.conclusion === 'failure').map(s => s.name).join(', ') : 'desconocido';
+            let logText = '';
+            try {
+              const res = await github.rest.actions.downloadJobLogsForWorkflowRun({
+                owner: context.repo.owner, repo: context.repo.repo, job_id: context.job
+              });
+              logText = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
+            } catch (e) {
+              logText = 'no se pudo descargar el log: ' + e.message;
+            }
+            const tail = logText.slice(-4500);
+            const body = '## \u{1F534} Compuerta auto-report (R4) — pasos en fallo: ' + failedSteps + '\n\nUltimas lineas del log del job:\n\n```\n' + tail + '\n```\n\n*auto-report del workflow `verify` — la salida real acredita (R4), nada se cierra sin ella.*';
+            await github.rest.issues.createComment({
+              owner: context.repo.owner, repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });
