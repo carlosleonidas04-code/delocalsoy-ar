@@ -6,7 +6,7 @@ import { prisma } from '@delocalsoy/db';
  * Eventos crudos del sistema — fuente de verdad.
  * Append-only e idempotente: el hash único de events_raw evita duplicados.
  */
-const router = Router();
+const router: Router = Router();
 
 router.post('/', async (req: Request, res: Response) => {
   const body = (req.body ?? {}) as {
