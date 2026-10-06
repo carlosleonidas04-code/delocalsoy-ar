@@ -1,9 +1,10 @@
 name: verify
 
-# Compuerta de acreditacion (T2-R15-02) — v8: auto-report con job correcto.
-# v7 publicaba el comentario pero no encontraba el job: `context.job` es el NOMBRE
-# del job ('build'), no su ID numerico -> find por id nunca matcheaba y
-# downloadJobLogs devolvia 404. v8 matchea por nombre y usa el id real.
+# Compuerta de acreditacion (T2-R15-02) — v9.
+# P6 (hallazgo del auto-report v8): el paso que fallaba era actions/checkout —
+# el bloque `permissions` de v6-v8 omitia `contents`, que queda en `none` ->
+# el token no poda leer el repo. Se anade contents: read.
+# Logs por paso (tee) para que el auto-report publique la salida real.
 
 on:
   push:
@@ -12,6 +13,7 @@ on:
     branches: [main]
 
 permissions:
+  contents: read
   actions: read
   pull-requests: write
 
@@ -33,13 +35,19 @@ jobs:
           pnpm --version
           node -e "console.log('node ok')"
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: |
+          set -o pipefail
+          pnpm install --no-frozen-lockfile 2>&1 | tee install.log
       - name: Prisma generate (EV-003)
-        run: pnpm --filter @delocalsoy/db db:generate
+        run: |
+          set -o pipefail
+          pnpm --filter @delocalsoy/db db:generate 2>&1 | tee generate.log
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://dummy:dummy@localhost:5432/dummy' }}
       - name: Build monorepo (EV-006)
-        run: pnpm turbo run build
+        run: |
+          set -o pipefail
+          pnpm turbo run build 2>&1 | tee build.log
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://dummy:dummy@localhost:5432/dummy' }}
       - name: Auto-report del fallo al PR (R4)
@@ -53,7 +61,6 @@ jobs:
               const { data: jobs } = await github.rest.actions.listJobsForWorkflowRun({
                 owner: context.repo.owner, repo: context.repo.repo, run_id: context.runId
               });
-              // context.job es el NOMBRE del job ('build'), no su id.
               const job = jobs.jobs.find(j => j.name === context.job)
                 || jobs.jobs.find(j => j.conclusion === 'failure')
                 || jobs.jobs[0];
@@ -62,21 +69,45 @@ jobs:
                   .filter(s => s.conclusion === 'failure')
                   .map(s => s.name)
                   .join(', ') || '(ningun paso marcado en fallo)';
-                const res = await github.rest.actions.downloadJobLogsForWorkflowRun({
-                  owner: context.repo.owner, repo: context.repo.repo, job_id: job.id
-                });
-                logText = typeof res.data === 'string'
-                  ? res.data
-                  : Buffer.from(res.data).toString('utf8');
               } else {
                 failedInfo = 'no hay jobs en el run';
               }
             } catch (e) {
-              failedInfo = failedInfo === 'desconocido' ? ('fallo al listar jobs: ' + e.message) : failedInfo;
-              logText = 'no se pudo descargar el log: ' + e.message;
+              failedInfo = 'fallo al listar jobs: ' + e.message;
+            }
+            // Logs reales del workspace (tee por paso): mas fiable que la API
+            // (que falla con 'Unknown error' mientras el job esta en curso).
+            try {
+              const fs = require('fs');
+              for (const f of ['install.log', 'generate.log', 'build.log']) {
+                if (fs.existsSync(f)) {
+                  const t = fs.readFileSync(f, 'utf8');
+                  logText += '===== ' + f + ' (ultimas lineas) =====' + '\n' + t.slice(-2500) + '\n\n';
+                }
+              }
+            } catch (e) {
+              logText += 'fallo al leer logs locales: ' + e.message + '\n';
+            }
+            if (!logText) {
+              try {
+                const { data: jobs } = await github.rest.actions.listJobsForWorkflowRun({
+                  owner: context.repo.owner, repo: context.repo.repo, run_id: context.runId
+                });
+                const job = jobs.jobs.find(j => j.name === context.job) || jobs.jobs[0];
+                if (job) {
+                  const res = await github.rest.actions.downloadJobLogsForWorkflowRun({
+                    owner: context.repo.owner, repo: context.repo.repo, job_id: job.id
+                  });
+                  logText = typeof res.data === 'string'
+                    ? res.data
+                    : Buffer.from(res.data).toString('utf8');
+                }
+              } catch (e) {
+                logText = 'sin logs locales y fallo la API: ' + e.message;
+              }
             }
             const tail = logText.slice(-4500);
-            const body = '## \u{1F534} Compuerta auto-report (R4) — pasos en fallo: ' + failedInfo + '\n\nUltimas lineas del log del job:\n\n```\n' + tail + '\n```\n\n*auto-report del workflow `verify` — la salida real acredita (R4), nada se cierra sin ella.*';
+            const body = '## \u{1F534} Auto-report (R4, workflow ' + context.workflow + ') — pasos en fallo: ' + failedInfo + '\n\nLog del job:\n\n```\n' + tail + '\n```\n\n*La salida real acredita (R4): nada se cierra sin ella.*';
             try {
               await github.rest.issues.createComment({
                 owner: context.repo.owner, repo: context.repo.repo,
