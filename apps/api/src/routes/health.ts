@@ -28,7 +28,7 @@ async function dbConnected(): Promise<boolean> {
   }
 }
 
-const router = Router();
+const router: Router = Router();
 
 // GET /api/health — estado honesto del sistema
 router.get('/', async (_req: Request, res: Response) => {

@@ -1,64 +1,8 @@
 {
-  "$schem# 1) Extraer el log de fallo del PR #19 (run 37197860633) y el run histórico 37098706368 (desempate bound/unbound):
-gh run view 37197860633 --log-failed
-gh run view 37098706368 --json headSha,conclusion,event,workflowName,createdAt,url
-
-# 2) Cerrar PR #19 por superación bajo ADR-024 (#36):
-gh pr close 19 --comment "🛑 Cierre por Superación (ADR-024 #36 / Issue #30): check build en failure (run 37197860633), mergeable_state: unstable y 0 reviews. Su ruta POST /events viaja corregida con requireWriteAuth (R8), Anti-PII servidor y build verde en el PR 1 Compuerta (agent-google/health-mode)."
-
-# 3) Reclamar/inventariar las 5 ramas remotas ops/*:
-git fetch origin --prune && git branch -r | grep 'origin/ops/'
-
-# 4) Activar Branch Protection clásico sobre main con enforce_admins: true:
-gh api -X PUT repos/carlosleonidas04-code/delocalsoy-ar/branches/main/protection \
-  -H "Accept: application/vnd.github+json" \
-  --input - << 'JSON'
-{
-  "required_status_checks": {
-    "strict": true,
-    "contexts": ["build-and-typecheck", "security-and-contracts-audit"]
-  },
-  "enforce_admins": true,
-  "required_pull_request_reviews": {
-    "required_approving_review_count": 1
-  },
-  "restrictions": null
-}
-JSON
-
-# 5) (Opcional) Dejar asentado en #25 que la divergencia menor de numeración ya fue saneada (#36 = ADR-024):
-bash scripts/ratificar-y-acreditar-humano.sh --registrar-auditoria-github --cerrar-divergencia-25,
+  "$schema": "https://turbo.build/schema.json",
   "tasks": {
     "build": {
-      "dependsOn": [# 1) Extraer el log de fallo del PR #19 (run 37197860633) y el run histórico 37098706368 (desempate bound/unbound):
-      gh run view 37197860633 --log-failed
-      gh run view 37098706368 --json headSha,conclusion,event,workflowName,createdAt,url
-
-      # 2) Cerrar PR #19 por superación bajo ADR-024 (#36):
-      gh pr close 19 --comment "🛑 Cierre por Superación (ADR-024 #36 / Issue #30): check build en failure (run 37197860633), mergeable_state: unstable y 0 reviews. Su ruta POST /events viaja corregida con requireWriteAuth (R8), Anti-PII servidor y build verde en el PR 1 Compuerta (agent-google/health-mode)."
-
-      # 3) Reclamar/inventariar las 5 ramas remotas ops/*:
-      git fetch origin --prune && git branch -r | grep 'origin/ops/'
-
-      # 4) Activar Branch Protection clásico sobre main con enforce_admins: true:
-      gh api -X PUT repos/carlosleonidas04-code/delocalsoy-ar/branches/main/protection \
-        -H "Accept: application/vnd.github+json" \
-          --input - << 'JSON'
-          {
-            "required_status_checks": {
-                "strict": true,
-                    "contexts": ["build-and-typecheck", "security-and-contracts-audit"]
-                      },
-                        "enforce_admins": true,
-                          "required_pull_request_reviews": {
-                              "required_approving_review_count": 1
-                                },
-                                  "restrictions": null
-                                  }
-                                  JSON
-
-                                  # 5) (Opcional) Dejar asentado en #25 que la divergencia menor de numeración ya fue saneada (#36 = ADR-024):
-                                  bash scripts/ratificar-y-acreditar-humano.sh --registrar-auditoria-github --cerrar-divergencia-25
+      "dependsOn": [
         "^build"
       ],
       "outputs": [

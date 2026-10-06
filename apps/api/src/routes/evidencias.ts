@@ -5,7 +5,7 @@ import { prisma } from '@delocalsoy/db';
  * Registro de evidencias ejecutables (EV-xxx).
  * Lectura ordenada por código; fuente de la pantalla "Evidencias" del frontend.
  */
-const router = Router();
+const router: Router = Router();
 
 router.get('/', async (_req, res: Response) => {
   try {

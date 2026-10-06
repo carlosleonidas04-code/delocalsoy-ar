@@ -1,8 +1,8 @@
 name: verify
 
-# Compuerta de acreditacion (T2-R15-02) — endurecida tras diagnostico P1:
-# en runners ubuntu-latest, @prisma/client no resolvia sin shamefully-hoist
-# y pnpm install --no-frozen-lockfile, y db:generate necesita DATABASE_URL.
+# v11: igual que v10 (version pnpm gobernada por packageManager; auto-report
+# como job separado tras concluir build). v11 amplía el tail del log
+# publicado a 20000 chars: los errores de tsc quedaban fuera del tail de 3500.
 
 on:
   push:
@@ -10,25 +10,78 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+  actions: read
+  pull-requests: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # version gobernada por packageManager (pnpm@9.0.0) en package.json
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: pnpm
-      - name: Install dependencies (resolucion @prisma/client)
-        run: pnpm install --no-frozen-lockfile --config.shamefully-hoist=true --config.link-workspace-packages=true
+      - name: Diagnostico (estado del workspace antes del install)
+        run: |
+          ls -la
+          cat pnpm-workspace.yaml
+          pnpm --version
+          node -e "console.log('node ok')"
+      - name: Install dependencies
+        run: |
+          set -o pipefail
+          pnpm install --no-frozen-lockfile 2>&1 | tee install.log
       - name: Prisma generate (EV-003)
-        run: pnpm turbo run db:generate
+        run: |
+          set -o pipefail
+          pnpm --filter @delocalsoy/db db:generate 2>&1 | tee generate.log
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://dummy:dummy@localhost:5432/dummy' }}
       - name: Build monorepo (EV-006)
-        run: pnpm turbo run build
+        run: |
+          set -o pipefail
+          pnpm turbo run build 2>&1 | tee build.log
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://dummy:dummy@localhost:5432/dummy' }}
+
+  report:
+    needs: build
+    if: failure() && github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publicar log del fallo en el PR (R4)
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: jobs } = await github.rest.actions.listJobsForWorkflowRun({
+              owner: context.repo.owner, repo: context.repo.repo, run_id: context.runId
+            });
+            const failed = jobs.jobs.filter(j => j.conclusion === 'failure');
+            const failedInfo = failed.length
+              ? failed.map(j => j.steps.filter(s => s.conclusion === 'failure').map(s => s.name).join(', ') || '(sin paso marcado)').join(' | ')
+              : 'ningun job marcado en fallo';
+            let logText = '';
+            for (const j of failed) {
+              try {
+                const res = await github.rest.actions.downloadJobLogsForWorkflowRun({
+                  owner: context.repo.owner, repo: context.repo.repo, job_id: j.id
+                });
+                const t = typeof res.data === 'string' ? res.data : Buffer.from(res.data).toString('utf8');
+                logText += '===== job ' + j.name + ' (ultimas lineas) =====' + '\n' + t.slice(-20000) + '\n\n';
+              } catch (e) {
+                logText += 'log del job ' + j.name + ' no disponible: ' + e.message + '\n\n';
+              }
+            }
+            if (!logText) logText = '(sin logs)';
+            const tail = logText.slice(-20000);
+            const body = '## \u{1F534} Auto-report (R4, workflow ' + context.workflow + ') — pasos en fallo: ' + failedInfo + '\n\nLog del job:\n\n```\n' + tail + '\n```\n\n*La salida real acredita (R4): nada se cierra sin ella.*';
+            await github.rest.issues.createComment({
+              owner: context.repo.owner, repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });
+            core.info('auto-report publicado en el PR');
