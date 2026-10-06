@@ -1,10 +1,9 @@
 name: verify
 
-# Compuerta de acreditacion (T2-R15-02) — v7: auto-report funcional.
-# v6 fallaba en silencio: declarar `permissions` a nivel de workflow deixa TODAS
-# las demas scopes en `none` -> listJobs/downloadLogs (actions: read) devolvian 403
-# y el script moria antes de publicar el comentario. v7 anade actions: read y
-# blinda el script para que el comentario se publique pase lo que pase (R4).
+# Compuerta de acreditacion (T2-R15-02) — v8: auto-report con job correcto.
+# v7 publicaba el comentario pero no encontraba el job: `context.job` es el NOMBRE
+# del job ('build'), no su ID numerico -> find por id nunca matcheaba y
+# downloadJobLogs devolvia 404. v8 matchea por nombre y usa el id real.
 
 on:
   push:
@@ -54,21 +53,26 @@ jobs:
               const { data: jobs } = await github.rest.actions.listJobsForWorkflowRun({
                 owner: context.repo.owner, repo: context.repo.repo, run_id: context.runId
               });
-              const job = jobs.jobs.find(j => j.id === context.job);
-              failedInfo = job
-                ? job.steps.filter(s => s.conclusion === 'failure').map(s => s.name).join(', ')
-                : 'job no encontrado en la lista';
+              // context.job es el NOMBRE del job ('build'), no su id.
+              const job = jobs.jobs.find(j => j.name === context.job)
+                || jobs.jobs.find(j => j.conclusion === 'failure')
+                || jobs.jobs[0];
+              if (job) {
+                failedInfo = job.steps
+                  .filter(s => s.conclusion === 'failure')
+                  .map(s => s.name)
+                  .join(', ') || '(ningun paso marcado en fallo)';
+                const res = await github.rest.actions.downloadJobLogsForWorkflowRun({
+                  owner: context.repo.owner, repo: context.repo.repo, job_id: job.id
+                });
+                logText = typeof res.data === 'string'
+                  ? res.data
+                  : Buffer.from(res.data).toString('utf8');
+              } else {
+                failedInfo = 'no hay jobs en el run';
+              }
             } catch (e) {
-              failedInfo = 'listJobs fallo: ' + e.message;
-            }
-            try {
-              const res = await github.rest.actions.downloadJobLogsForWorkflowRun({
-                owner: context.repo.owner, repo: context.repo.repo, job_id: context.job
-              });
-              logText = typeof res.data === 'string'
-                ? res.data
-                : Buffer.from(res.data).toString('utf8');
-            } catch (e) {
+              failedInfo = failedInfo === 'desconocido' ? ('fallo al listar jobs: ' + e.message) : failedInfo;
               logText = 'no se pudo descargar el log: ' + e.message;
             }
             const tail = logText.slice(-4500);
