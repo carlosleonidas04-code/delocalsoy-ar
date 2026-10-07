@@ -53,3 +53,5 @@
 
 ---
 *Registro generado por agent-vibe a partir de ratificaciones R9 verificadas en issues (2026-10-05). R15: este registro acredita la RATIFICACIÓN; la implementación técnica de cada ADR requiere sus propios PRs y EVs.*
+
+| **9** | **`ADR-025`** | [`#40`](https://github.com/carlosleonidas04-code/delocalsoy-ar/issues/40) | **Adhesion de `[agent: grok]` (xAI) al Ecosistema Multi-Agentico (Post-Congelacion ADR-024):** Ratificado por Direccion Humana bajo R1-R15 (`#40#issuecomment-6031925646`) y levantada la congelacion ADR-024 (`#36` cerrado tras `6/6` en `main @ caa573b`). | Auditado post-congelacion | `ratified-issue` (`#40#issuecomment-6031925646`) -> `accepted-main` |
