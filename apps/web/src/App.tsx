@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
-import type { FormEvent } from 'react';
+import type { CSSProperties, FormEvent } from 'react';
 import { api, type Evidencia } from './api';
 import { demoDataSourceMode, makeDemoDataSource } from './demo/dataSourceSelector';
 
@@ -28,14 +28,14 @@ function isDemoRoute(): boolean {
 function DemoRoute() {
   const dataSource = useMemo(() => makeDemoDataSource(), []);
   const modoApi = demoDataSourceMode() === 'api';
-  const bannerStyle = {
+  const bannerStyle: CSSProperties = {
     position: 'sticky',
     top: 0,
     zIndex: 50,
     padding: '8px 16px',
     fontWeight: 600,
     fontSize: 14,
-    textAlign: 'center' as const,
+    textAlign: 'center',
     borderBottom: '1px solid #2A2A2A',
   };
   return (
