@@ -1,6 +1,7 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { api, type Evidencia } from './api';
+import { demoDataSourceMode, makeDemoDataSource } from './demo/dataSourceSelector';
 
 type HealthState =
   | { status: 'checking' }
@@ -21,30 +22,41 @@ function isDemoRoute(): boolean {
   );
 }
 
+// DEMO-3 (#18): el origen de datos del demo se elige con VITE_DATA_SOURCE
+// (default: sintético). En modo api el banner cambia: datos reales de la API,
+// sin datos simulados (R15).
 function DemoRoute() {
+  const dataSource = useMemo(() => makeDemoDataSource(), []);
+  const modoApi = demoDataSourceMode() === 'api';
+  const bannerStyle = {
+    position: 'sticky',
+    top: 0,
+    zIndex: 50,
+    padding: '8px 16px',
+    fontWeight: 600,
+    fontSize: 14,
+    textAlign: 'center' as const,
+    borderBottom: '1px solid #2A2A2A',
+  };
   return (
     <>
-      <div
-        style={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 50,
-          padding: '8px 16px',
-          background: '#F5C842',
-          color: '#121212',
-          fontWeight: 600,
-          fontSize: 14,
-          textAlign: 'center',
-          borderBottom: '1px solid #2A2A2A',
-        }}
-      >
-        ⚠️ Datos 100% sintéticos — referencia visual ·{' '}
-        <a href="/" style={{ color: '#121212', textDecoration: 'underline' }}>
-          ← volver a la app
-        </a>
-      </div>
+      {modoApi ? (
+        <div style={{ ...bannerStyle, background: '#7BA7D9', color: '#121212' }}>
+          🛰️ Datos servidos por la API local (/api/*) — sin datos simulados ·{' '}
+          <a href="/" style={{ color: '#121212', textDecoration: 'underline' }}>
+            ← volver a la app
+          </a>
+        </div>
+      ) : (
+        <div style={{ ...bannerStyle, background: '#F5C842', color: '#121212' }}>
+          ⚠️ Datos 100% sintéticos — referencia visual ·{' '}
+          <a href="/" style={{ color: '#121212', textDecoration: 'underline' }}>
+            ← volver a la app
+          </a>
+        </div>
+      )}
       <Suspense fallback={<p style={{ padding: 16, color: '#A3A3A3' }}>Cargando demo…</p>}>
-        <DemoTerritorialFederado />
+        <DemoTerritorialFederado dataSource={dataSource} />
       </Suspense>
     </>
   );
