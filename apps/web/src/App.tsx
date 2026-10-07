@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { api, type Evidencia } from './api';
 
@@ -8,6 +8,47 @@ type HealthState =
   | { status: 'error'; message: string };
 
 type Tab = 'integracion' | 'evidencias';
+
+// DEMO-1 (#16): demo sintético aislado — lazy import, FUERA de la navegación
+// principal. Ruta /demo (pathname) + fallback #/demo (sin depender del server
+// fallback). Referencia visual; datos 100% sintéticos (se autodeclara, R5).
+const DemoTerritorialFederado = lazy(() => import('./demo/DemoTerritorialFederado.jsx'));
+
+function isDemoRoute(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    (window.location.pathname === '/demo' || window.location.hash.startsWith('#/demo'))
+  );
+}
+
+function DemoRoute() {
+  return (
+    <>
+      <div
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 50,
+          padding: '8px 16px',
+          background: '#F5C842',
+          color: '#121212',
+          fontWeight: 600,
+          fontSize: 14,
+          textAlign: 'center',
+          borderBottom: '1px solid #2A2A2A',
+        }}
+      >
+        ⚠️ Datos 100% sintéticos — referencia visual ·{' '}
+        <a href="/" style={{ color: '#121212', textDecoration: 'underline' }}>
+          ← volver a la app
+        </a>
+      </div>
+      <Suspense fallback={<p style={{ padding: 16, color: '#A3A3A3' }}>Cargando demo…</p>}>
+        <DemoTerritorialFederado />
+      </Suspense>
+    </>
+  );
+}
 
 function BadgeEstado({ estado }: { estado: string }) {
   const variant = estado === 'ok' ? 'ok' : estado === 'fallido' ? 'fail' : 'pend';
@@ -65,6 +106,10 @@ export function App() {
       setEventoResultado('❌ ' + (e instanceof Error ? e.message : 'error desconocido'));
     }
   };
+
+  if (isDemoRoute()) {
+    return <DemoRoute />;
+  }
 
   return (
     <main className="container">
@@ -140,7 +185,7 @@ export function App() {
       )}
 
       <footer>
-        <p>Monorepo Track A v7.1 — <code>apps/web</code> · <code>apps/api</code> · <code>packages/db</code></p>
+        <p>Monorepo Track A v7.1 — <code>apps/web</code> · <code>apps/api</code> · <code>packages/db</code> · <a href="/demo">demo sintético</a></p>
       </footer>
     </main>
   );
