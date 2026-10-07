@@ -17,7 +17,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-/// Eventos crudos del sistema (fuente de verdad, append-only, idempotentes).
+/// Eventos crudos del sistema (fuerte de verdad, append-only, idempotentes).
 model events_raw {
   id          String   @id @default(cuid())
   type        String   @map("type")
@@ -87,8 +87,9 @@ model capas {
   geometria  String  @map("geometria") // Point | LineString
   default_on Boolean @default(false) @map("default_on")
 
-  nodo     nodos      @relation(fields: [nodo_id], references: [id], onDelete: Cascade)
-  features features[]
+  nodo        nodos       @relation(fields: [nodo_id], references: [id], onDelete: Cascade)
+  features    features[]
+  categorias  categorias[]
 
   @@unique([nodo_id, key])
   @@map("capas")
