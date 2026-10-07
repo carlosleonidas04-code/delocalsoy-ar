@@ -1,0 +1,67 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "DELocalSoy.AR Federated API Contract",
+    "version": "7.6.2"
+  },
+  "paths": {
+    "/api/health": {
+      "get": {
+        "summary": "Honest Runtime Health (R5)",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/health/mode": {
+      "patch": {
+        "summary": "Authenticated Mode Switch (R5/R8)",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/territorios": {
+      "get": {
+        "summary": "PostGIS BBOX Spatial Filter (SRID=4326)",
+        "parameters": [
+          {
+            "name": "bbox",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Invalid BBOX"
+          }
+        }
+      }
+    },
+    "/events": {
+      "post": {
+        "summary": "Idempotent SHA-256 Event Log (EV-005)",
+        "responses": {
+          "201": {
+            "description": "Created"
+          },
+          "409": {
+            "description": "Duplicate Hash"
+          }
+        }
+      }
+    }
+  }
+}
