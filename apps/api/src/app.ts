@@ -2,6 +2,7 @@ import express, { type Express, type Request, type Response, type NextFunction }
 import evidenciasRouter from './routes/evidencias.js';
 import eventsRouter from './routes/events.js';
 import healthRouter from './routes/health.js';
+import nodosRouter from './routes/nodos.js';
 import territoriosRouter from './routes/territorios.js';
 
 export function createApp(): Express {
@@ -14,6 +15,11 @@ export function createApp(): Express {
 
   // Dominio: territorios federados — recorte espacial bbox con PostGIS (Aterrizaje PR 2 — issue #21)
   app.use('/api/territorios', territoriosRouter);
+
+  // Dominio: vocabulario del demo federado (CORE-003 R1, #83) — nodos, capas,
+  // categorías, features y reportes en lectura pública. El backend sirve todo
+  // lo que el contrato DataSource consume: fin de los "declarado vacío" (R15).
+  app.use('/api/nodos', nodosRouter);
 
   // Dominio: registro de evidencias ejecutables (EV-xxx) — unificado bajo /api (riesgo #53)
   app.use('/api/evidencias', evidenciasRouter);
