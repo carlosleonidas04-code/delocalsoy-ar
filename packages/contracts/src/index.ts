@@ -21,6 +21,14 @@ export const BboxStringSchema = z
     );
   }, "coordenadas fuera de rango o envolvente vacía (SRID=4326)");
 
+// Payload de territorio (CORE-002 T4, #66): antes duplicado en el route como
+// schema Zod local. Fuente única desde acá.
+export const TerritorioSchema = z.object({
+  nombre: z.string().min(1, "El nombre es obligatorio"),
+  provincia: z.string().min(1, "La provincia es obligatoria"),
+  activo: z.boolean().optional().default(true),
+});
+
 export const EvidenceStatusSchema = z.enum([
   "Implementado",
   "Verificado",
