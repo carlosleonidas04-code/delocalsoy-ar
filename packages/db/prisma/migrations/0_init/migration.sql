@@ -38,7 +38,7 @@ CREATE TABLE "territorios" (
     "provincia" TEXT NOT NULL,
     "activo" BOOLEAN NOT NULL DEFAULT true,
 
-    "territorios_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "territorios_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
