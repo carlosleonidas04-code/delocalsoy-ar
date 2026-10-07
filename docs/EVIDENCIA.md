@@ -3,7 +3,7 @@
 > **Re-base epistémico** (Aterrizaje PR 4 — issue #23). Estado en `main` vs estado en staging.
 > **R4:** una evidencia pasa a `ok` solo con salida de comando o run verificable, anclado por SHA.
 > **R15:** staging propone, GitHub acredita — ninguna evidencia sin CI run en main se etiqueta `ok` en main antes del merge que la prueba.
-> **Vigencia de esta tabla:** hasta el próximo push a main. Última revisión contra API GitHub: main @ `c6d8d96` (2026-10-07).
+> **Vigencia de esta tabla:** hasta el próximo push a main. Última revisión contra API GitHub: main @ `4f0de16` (2026-10-07).
 
 ## Scorecard
 
@@ -18,9 +18,9 @@
 | EV-001 | `docker compose up -d` levanta PostGIS sano | **ok** | `2482f63` | `postgis_version` → **3.4** (#1, 2026-10-07, Codespace) |
 | EV-002 | `prisma migrate dev` aplica el schema sin errores | **ok** | `5c3a7a3` | DB desde cero: `0_init` + `20261006120000_territorios_geom_gist` aplicadas sin errores; tablas `events_raw`/`evidencias`/`territorios` creadas (#2; fix P12 vía PR #47) |
 | EV-003 | `prisma generate` genera cliente tipado | **ok @ `ce2d736`** (2026-10-03, PR #7) | `ce2d736` | run [37098706368](https://github.com/carlosleonidas04-code/delocalsoy-ar/actions/runs/37098706368) |
-| EV-004 | API `/health` responde 200 | **ok** | `5c3a7a3` | `{"status":"ok",...}` + `200`; `/api/health` → `mode:real`, `dataSource:postgres` (salto honesto desde `degraded/none`, R5) (#4) |
+| EV-004 | API `/health` responde 200 | **ok** | `5c3a7a3` | `{"status":"ok",...}` + `200`; `/api/health` → `mode:real`, `dataSource:postgres` (salto honesto desde `degraded/none`, R5) (#4). **Actualizado 2026-10-07 (riesgo #57, ADR-028):** la ruta legada `/health` fue retirada; el único health es `/api/health` (R5) — ver EV-025 |
 | EV-005 | Insert duplicado en `events_raw` rechazado (idempotencia) | **ok** | `5c3a7a3` | POST doble idéntico: 1º `creado`, 2º `duplicado`, mismo id/hash — `UNIQUE(hash)`, original intacto (#5) |
-| EV-006 | Build del monorepo compila | **ok @ `ce2d736`/`7c8e267`** (2026-10-03, PRs #7/#8) | `ce2d736` | run [37098706368](https://github.com/carlosleonidas04-code/delocalsoy-ar/actions/runs/37098706368); compuerta CI verde en cada merge posterior (#44 → #73) |
+| EV-006 | Build del monorepo compila | **ok @ `ce2d736`/`7c8e267`** (2026-10-03, PRs #7/#8) | `ce2d736` | run [37098706368](https://github.com/carlosleonidas04-code/delocalsoy-ar/actions/runs/37098706368); compuerta CI verde en cada merge posterior (#44 → #75) |
 
 ## Matriz de evidencia — main (CORE-002, sprint #12)
 
@@ -33,10 +33,17 @@
 | EV-023 | Anti-PII server-side en `POST /api/events` (ADR-020 cond.1, Ley 25.326) | **ok** | `17a7ad9` (PR #70) | `events-anti-pii.test.ts`: DNI `20.123.456`, CUIT `20-12345678-4`, email, teléfono `+54 11 1234 5678` → **400** sin eco del valor en respuesta ni logs |
 | EV-024 | Tests de dominio en CI: auth 401, seed, bbox, anti-PII | **ok** | `c6d8d96` | Suite completa en main (8 archivos): health, events-idempotencia, territorios-guard, events-anti-pii, contracts-territorio, seed-territorios, core002-schema — cada dominio con happy path + rechazo; job `test` con PostGIS real corre en cada PR/push (workflows v12, PR #62) |
 
+## Matriz de evidencia — main (remediación de riesgos, tracker #51)
+
+| Código | Título | Estado | Ancla main | Acreditación (salida real) |
+|---|---|---|---|---|
+| EV-025 | Riesgo 6 (#57): retiro de `/health` legado + binding conservador HOST/allowedHosts (ADR-028) | **ok** | `4f0de16` (PR #75) | `health.test.ts`: `GET /health` → **404**, `/api/health` → **200** (regresión cubierta) — job `test` CI con PostGIS; verificación previa de consumidores (0 legítimos) registrada en #57; `server.ts` sin `HOST` bindea `127.0.0.1` (criterio: no escucha interfaces externas) |
+
 ### Notas de auditoría CORE-002 (2026-10-07)
 
 - **P15 (bug latente del staging-only)**: el schema de `feat/core-002-schema @ 0d18f0f` tenía la relación `categorias.capa` sin campo opuesto en `capas` (P1012). Nunca se ejecutó `prisma generate` sobre él. Detectado por la compuerta CI del PR #73 y corregido en el mismo PR — la "verdad técnica" trabajando: staging proponía, GitHub desacreditaba.
 - **Merges del sprint**: autorizados por delegación R8/R9 de la Dirección Humana (mensaje textual registrado en #63, patrón de #23). Todos los PRs tuvieron CI verde (build + test con PostGIS) antes del merge.
+- **Riesgo 6 (#57)**: ejecutado bajo la misma delegación (registrada en #57). Fix en camino del PR #75: el tipo `allowedHosts` de Vite admite `true | string[] | undefined`, no `false` — la compuerta CI lo detectó en el primer push y se corrigió antes del merge.
 - **Deuda restante**: lockfile de pnpm pendiente de regenerar localmente (`pnpm install` + commit) tras la incorporación de vitest y contracts al workspace de apps/api — CI usa `--no-frozen-lockfile` mientras tanto.
 
 ### Notas de auditoría CORE-001 (2026-10-07, registro completo en #23)
@@ -64,8 +71,8 @@ Catálogo completo vive en staging (18/18 verificadas en sandbox). Nada de esto 
 
 ```bash
 gh run list --branch main --event push -L 5
-# Hito: runs verify/ci en success sobre 43bb1ba..c6d8d96
-# (remediación riesgos #52-#59 + sprint CORE-002 completo, 2026-10-07)
+# Hito: runs verify/ci en success sobre 43bb1ba..4f0de16
+# (remediación riesgos #52-#59 + sprint CORE-002 completo + riesgo 6 #57, 2026-10-07)
 ```
 
 ---
