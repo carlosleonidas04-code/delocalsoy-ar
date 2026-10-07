@@ -2,6 +2,7 @@ import express, { type Express, type Request, type Response, type NextFunction }
 import evidenciasRouter from './routes/evidencias.js';
 import eventsRouter from './routes/events.js';
 import healthRouter from './routes/health.js';
+import territoriosRouter from './routes/territorios.js';
 
 export function createApp(): Express {
   const app = express();
@@ -15,6 +16,9 @@ export function createApp(): Express {
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok', service: 'delocalsoy-ar-api', version: '0.2.0' });
   });
+
+  // Dominio: territorios federados — recorte espacial bbox con PostGIS (Aterrizaje PR 2 — issue #21)
+  app.use('/api/territorios', territoriosRouter);
 
   // Dominio: registro de evidencias ejecutables (EV-xxx)
   app.use('/evidencias', evidenciasRouter);
