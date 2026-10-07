@@ -2,28 +2,31 @@
   "openapi": "3.1.0",
   "info": {
     "title": "DELocalSoy.AR Federated API Contract",
-    "version": "7.6.2"
+    "version": "7.6.3"
   },
   "paths": {
     "/api/health": {
       "get": {
-        "summary": "Honest Runtime Health (R5)",
+        "summary": "Honest Runtime Health (R5, mode resuelto desde events_raw — R7)",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK (mode: real) o estado declarado (synthetic | degraded)"
           }
         }
       }
     },
     "/api/health/mode": {
       "patch": {
-        "summary": "Authenticated Mode Switch (R5/R8)",
+        "summary": "Authenticated Mode Switch, sellado en events_raw (R5/R8)",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "Transición sellada"
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "503": {
+            "description": "No se pudo sellar la transición (sin base)"
           }
         }
       }
@@ -50,15 +53,28 @@
         }
       }
     },
-    "/events": {
+    "/api/evidencias": {
+      "get": {
+        "summary": "Registro de evidencias ejecutables (EV-xxx)",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/events": {
       "post": {
         "summary": "Idempotent SHA-256 Event Log (EV-005)",
         "responses": {
           "201": {
             "description": "Created"
           },
-          "409": {
-            "description": "Duplicate Hash"
+          "200": {
+            "description": "Duplicate (re-ingesta idempotente: mismo hash, original intacto)"
+          },
+          "400": {
+            "description": "Bad Request (type u occurred_at inválidos)"
           }
         }
       }
