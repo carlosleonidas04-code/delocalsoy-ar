@@ -17,7 +17,7 @@ function mockApi() {
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify({ mode: 'synthetic', ...body }));
         };
-        if (req.url === '/api/health' || req.url === '/health') {
+        if (req.url === '/api/health') {
           synthetic({ status: 'synthetic', service: 'delocalsoy-ar-api', version: 'mock' });
           return;
         }
@@ -42,9 +42,13 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react(), ...(mockEnabled ? [mockApi()] : [])],
     server: {
-      host: '0.0.0.0',
+      // Riesgo #57 (ADR-028): binding conservador por defecto — 0.0.0.0 solo
+      // explícito (HOST=0.0.0.0 en Codespace/sandbox si se necesita).
+      host: process.env.HOST ?? 'localhost',
       port: 3000,
-      allowedHosts: true,
+      // allowedHosts solo en entornos que lo declaran: Codespace detectado
+      // automáticamente (variable CODESPACE) o ALLOWED_HOSTS=true explícito.
+      allowedHosts: process.env.ALLOWED_HOSTS === 'true' || !!process.env.CODESPACE,
       proxy: {
         '/api': {
           target: process.env.API_URL ?? env.API_URL ?? 'http://localhost:3000',

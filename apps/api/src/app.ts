@@ -21,11 +21,9 @@ export function createApp(): Express {
   // Dominio: eventos crudos (fuente de verdad, append-only, idempotentes) — unificado bajo /api (riesgo #53)
   app.use('/api/events', eventsRouter);
 
-  // Health check legado (compatibilidad hasta aislar el demo en /demo — refs #16, riesgo #57).
-  // Deprecado: los consumidores legítimos ya usan /api/health (honesto, R5).
-  app.get('/health', (_req, res) => {
-    res.json({ status: 'ok', service: 'delocalsoy-ar-api', version: '0.2.0' });
-  });
+  // Riesgo #57 (ADR-028): la ruta legada /health fue retirada — sin consumidores
+  // legítimos tras #53/#61. Único health: /api/health (honesto, R5).
+  // Verificación ejecutable en health.test.ts: GET /health → 404.
 
   // Manejo de errores centralizado
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
