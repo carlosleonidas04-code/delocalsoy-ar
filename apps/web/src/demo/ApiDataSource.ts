@@ -1,11 +1,18 @@
 /**
- * Implementación API del contrato DataSource (DEMO-3, #18).
+ * Implementación API del contrato DataSource (DEMO-3 #18 → CORE-003 R3, #83).
  *
  * Consume los endpoints reales del backend a través del proxy de Vite
- * (1:1, sin rewrite — riesgo #53). Principio R15: no simular datos reales —
- * lo que el backend aún no expone (capas, categorías, features, reportes,
- * eventos por nodo: rutas pendientes del schema CORE-002) se declara vacío
- * con comentario explícito, en lugar de rellenarlo con literales sintéticos.
+ * (1:1, sin rewrite — riesgo #53). Con las rutas del vocabulario CORE-002
+ * el mapeo es completo: territorios (nodos) con población/foco/centro
+ * reales, capas, categorías, features y reportes — fin de los
+ * "declarado vacío" de #18.
+ *
+ * Proyección de presentación (ADR-030): la DB guarda lat/lng reales; el demo
+ * pinta en coordenadas relativas x/y (0–100). El mapeo proyecta linealmente
+ * sobre una envolvente de ±0.05° alrededor del centro del nodo — es
+ * presentación, no dato de dominio. Lo que sigue sin backend se declara
+ * vacío con comentario explícito (R15): getEventos (events_raw aún no tiene
+ * vínculo con nodos) y producedBy de capas (no modelado en el schema).
  */
 import type { DataSource } from "./dataSource";
 import type {
@@ -18,7 +25,7 @@ import type {
   Territorio,
 } from "./types";
 
-/** Envelope estándar de las rutas de territorios (apps/api). */
+/** Envelope estándar de las rutas de lista (apps/api). */
 interface ApiEnvelope<T> {
   success: boolean;
   data: T[];
@@ -26,12 +33,11 @@ interface ApiEnvelope<T> {
   error?: string;
 }
 
-/** Territorio tal como lo sirve el backend (modelo CORE-001). */
-interface TerritorioApi {
-  id: string;
-  nombre: string;
-  provincia: string;
-  activo: boolean;
+/** Envelope de la ruta de un solo nodo. */
+interface NodoEnvelope {
+  success: boolean;
+  data: NodoApi;
+  error?: string;
 }
 
 /** Envelope de la ruta de evidencias (apps/api). */
@@ -40,23 +46,173 @@ interface EvidenciasEnvelope {
   evidencias: { id: string; code: string; title: string; status?: string }[];
 }
 
+/** Nodo tal como lo sirve GET /api/nodos (vocabulario CORE-002). */
+interface NodoApi {
+  id: string;
+  key: string;
+  nombre: string;
+  subtitle: string;
+  foco: string;
+  centro_lat: number;
+  centro_lng: number;
+  poblacion: number;
+  activo: boolean;
+}
+
+interface CapaApi {
+  id: string;
+  key: string;
+  nombre: string;
+  dominio: string;
+  geometria: string;
+  default_on: boolean;
+}
+
+interface CategoriaApi {
+  id: string;
+  code: string;
+  label: string;
+  layer: string;
+}
+
+interface FeatureApi {
+  id: string;
+  layer: string;
+  domain: string;
+  titulo: string;
+  tipo: string;
+  estado: string;
+  fuente_label: string;
+  observado_at: string;
+  lat: number;
+  lng: number;
+  is_synthetic: boolean;
+}
+
+interface ReporteApi {
+  id: string;
+  nodo_id: string;
+  categoria: string;
+  descripcion: string | null;
+  estado: string;
+  lat: number;
+  lng: number;
+  is_synthetic: boolean;
+  hash: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Paleta de presentación por key de nodo (los colores del demo v5.1).
+ * No es dato de dominio: no viaja por la API, se resuelve en la UI.
+ */
+const PALETA_NODOS: Record<string, string> = {
+  capital: "#C2410C",
+  caucete: "#2F7D5B",
+  iglesia: "#1D4E89",
+};
+
 export class ApiDataSource implements DataSource {
+  /** Envelope de presentación: ±0.05° del centro del nodo (ADR-030). */
+  private static readonly SPAN_GRADOS = 0.1;
+
+  private centros = new Map<string, { lat: number; lng: number }>();
+
   async getTerritorios(): Promise<Territorio[]> {
-    const env = await this.getJson<ApiEnvelope<TerritorioApi>>("/api/territorios");
-    return env.data.map((t) => ({
-      id: t.id,
-      key: t.id,
-      name: t.nombre,
-      subtitle: t.provincia,
-      // El backend aún no expone población ni narrativa (deuda documentada
-      // en #18): se mapean vacíos en lugar de inventar valores reales (R15).
-      population: 0,
-      focus: "",
-      focusLong:
-        "Territorio real servido por la API. Narrativa, capas y features: pendientes de las rutas del schema CORE-002.",
-      narrative: "",
-      center: { lat: 0, lng: 0 },
+    const env = await this.getJson<ApiEnvelope<NodoApi>>("/api/nodos");
+    return env.data.map((n) => ({
+      id: n.id,
+      key: n.key,
+      name: n.nombre,
+      subtitle: n.subtitle,
+      population: n.poblacion,
+      // foco real del nodo; el texto largo no existe en el schema → no se
+      // inventa (R15): se reusa el foco real en lugar de rellenar con ficción.
+      focus: n.foco,
+      focusLong: n.foco,
+      narrative: n.foco,
+      center: { lat: n.centro_lat, lng: n.centro_lng },
+      color: PALETA_NODOS[n.key],
     }));
+  }
+
+  async getCapas(territorioKey: string): Promise<Capa[]> {
+    const env = await this.getJson<ApiEnvelope<CapaApi>>(
+      "/api/nodos/" + territorioKey + "/capas",
+    );
+    return env.data.map((c) => ({
+      key: c.key,
+      name: c.nombre,
+      domain: c.dominio,
+      geometry: c.geometria,
+      defaultOn: c.default_on,
+      // Productores no modelados en el schema CORE-002: vacío honesto (R15).
+      producedBy: [],
+    }));
+  }
+
+  async getCategoriasReporte(territorioKey: string): Promise<CategoriaReporte[]> {
+    const env = await this.getJson<ApiEnvelope<CategoriaApi>>(
+      "/api/nodos/" + territorioKey + "/categorias",
+    );
+    return env.data.map((c) => ({ code: c.code, label: c.label, layer: c.layer }));
+  }
+
+  async getFeatures(territorioKey: string): Promise<FeatureTerritorial[]> {
+    const [centro, env] = await Promise.all([
+      this.centroDe(territorioKey),
+      this.getJson<ApiEnvelope<FeatureApi>>("/api/nodos/" + territorioKey + "/features"),
+    ]);
+    return env.data.map((f) => {
+      const { x, y } = this.proyecta(f.lat, f.lng, centro);
+      return {
+        id: f.id,
+        nodeKey: territorioKey,
+        layer: f.layer,
+        x,
+        y,
+        title: f.titulo,
+        status: f.estado,
+        observedAt: f.observado_at,
+        sourceLabel: f.fuente_label,
+        isSynthetic: f.is_synthetic,
+        domain: f.domain,
+        // Guard explícito: el contrato solo admite asset | problem.
+        type: f.tipo === "asset" ? "asset" : "problem",
+        // Props de presentación no modelados en el schema → vacío (R15).
+        props: {},
+      };
+    });
+  }
+
+  async getReportes(territorioKey: string): Promise<ReporteTerritorial[]> {
+    const [centro, env] = await Promise.all([
+      this.centroDe(territorioKey),
+      this.getJson<ApiEnvelope<ReporteApi>>("/api/nodos/" + territorioKey + "/reportes"),
+    ]);
+    return env.data.map((r) => {
+      const { x, y } = this.proyecta(r.lat, r.lng, centro);
+      return {
+        id: r.id,
+        eventId: r.hash,
+        nodeKey: territorioKey,
+        category: r.categoria,
+        description: r.descripcion ?? "",
+        status: r.estado,
+        createdAt: r.created_at,
+        isSynthetic: r.is_synthetic,
+        picked: { x, y },
+        // Sin tabla de historial por estado: una única entrada honesta (R15).
+        history: [{ status: r.estado, at: r.updated_at }],
+      };
+    });
+  }
+
+  // events_raw aún no tiene vínculo con nodos (no existe nodo_id): la lectura
+  // honesta es vacía hasta que exista la relación (deuda declarada, ADR-030).
+  async getEventos(_territorioId: string): Promise<EventoTerritorial[]> {
+    return [];
   }
 
   async getEvidencias(): Promise<Evidencia[]> {
@@ -68,30 +224,36 @@ export class ApiDataSource implements DataSource {
     }));
   }
 
-  // Lecturas aún sin ruta en el backend (schema CORE-002 sin endpoints):
-  // declarar vacío es la respuesta honesta — no rellenar con sintéticos (R15).
-  async getCapas(_territorioKey: string): Promise<Capa[]> {
-    return [];
-  }
-
-  async getCategoriasReporte(_territorioKey: string): Promise<CategoriaReporte[]> {
-    return [];
-  }
-
-  async getFeatures(_territorioKey: string): Promise<FeatureTerritorial[]> {
-    return [];
-  }
-
-  async getReportes(_territorioKey: string): Promise<ReporteTerritorial[]> {
-    return [];
-  }
-
-  async getEventos(_territorioId: string): Promise<EventoTerritorial[]> {
-    return [];
-  }
-
   esSintetico(): boolean {
     return false;
+  }
+
+  /** Centro del nodo (memoizado) — base de la proyección de presentación. */
+  private async centroDe(key: string): Promise<{ lat: number; lng: number }> {
+    let centro = this.centros.get(key);
+    if (!centro) {
+      const env = await this.getJson<NodoEnvelope>("/api/nodos/" + key);
+      centro = { lat: env.data.centro_lat, lng: env.data.centro_lng };
+      this.centros.set(key, centro);
+    }
+    return centro;
+  }
+
+  /**
+   * Proyección lineal de presentación lat/lng → x/y (0–100) sobre la
+   * envolvente SPAN_GRADOS del centro del nodo (ADR-030). Presentación, no
+   * dato de dominio: las features del seed caen dentro de la envolvente.
+   */
+  private proyecta(
+    lat: number,
+    lng: number,
+    centro: { lat: number; lng: number },
+  ): { x: number; y: number } {
+    const half = ApiDataSource.SPAN_GRADOS / 2;
+    const x = ((lng - (centro.lng - half)) / ApiDataSource.SPAN_GRADOS) * 100;
+    const y = (((centro.lat + half) - lat) / ApiDataSource.SPAN_GRADOS) * 100;
+    const clamp = (v: number) => Math.min(100, Math.max(0, v));
+    return { x: clamp(x), y: clamp(y) };
   }
 
   /** GET JSON con manejo honesto de errores HTTP y de envelope. */
