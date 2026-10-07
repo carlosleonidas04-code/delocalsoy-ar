@@ -20,8 +20,8 @@ describe.skipIf(!dbUp)('Migración CORE-002 — vocabulario del demo (#64)', () 
       WHERE table_schema = 'public'
         AND table_name IN ('nodos', 'capas', 'categorias', 'features', 'reportes')
     `;
-    expect(tablas.map((t) => t.table_name).sort())
-      .toEqual(['capas', 'categorias', 'features', 'nodos', 'reportes']);
+    const nombres = tablas.map((t: { table_name: string }) => t.table_name).sort();
+    expect(nombres).toEqual(['capas', 'categorias', 'features', 'nodos', 'reportes']);
   });
 
   it('triggers geom e índices GiST presentes', async () => {
@@ -29,17 +29,17 @@ describe.skipIf(!dbUp)('Migración CORE-002 — vocabulario del demo (#64)', () 
       SELECT trigger_name FROM information_schema.triggers
       WHERE trigger_schema = 'public' AND event_object_table IN ('reportes', 'features')
     `;
-    const nombres = triggers.map((t) => t.trigger_name);
-    expect(nombres).toContain('trg_reportes_geom');
-    expect(nombres).toContain('trg_features_geom');
+    const nombresTriggers = triggers.map((t: { trigger_name: string }) => t.trigger_name);
+    expect(nombresTriggers).toContain('trg_reportes_geom');
+    expect(nombresTriggers).toContain('trg_features_geom');
 
     const indices = await prisma.$queryRaw<Array<{ indexname: string }>>`
       SELECT indexname FROM pg_indexes
       WHERE schemaname = 'public'
         AND indexname IN ('reportes_geom_idx', 'features_geom_idx')
     `;
-    expect(indices.map((i) => i.indexname).sort())
-      .toEqual(['features_geom_idx', 'reportes_geom_idx']);
+    const nombresIndices = indices.map((i: { indexname: string }) => i.indexname).sort();
+    expect(nombresIndices).toEqual(['features_geom_idx', 'reportes_geom_idx']);
   });
 
   it('el trigger sincroniza geom desde lat/lng (insert de humo, limpieza en cascada)', async () => {
