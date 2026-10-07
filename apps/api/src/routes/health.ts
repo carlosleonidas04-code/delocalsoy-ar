@@ -1,19 +1,22 @@
 import { Router, type Request, type Response } from 'express';
 import { createHash } from 'node:crypto';
-import { z } from 'zod';
 import { prisma } from '@delocalsoy/db';
+import { RuntimeHealthModeSchema } from '@delocalsoy/contracts';
 
 /**
  * Salud honesta del sistema — Aterrizaje PR 1 (issue #20).
  * R5: nunca responde 200 OK silencioso en modo sintético sin declararlo.
+ * R7 (riesgo #58): el modo declarado se resuelve desde el último
+ * 'system.mode_change' sellado en events_raw; la memoria del proceso
+ * es solo fallback cuando no hay base, no la fuente de verdad.
  */
 
 export type SystemMode = 'real' | 'synthetic' | 'degraded';
 
-const ModeSchema = z.enum(['real', 'synthetic', 'degraded']);
+const ModeSchema = RuntimeHealthModeSchema;
 
-// Estado en memoria del modo declarado. Arranca en 'real' (o SYSTEM_MODE);
-// si la base no responde, el modo EFECTIVO reportado es 'degraded'.
+// Último estado conocido en memoria (fallback). Arranca en 'real' (o SYSTEM_MODE);
+// si la base responde, el sello más reciente de events_raw manda.
 const state: { mode: SystemMode; declaredAt: string } = {
   mode: ModeSchema.parse(process.env.SYSTEM_MODE ?? 'real'),
   declaredAt: new Date().toISOString(),
@@ -28,13 +31,40 @@ async function dbConnected(): Promise<boolean> {
   }
 }
 
+// R7: el modo declarado vive en events_raw (append-only). Sin base o sin sello,
+// cae al estado del proceso (env SYSTEM_MODE al arrancar).
+async function resolvedMode(): Promise<{
+  mode: SystemMode;
+  declaredAt: string;
+  source: 'events_raw' | 'process';
+}> {
+  try {
+    const last = await prisma.events_raw.findFirst({
+      where: { type: 'system.mode_change' },
+      orderBy: { occurred_at: 'desc' },
+    });
+    if (last) {
+      const parsed = ModeSchema.safeParse((last.payload as { to?: unknown } | null)?.to);
+      if (parsed.success) {
+        return { mode: parsed.data, declaredAt: last.occurred_at.toISOString(), source: 'events_raw' };
+      }
+    }
+  } catch {
+    // sin base: fallback al estado del proceso
+  }
+  return { mode: state.mode, declaredAt: state.declaredAt, source: 'process' };
+}
+
 const router: Router = Router();
 
 // GET /api/health — estado honesto del sistema
 router.get('/', async (_req: Request, res: Response) => {
   const db = await dbConnected();
+  const declared = db
+    ? await resolvedMode()
+    : { mode: state.mode, declaredAt: state.declaredAt, source: 'process' as const };
   // Modo efectivo: 'real' declarado sin base disponible => 'degraded' (R5)
-  const effectiveMode: SystemMode = state.mode === 'real' && !db ? 'degraded' : state.mode;
+  const effectiveMode: SystemMode = declared.mode === 'real' && !db ? 'degraded' : declared.mode;
 
   let evidenciasCount: number | null = null;
   if (db) {
@@ -48,10 +78,11 @@ router.get('/', async (_req: Request, res: Response) => {
   res.json({
     status: effectiveMode === 'real' ? 'ok' : effectiveMode,
     service: 'delocalsoy-ar-api',
-    version: '0.3.0',
+    version: '0.4.0',
     mode: effectiveMode, // real | synthetic | degraded (R5)
-    modeDeclared: state.mode,
-    modeDeclaredAt: state.declaredAt,
+    modeDeclared: declared.mode,
+    modeDeclaredAt: declared.declaredAt,
+    modeSource: declared.source, // events_raw | process (R7)
     dataSource: db ? 'postgres' : 'none',
     branchProtection: process.env.BRANCH_PROTECTION === 'true', // honesto: false hasta que exista la regla de rama (issue #25)
     evidencias: evidenciasCount,
@@ -74,7 +105,9 @@ router.patch('/mode', async (req: Request, res: Response) => {
     return;
   }
 
-  const from = state.mode;
+  // R7: el 'from' también se lee del sello canónico, no de la memoria.
+  const previous = await resolvedMode();
+  const from = previous.mode;
   const to = parsed.data;
   const payload = { from, to, actor: 'health-mode-api', via: 'PATCH /api/health/mode' };
   const occurredAt = new Date();
@@ -84,6 +117,7 @@ router.patch('/mode', async (req: Request, res: Response) => {
 
   // Sello auditable: la transición queda en events_raw (append-only, idempotente).
   // R4/R5: sin base no hay sello => la transición NO se aplica.
+  // R7: el sello ES el estado; la memoria solo acelera el fallback.
   try {
     await prisma.events_raw.create({
       data: { type: 'system.mode_change', payload, hash, occurred_at: occurredAt },
