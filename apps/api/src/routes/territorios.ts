@@ -5,6 +5,22 @@ import { z } from 'zod';
 
 const router: Router = Router();
 
+// R8 (issue #63, CORE-002/T1): las escrituras de territorios requieren API key.
+// Mismo patrón que PATCH /api/health/mode: sin TERRITORIOS_API_KEY configurada
+// la ruta queda CERRADA — nunca abierta por defecto. La lectura (GET) es pública.
+function requireApiKey(req: Request, res: Response, next: NextFunction): void {
+  const apiKey = req.get('x-api-key');
+  const expected = process.env.TERRITORIOS_API_KEY;
+  if (!expected || apiKey !== expected) {
+    res.status(401).json({
+      success: false,
+      error: 'no autorizado: se requiere cabecera x-api-key y variable TERRITORIOS_API_KEY',
+    });
+    return;
+  }
+  next();
+}
+
 // Schema de validación para Territorio
 const TerritorioSchema = z.object({
   nombre: z.string().min(1, 'El nombre es obligatorio'),
@@ -113,8 +129,8 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// POST /territorios - Crear un nuevo territorio
-router.post('/', async (req, res) => {
+// POST /territorios - Crear un nuevo territorio (R8: requiere x-api-key)
+router.post('/', requireApiKey, async (req, res) => {
   try {
     const body = TerritorioSchema.parse(req.body);
 
@@ -148,8 +164,8 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PUT /territorios/:id - Actualizar un territorio
-router.put('/:id', async (req, res) => {
+// PUT /territorios/:id - Actualizar un territorio (R8: requiere x-api-key)
+router.put('/:id', requireApiKey, async (req, res) => {
   try {
     const { id } = req.params;
     const body = TerritorioSchema.partial().parse(req.body);
@@ -192,8 +208,8 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// DELETE /territorios/:id - Eliminar un territorio (soft delete)
-router.delete('/:id', async (req, res) => {
+// DELETE /territorios/:id - Eliminar un territorio (soft delete) (R8: requiere x-api-key)
+router.delete('/:id', requireApiKey, async (req, res) => {
   try {
     const { id } = req.params;
 
