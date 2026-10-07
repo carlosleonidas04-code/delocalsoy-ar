@@ -12,19 +12,20 @@ export function createApp(): Express {
   // Aterrizaje PR 1 — issue #20
   app.use('/api/health', healthRouter);
 
-  // Health check legado (demo web)
-  app.get('/health', (_req, res) => {
-    res.json({ status: 'ok', service: 'delocalsoy-ar-api', version: '0.2.0' });
-  });
-
   // Dominio: territorios federados — recorte espacial bbox con PostGIS (Aterrizaje PR 2 — issue #21)
   app.use('/api/territorios', territoriosRouter);
 
-  // Dominio: registro de evidencias ejecutables (EV-xxx)
-  app.use('/evidencias', evidenciasRouter);
+  // Dominio: registro de evidencias ejecutables (EV-xxx) — unificado bajo /api (riesgo #53)
+  app.use('/api/evidencias', evidenciasRouter);
 
-  // Dominio: eventos crudos (fuente de verdad, append-only, idempotentes)
-  app.use('/events', eventsRouter);
+  // Dominio: eventos crudos (fuente de verdad, append-only, idempotentes) — unificado bajo /api (riesgo #53)
+  app.use('/api/events', eventsRouter);
+
+  // Health check legado (compatibilidad hasta aislar el demo en /demo — refs #16, riesgo #57).
+  // Deprecado: los consumidores legítimos ya usan /api/health (honesto, R5).
+  app.get('/health', (_req, res) => {
+    res.json({ status: 'ok', service: 'delocalsoy-ar-api', version: '0.2.0' });
+  });
 
   // Manejo de errores centralizado
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
