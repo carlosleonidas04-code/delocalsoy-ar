@@ -3,6 +3,8 @@ name: CI
 # v11: igual que v10 (version pnpm gobernada por packageManager; auto-report
 # como job separado tras concluir build). v11 amplía el tail del log
 # publicado a 20000 chars: los errores de tsc quedaban fuera del tail de 3500.
+# v12 (riesgos #59/#55): job `test` con PostGIS real — migraciones (db:deploy)
+# + suite vitest (EV-005 / R5 / contrato). El auto-report cubre build y test.
 
 on:
   push:
@@ -19,6 +21,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
+      # Prisma exige la variable al generar; en CI no hay BD real, valor dummy.
       DATABASE_URL: "postgresql://ci:ci@localhost:5432/ci?schema=public"
     steps:
       - uses: actions/checkout@v4
@@ -40,8 +43,45 @@ jobs:
           set -o pipefail
           pnpm turbo run build 2>&1 | tee build.log
 
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgis:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: delocalsoy
+          POSTGRES_PASSWORD: delocalsoy
+          POSTGRES_DB: delocalsoy
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U delocalsoy"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: "postgresql://delocalsoy:delocalsoy@localhost:5432/delocalsoy?schema=public"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: |
+          set -o pipefail
+          pnpm install --no-frozen-lockfile 2>&1 | tee install.log
+      - name: Prisma generate (EV-003)
+        run: |
+          set -o pipefail
+          pnpm --filter @delocalsoy/db db:generate 2>&1 | tee generate.log
+      - name: Migraciones versionadas (db:deploy — riesgo #55)
+        run: pnpm --filter @delocalsoy/db db:deploy
+      - name: Tests (EV-005 / R5 / contrato — riesgo #59)
+        run: pnpm --filter @delocalsoy/api test
+
   report:
-    needs: build
+    needs: [build, test]
     if: failure() && github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
