@@ -1,6 +1,12 @@
 // DELocalSoy.AR — núcleo Track A v7.1
 // Convenciones: ids `cuid`, columnas mapeadas a snake_case con @map(),
 // `events_raw` con hash único para idempotencia.
+//
+// EXTENSIÓN CORE-002 (vocabulario del demo territorial federado v5.1):
+// - nodos, capas por nodo, categorías de reporte, features sintéticos
+// - reportes con flujo received → evaluating → in_progress → resolved
+// - columna PostGIS `geom` en reportes/features (agregada por migración
+//   versionada: Prisma no soporta tipos geometry nativamente)
 
 generator client {
   provider = "prisma-client-js"
@@ -47,4 +53,108 @@ model territorios {
   geom Unsupported("geometry(Point,4326)")?
 
   @@map("territorios")
+}
+
+// ─── CORE-002: vocabulario del demo territorial federado ───
+
+/// Nodos federados del demo (Capital, Caucete, Iglesia).
+model nodos {
+  id         String  @id @default(cuid())
+  key        String  @unique @map("key") // capital | caucete | iglesia
+  nombre     String  @map("nombre")
+  subtitle   String  @map("subtitle") // e.g. "Centro–Cívico–Desamparados"
+  foco       String  @map("foco") // e.g. "Comercio y espacio público"
+  centro_lat Float   @map("centro_lat")
+  centro_lng Float   @map("centro_lng")
+  poblacion  Int     @map("poblacion") // INDEC 2022, redondeado
+  activo     Boolean @default(true) @map("activo")
+
+  capas       capas[]
+  categorias  categorias[]
+  features    features[]
+  reportes    reportes[]
+
+  @@map("nodos")
+}
+
+/// Capas por nodo (catálogo explícito, no inferible en frontend).
+model capas {
+  id         String  @id @default(cuid())
+  nodo_id    String  @map("nodo_id")
+  key        String  @map("key") // e.g. "public_lighting"
+  nombre     String  @map("nombre")
+  dominio    String  @map("dominio") // assets | problems | public_space | health | community | production | tourism
+  geometria  String  @map("geometria") // Point | LineString
+  default_on Boolean @default(false) @map("default_on")
+
+  nodo     nodos      @relation(fields: [nodo_id], references: [id], onDelete: Cascade)
+  features features[]
+
+  @@unique([nodo_id, key])
+  @@map("capas")
+}
+
+/// Categorías de reporte por nodo (vocabulario local).
+model categorias {
+  id      String  @id @default(cuid())
+  nodo_id String  @map("nodo_id")
+  code    String  @map("code") // e.g. "insufficient_lighting"
+  label   String  @map("label") // e.g. "Iluminación insuficiente"
+  capa_id String? @map("capa_id")
+
+  nodo nodos  @relation(fields: [nodo_id], references: [id], onDelete: Cascade)
+  capa capas? @relation(fields: [capa_id], references: [id])
+
+  @@unique([nodo_id, code])
+  @@map("categorias")
+}
+
+/// Features territoriales (activos y problemáticas cartografiadas).
+/// Datos sintéticos de diseño: is_synthetic = true hasta que exista relevamiento real.
+model features {
+  id           String   @id @default(cuid())
+  nodo_id      String   @map("nodo_id")
+  capa_id      String   @map("capa_id")
+  titulo       String   @map("titulo")
+  tipo         String   @map("tipo") // asset | problem
+  estado       String   @map("estado") // verified | pending | community_validated | synthetic_demo
+  fuente_label String   @map("fuente_label") // siempre "Ilustrativa · <tipo>" en demo
+  observado_at DateTime @map("observado_at")
+  lat          Float    @map("lat")
+  lng          Float    @map("lng")
+  is_synthetic Boolean  @default(true) @map("is_synthetic")
+  created_at   DateTime @default(now()) @map("created_at")
+
+  /// Geometría puntal WGS84: columna + trigger + índice GiST en la migración
+  /// versionada 20261007120000_core002_schema (Prisma no tipa geometry).
+  geom Unsupported("geometry(Point,4326)")?
+
+  nodo nodos @relation(fields: [nodo_id], references: [id], onDelete: Cascade)
+  capa capas @relation(fields: [capa_id], references: [id], onDelete: Cascade)
+
+  @@map("features")
+}
+
+/// Reportes territoriales con flujo received → evaluating → in_progress → resolved.
+/// La columna PostGIS `geom` vive en la migración versionada (triggers lat/lng + GiST).
+model reportes {
+  id           String   @id @default(cuid())
+  nodo_id      String   @map("nodo_id")
+  categoria    String   @map("categoria") // code de categorias
+  descripcion  String?  @map("descripcion")
+  estado       String   @default("received") @map("estado") // received | evaluating | in_progress | resolved
+  lat          Float    @map("lat")
+  lng          Float    @map("lng")
+  is_synthetic Boolean  @default(true) @map("is_synthetic")
+  hash         String   @unique @map("hash") // idempotencia del reporte
+  created_at   DateTime @default(now()) @map("created_at")
+  updated_at   DateTime @updatedAt @map("updated_at")
+
+  /// Geometría puntal WGS84: columna + trigger + índice GiST en la migración
+  /// versionada 20261007120000_core002_schema (Prisma no tipa geometry).
+  geom Unsupported("geometry(Point,4326)")?
+
+  nodo nodos @relation(fields: [nodo_id], references: [id], onDelete: Cascade)
+
+  @@map("reportes")
 }
