@@ -1,9 +1,12 @@
 import { createApp } from './app.js';
 
+// Riesgo #57 (ADR-028): binding conservador por defecto. HOST desde env —
+// 0.0.0.0 SOLO explícito (p.ej. Codespace/sandbox: HOST=0.0.0.0). Sin HOST,
+// el servidor no escucha en interfaces externas (criterio del issue).
+const HOST = process.env.HOST ?? '127.0.0.1';
 const PORT = Number(process.env.PORT ?? 3000);
 const app = createApp();
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`[delocalsoy-ar] API escuchando en http://0.0.0.0:${PORT}`);
+app.listen(PORT, HOST, () => {
+  console.log(`[delocalsoy-ar] API escuchando en http://${HOST}:${PORT}`);
 });
-

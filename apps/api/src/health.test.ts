@@ -41,6 +41,18 @@ describe('GET /api/health — salud honesta sin base (R5, riesgo #59)', () => {
   });
 });
 
+describe('GET /health legado — retirado (riesgo #57, ADR-028)', () => {
+  it('responde 404; /api/health sigue 200 — única salud honesta (R5)', async () => {
+    const legacy = await fetch(base + '/health');
+    expect(legacy.status).toBe(404);
+    await legacy.arrayBuffer();
+
+    const honest = await fetch(base + '/api/health');
+    expect(honest.status).toBe(200);
+    await honest.arrayBuffer();
+  });
+});
+
 describe('Contrato OpenAPI ↔ rutas reales (riesgo #53, prueba de #59)', () => {
   it('ningún path declarado en docs/api/openapi.json responde 404', async () => {
     const spec = JSON.parse(
