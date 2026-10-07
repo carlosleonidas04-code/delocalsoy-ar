@@ -6,6 +6,11 @@ import type { z } from "zod";
 export declare const SanJuanNodeSlugSchema: z.ZodEnum<["capital", "caucete", "iglesia"]>;
 export declare const RuntimeHealthModeSchema: z.ZodEnum<["real", "synthetic", "degraded"]>;
 export declare const BboxStringSchema: z.ZodType<string, z.ZodTypeDef, string>;
+export declare const TerritorioSchema: z.ZodObject<{
+  nombre: z.ZodString;
+  provincia: z.ZodString;
+  activo: z.ZodOptional<z.ZodDefault<z.ZodBoolean>>;
+}>;
 export declare const EvidenceStatusSchema: z.ZodEnum<[
   "Implementado",
   "Verificado",

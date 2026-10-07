@@ -1,6 +1,7 @@
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import prisma from '../lib/prisma.js';
 import { Prisma } from '@delocalsoy/db';
+import { BboxStringSchema, TerritorioSchema } from '@delocalsoy/contracts';
 import { z } from 'zod';
 
 const router: Router = Router();
@@ -21,34 +22,15 @@ function requireApiKey(req: Request, res: Response, next: NextFunction): void {
   next();
 }
 
-// Schema de validación para Territorio
-const TerritorioSchema = z.object({
-  nombre: z.string().min(1, 'El nombre es obligatorio'),
-  provincia: z.string().min(1, 'La provincia es obligatoria'),
-  activo: z.boolean().optional().default(true),
-});
-
-// Bbox para recorte espacial: minLng,minLat,maxLng,maxLat (SRID=4326) — issue #21
-const BboxSchema = z
-  .string()
-  .regex(/^-?\d+(\.\d+)?(,-?\d+(\.\d+)?){3}$/, 'bbox debe tener el formato minLng,minLat,maxLng,maxLat')
-  .transform((value) => value.split(',').map(Number) as [number, number, number, number])
-  .refine(
-    ([minLng, minLat, maxLng, maxLat]) =>
-      minLng >= -180 && maxLng <= 180 &&
-      minLat >= -90 && maxLat <= 90 &&
-      minLng < maxLng && minLat < maxLat,
-    'coordenadas fuera de rango o envolvente vacía (SRID=4326)'
-  );
-
 // GET /territorios - Listar todos los territorios (opcional: filtrar por activo)
 // Con ?bbox=minLng,minLat,maxLng,maxLat: recorte espacial sobre índice GiST (PostGIS)
+// (CORE-002 T4, #66: schemas desde @delocalsoy/contracts — fin del Zod duplicado)
 router.get('/', async (req, res) => {
   try {
     const { activo, bbox } = req.query;
 
     if (bbox !== undefined) {
-      const parsedBbox = BboxSchema.safeParse(bbox);
+      const parsedBbox = BboxStringSchema.safeParse(bbox);
       if (!parsedBbox.success) {
         return res.status(400).json({
           success: false,
@@ -56,7 +38,7 @@ router.get('/', async (req, res) => {
           details: parsedBbox.error.errors,
         });
       }
-      const [minLng, minLat, maxLng, maxLat] = parsedBbox.data;
+      const [minLng, minLat, maxLng, maxLat] = parsedBbox.data.split(',').map(Number);
       const activoFilter =
         activo !== undefined ? Prisma.sql`AND activo = ${activo === 'true'}` : Prisma.empty;
 
