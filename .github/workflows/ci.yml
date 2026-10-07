@@ -5,6 +5,8 @@ name: CI
 # publicado a 20000 chars: los errores de tsc quedaban fuera del tail de 3500.
 # v12 (riesgos #59/#55): job `test` con PostGIS real — migraciones (db:deploy)
 # + suite vitest (EV-005 / R5 / contrato). El auto-report cubre build y test.
+# v13 (DEMO-2 #17): el job `test` ejecuta también la suite de apps/web
+# (contrato DataSource del demo territorial), sin PostGIS.
 
 on:
   push:
@@ -79,6 +81,8 @@ jobs:
         run: pnpm --filter @delocalsoy/db db:deploy
       - name: Tests (EV-005 / R5 / contrato — riesgo #59)
         run: pnpm --filter @delocalsoy/api test
+      - name: Tests web (DEMO-2 #17 — contrato DataSource)
+        run: pnpm --filter @delocalsoy/web test
 
   report:
     needs: [build, test]
