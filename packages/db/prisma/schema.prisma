@@ -17,7 +17,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-/// Eventos crudos del sistema (fuerte de verdad, append-only, idempotentes).
+/// Eventos crudos del sistema (fuente de verdad, append-only, idempotentes).
 model events_raw {
   id          String   @id @default(cuid())
   type        String   @map("type")
