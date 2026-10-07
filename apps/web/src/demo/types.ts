@@ -1,0 +1,92 @@
+/**
+ * Tipos del dominio territorial del demo (DEMO-2, #17).
+ *
+ * Contrato de datos de la UI: el demo consume exclusivamente estas formas a
+ * través de la interfaz `DataSource` (dataSource.ts). La implementación
+ * sintética (SyntheticDataSource) y la implementación API (DEMO-3, #18)
+ * mapean al mismo contrato, de modo que la UI no conoce el origen.
+ */
+
+/** Territorio federado (nodo). */
+export interface Territorio {
+  id: string;
+  key: string;
+  name: string;
+  subtitle: string;
+  population: number;
+  focus: string;
+  focusLong: string;
+  narrative: string;
+  center: { lat: number; lng: number };
+  /** Color de identificación del territorio (paleta del demo). */
+  color?: string;
+}
+
+/** Capa temática de un territorio. */
+export interface Capa {
+  key: string;
+  name: string;
+  domain: string;
+  geometry: string;
+  defaultOn: boolean;
+  producedBy: string[];
+}
+
+/** Categoría de reporte vecinal disponible en un territorio. */
+export interface CategoriaReporte {
+  code: string;
+  label: string;
+  layer: string;
+}
+
+/** Feature territorial (activo o problemática) representado en el mapa. */
+export interface FeatureTerritorial {
+  id: string;
+  nodeKey: string;
+  layer: string;
+  x: number;
+  y: number;
+  title: string;
+  status: string;
+  observedAt: string;
+  sourceLabel: string;
+  isSynthetic: boolean;
+  domain: string;
+  type: "asset" | "problem";
+  props: Record<string, unknown>;
+}
+
+/** Reporte vecinal (de sesión en el demo; histórico vía API en DEMO-3). */
+export interface ReporteTerritorial {
+  id: string;
+  eventId: string;
+  nodeKey: string;
+  category: string;
+  description: string;
+  status: string;
+  createdAt: string;
+  isSynthetic: boolean;
+  picked: { x: number; y: number };
+  history: { status: string; at: string }[];
+}
+
+/** Evento de trazabilidad del nodo. */
+export interface EventoTerritorial {
+  eventId: string;
+  type: string;
+  nodeId: string;
+  occurredAt: string;
+}
+
+/** Evidencia de gobernanza asociada al proyecto (trazabilidad). */
+export interface Evidencia {
+  code: string;
+  title: string;
+  status: string;
+}
+
+/** Métrica de resumen (tarjetas del panel lateral). */
+export interface Metrica {
+  label: string;
+  value: number;
+}
