@@ -3,13 +3,15 @@
 > **Re-base epistémico** (Aterrizaje PR 4 — issue #23). Estado en `main` vs estado en staging.
 > **R4:** una evidencia pasa a `ok` solo con salida de comando o run verificable, anclado por SHA.
 > **R15:** staging propone, GitHub acredita — ninguna evidencia sin CI run en main se etiqueta `ok` en main antes del merge que la prueba.
-> **Vigencia de esta tabla:** hasta el próximo push a main. Última revisión contra API GitHub: main @ `4f0de16` (2026-10-07).
+> **Vigencia de esta tabla:** hasta el próximo push a main. Última revisión contra API GitHub: main @ `3bd802c` (2026-10-07).
 
 ## Scorecard
 
 **CORE-001: 6/6** — completado el **2026-10-07**.
 
 **CORE-002 (re-base epistémico v2): 6/6** — T1–T6 completados el **2026-10-07** vía PRs #69–#73 con delegación R8/R9 de la Dirección Humana registrada en #63 (registro textual del mensaje de delegación). Historia honesta: T1 guard R8 (#69) → T5 anti-PII (#70) → T4 contracts (#71) → T3 seed (#72) → T2 migración (#73). Bug latente del staging-only encontrado y corregido por la compuerta: el schema de `feat/core-002-schema @ 0d18f0f` nunca había pasado `prisma generate` (relación `categorias.capa` sin campo opuesto, P1012 — R15).
+
+**Trilogía demo (#16/#17/#18): 3/3** — DEMO-1/2/3 completados el **2026-10-07** vía PRs #77/#78/#79 bajo la misma delegación R8/R9 (registrada en #16, #17 y #18). Nota de auditoría R15: los checkboxes pre-marcados de #17/#18 eran afirmaciones staging-only — des-marcados en DEMO-1 y re-ejecutados de verdad en #78/#79.
 
 ## Matriz de evidencia — main (CORE-001)
 
@@ -39,12 +41,20 @@
 |---|---|---|---|---|
 | EV-025 | Riesgo 6 (#57): retiro de `/health` legado + binding conservador HOST/allowedHosts (ADR-028) | **ok** | `4f0de16` (PR #75) | `health.test.ts`: `GET /health` → **404**, `/api/health` → **200** (regresión cubierta) — job `test` CI con PostGIS; verificación previa de consumidores (0 legítimos) registrada en #57; `server.ts` sin `HOST` bindea `127.0.0.1` (criterio: no escucha interfaces externas) |
 
+## Matriz de evidencia — main (trilogía demo #16–#18)
+
+| Código | Título | Estado | Ancla main | Acreditación (salida real) |
+|---|---|---|---|---|
+| EV-026 | DEMO-1 (#16): demo sintético v5.1 aislado en apps/web — ruta `/demo`, lazy import, banner de honestidad, fuera de la navegación principal | **ok** | `713fd36` (PR #77) | Build `tsc -b` + vite verde en CI (allowJs/checkJs para el .jsx); demo autodeclarado sintético (R5). Hallazgo R15 en camino: checkboxes pre-marcados de #17/#18 sin trabajo real — des-marcados |
+| EV-027 | DEMO-2 (#17): contrato `DataSource` — UI del demo desacoplada del origen de datos; suite de tests web en CI | **ok** | `315c462` (PR #78) | `dataSource.contract.test.ts` (SyntheticDataSource + fixture FakeDataSource verifican el mismo contrato observable: integridad categoría→capa, claves únicas, `asset|problem`, copia defensiva); paso `pnpm --filter @delocalsoy/web test` agregado a `ci.yml`/`verify.yml` (v13); literales extraídos a `syntheticData.js` (.js fuera del typecheck estricto) |
+| EV-028 | DEMO-3 (#18): `ApiDataSource` sobre `/api/*` (proxy 1:1) + selector `VITE_DATA_SOURCE` (ADR-029); modo api = solo datos reales, lo pendiente declarado vacío | **ok** | `3bd802c` (PR #79) | `apiDataSource.mapping.test.ts` (fetch mockeado, sin red): mapeo `{success,data,count}` de territorios y `{count,evidencias}` de evidencias al contrato; rechazo honesto de HTTP 500 y `success:false`; lecturas sin ruta en el backend → vacías (R15: no simular). Fix en camino detectado por la compuerta CI: TS2322 (`bannerStyle.position` fuera del JSX) — corregido antes del merge |
+
 ### Notas de auditoría CORE-002 (2026-10-07)
 
 - **P15 (bug latente del staging-only)**: el schema de `feat/core-002-schema @ 0d18f0f` tenía la relación `categorias.capa` sin campo opuesto en `capas` (P1012). Nunca se ejecutó `prisma generate` sobre él. Detectado por la compuerta CI del PR #73 y corregido en el mismo PR — la "verdad técnica" trabajando: staging proponía, GitHub desacreditaba.
 - **Merges del sprint**: autorizados por delegación R8/R9 de la Dirección Humana (mensaje textual registrado en #63, patrón de #23). Todos los PRs tuvieron CI verde (build + test con PostGIS) antes del merge.
 - **Riesgo 6 (#57)**: ejecutado bajo la misma delegación (registrada en #57). Fix en camino del PR #75: el tipo `allowedHosts` de Vite admite `true | string[] | undefined`, no `false` — la compuerta CI lo detectó en el primer push y se corrigió antes del merge.
-- **Deuda restante**: lockfile de pnpm pendiente de regenerar localmente (`pnpm install` + commit) tras la incorporación de vitest y contracts al workspace de apps/api — CI usa `--no-frozen-lockfile` mientras tanto.
+- **Deuda restante**: lockfile de pnpm pendiente de regenerar localmente (`pnpm install` + commit) tras la incorporación de vitest al workspace de apps/api y apps/web — CI usa `--no-frozen-lockfile` mientras tanto.
 
 ### Notas de auditoría CORE-001 (2026-10-07, registro completo en #23)
 
@@ -71,8 +81,9 @@ Catálogo completo vive en staging (18/18 verificadas en sandbox). Nada de esto 
 
 ```bash
 gh run list --branch main --event push -L 5
-# Hito: runs verify/ci en success sobre 43bb1ba..4f0de16
-# (remediación riesgos #52-#59 + sprint CORE-002 completo + riesgo 6 #57, 2026-10-07)
+# Hito: runs verify/ci en success sobre 43bb1ba..3bd802c
+# (remediación riesgos #52-#59 + sprint CORE-002 + riesgo 6 #57 + trilogía
+# demo #16/#17/#18, 2026-10-07)
 ```
 
 ---
@@ -80,3 +91,5 @@ gh run list --branch main --event push -L 5
 *Registrado por agent-vibe el 2026-10-07, verificado contra API GitHub. R15: este documento registra estados; acredita solo lo anclado con SHA y salida real.*
 
 *CORE-002: 6/6 acreditadas — evita el cierre de issue sin ancla (R15). Issues T1–T6 (#63–#68) cerrados por sus PRs.*
+
+*Trilogía demo (#16/#17/#18): cerrada por sus PRs (#77 `713fd36` / #78 `315c462` / #79 `3bd802c`), con EV-026..EV-028 ancladas. Modo api del demo: solo datos reales; lo pendiente declarado vacío (R15).*
