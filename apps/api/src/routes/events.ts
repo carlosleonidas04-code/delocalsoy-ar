@@ -5,8 +5,30 @@ import { prisma } from '@delocalsoy/db';
 /**
  * Eventos crudos del sistema — fuente de verdad.
  * Append-only e idempotente: el hash único de events_raw evita duplicados.
+ *
+ * ADR-020 cond. 1 / Ley 25.326 (CORE-002 T5, #67): la ingesta rechaza payloads
+ * con datos personales identificables (DNI/CUIT/CUIL, email, teléfono AR).
+ * El rechazo es ANTES de persistir y genérico: nunca repite el valor
+ * sospechoso en la respuesta ni en stdout.
  */
 const router: Router = Router();
+
+// Patrones de PII argentina (ADR-027). Se aplican sobre el contenido de
+// autoría humana del evento (type/payload/occurred_at); el hash hexagonal
+// exógeno queda fuera del escaneo — es un digest de idempotencia, no texto.
+const PII_PATTERNS: Array<{ name: string; regex: RegExp }> = [
+  { name: 'CUIT/CUIL', regex: /\b\d{2}-\d{8}-\d\b/ },
+  { name: 'DNI', regex: /\b\d{1,2}\.?\d{3}\.?\d{3}\b/ },
+  { name: 'email', regex: /[\w.+-]+@[\w-]+\.[\w.-]+/ },
+  { name: 'teléfono AR', regex: /\+54[\d\s().-]{8,}|\b011[\d\s().-]{8,}/ },
+];
+
+function detectaPII(serialized: string): string | null {
+  for (const patron of PII_PATTERNS) {
+    if (patron.regex.test(serialized)) return patron.name;
+  }
+  return null;
+}
 
 router.post('/', async (req: Request, res: Response) => {
   const body = (req.body ?? {}) as {
@@ -24,6 +46,17 @@ router.post('/', async (req: Request, res: Response) => {
   const occurredAt = body.occurred_at == null ? new Date() : new Date(String(body.occurred_at));
   if (Number.isNaN(occurredAt.getTime())) {
     res.status(400).json({ error: "'occurred_at' inválido: usar ISO 8601 o omitirlo" });
+    return;
+  }
+
+  // Anti-PII (ADR-020 cond. 1, Ley 25.326): rechazo ANTES de persistir y sin
+  // eco del valor. Sin base igual se rechaza — la política es de la API, no de la DB.
+  const contenido = JSON.stringify({ type: body.type, payload: body.payload ?? null, occurred_at: body.occurred_at ?? null });
+  const pii = detectaPII(contenido);
+  if (pii) {
+    res.status(400).json({
+      error: `payload rechazado: contiene datos personales identificables (${pii}) — ADR-020 cond. 1, Ley 25.326`,
+    });
     return;
   }
 
