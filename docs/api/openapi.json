@@ -74,7 +74,7 @@
             "description": "Duplicate (re-ingesta idempotente: mismo hash, original intacto)"
           },
           "400": {
-            "description": "Bad Request (type u occurred_at inválidos)"
+            "description": "Bad Request (type y occurred_at inválidos)"
           }
         }
       }
