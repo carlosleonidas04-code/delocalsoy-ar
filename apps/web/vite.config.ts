@@ -38,6 +38,9 @@ function mockApi() {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const mockEnabled = env.VITE_MOCK_API === '1' || process.env.VITE_MOCK_API === '1';
+  // Riesgo #57 (ADR-028): allowedHosts solo en entornos que lo declaran —
+  // Codespace detectado automáticamente (variable CODESPACE) o ALLOWED_HOSTS=true.
+  const allowExternalHosts = process.env.ALLOWED_HOSTS === 'true' || !!process.env.CODESPACE;
 
   return {
     plugins: [react(), ...(mockEnabled ? [mockApi()] : [])],
@@ -46,9 +49,8 @@ export default defineConfig(({ mode }) => {
       // explícito (HOST=0.0.0.0 en Codespace/sandbox si se necesita).
       host: process.env.HOST ?? 'localhost',
       port: 3000,
-      // allowedHosts solo en entornos que lo declaran: Codespace detectado
-      // automáticamente (variable CODESPACE) o ALLOWED_HOSTS=true explícito.
-      allowedHosts: process.env.ALLOWED_HOSTS === 'true' || !!process.env.CODESPACE,
+      // Sin declarar → undefined → Vite solo acepta localhost (default seguro).
+      allowedHosts: allowExternalHosts ? true : undefined,
       proxy: {
         '/api': {
           target: process.env.API_URL ?? env.API_URL ?? 'http://localhost:3000',
