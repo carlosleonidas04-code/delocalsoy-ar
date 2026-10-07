@@ -1,0 +1,28 @@
+rules_version = "2";
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAuthenticated() { return request.auth != null; }
+    function isValidSanJuanNode(nodeKey) { return nodeKey in ["capital", "caucete", "iglesia"] && exists(/databases/$(database)/documents/territorial_nodes_sovereignty/$(nodeKey)); }
+    function isValidSchemaWindow(data) { return ("schemaVersion" in data) && (data.schemaVersion in [1, 2]); }
+    function hasNoPersonalDataInText(text) {
+      return !(text is string) || (
+        !text.matches(".*\\b([0-9]{1,2}\\.[0-9]{3}\\.[0-9]{3}|[0-9]{7,8})\\b.*") &&
+        !text.matches(".*\\b(20|23|24|27|30|33|34)-[0-9]{8}-[0-9]\\b.*") &&
+        !text.matches(".*[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}.*")
+      );
+    }
+    match /territorial_nodes_sovereignty/{nodeKey} {
+      allow read: if true;
+      allow write: if isAuthenticated() && (nodeKey in ["capital", "caucete", "iglesia"]);
+    }
+    match /territorial_seci_records/{recordId} {
+      allow read: if resource.data.syncLifecycleState == "ingestado_events_raw_verificado";
+      allow create, update: if isAuthenticated() && isValidSchemaWindow(request.resource.data) && isValidSanJuanNode(request.resource.data.nodeKey) && hasNoPersonalDataInText(request.resource.data.summary);
+      allow delete: if false;
+    }
+    match /federated_model_states/{stateId} {
+      allow read: if true;
+      allow write: if isAuthenticated() && request.auth.token.role == "admin";
+    }
+  }
+}
