@@ -44,7 +44,7 @@ describe('GET /api/health — salud honesta sin base (R5, riesgo #59)', () => {
 describe('Contrato OpenAPI ↔ rutas reales (riesgo #53, prueba de #59)', () => {
   it('ningún path declarado en docs/api/openapi.json responde 404', async () => {
     const spec = JSON.parse(
-      readFileSync(new URL('../../../../docs/api/openapi.json', import.meta.url), 'utf-8'),
+      readFileSync(new URL('../../../docs/api/openapi.json', import.meta.url), 'utf-8'),
     ) as { paths: Record<string, Record<string, unknown>> };
     const paths = Object.keys(spec.paths);
     expect(paths.length).toBeGreaterThan(0);
