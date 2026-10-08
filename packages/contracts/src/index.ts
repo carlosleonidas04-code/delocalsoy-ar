@@ -37,3 +37,21 @@ export const EvidenceStatusSchema = z.enum([
   "Pendiente",
   "Reemplazado",
 ]);
+
+// ─── CORE-004 R3 (ADR-031, #87): identidad por etapas ───
+
+// Roles ratificados (ADR-031): ciudadano | moderador | admin.
+export const RolSchema = z.enum(["ciudadano", "moderador", "admin"]);
+
+// Registro: el email es el identificador de login (única PII persistida en
+// 'usuarios'; los sellos system.user_* de events_raw nunca lo contienen — Ley 25.326).
+export const UsuarioRegistroSchema = z.object({
+  email: z.string().trim().toLowerCase().email("Email inválido"),
+  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
+  display_name: z.string().trim().min(1).max(80).optional(),
+});
+
+export const UsuarioLoginSchema = z.object({
+  email: z.string().trim().toLowerCase().email("Email inválido"),
+  password: z.string().min(1, "La contraseña es requerida"),
+});
