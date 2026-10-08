@@ -1,0 +1,56 @@
+name: compuerta-r9
+
+# AUD-02 (#97), opción C: compuerta de gobernanza para rutas de CODEOWNERS.
+# Si un PR toca una ruta listada en .github/CODEOWNERS, este check FALLA
+# hasta que la Dirección Humana aplique el label `r9-ratificado`.
+#
+# Límite declarado (R15 — no se acredita lo que no es): todos los agentes
+# operan con la misma cuenta que la Dirección Humana, así que el label NO
+# autentica a la persona: es fricción deliberada + traza auditable (el
+# evento "labeled" queda en la línea de tiempo del PR). Solo bloquea el
+# merge si `compuerta-r9` se marca como required status check (opción B).
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  compuerta:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # CODEOWNERS se lee desde main: el juez no es editable por lo juzgado.
+          ref: main
+      - name: Rutas de CODEOWNERS tocadas sin ratificación R9
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
+        run: |
+          set -euo pipefail
+          # Patrones de CODEOWNERS (sin comentarios ni líneas vacías), sin '/' inicial.
+          mapfile -t PATRONES < <(grep -vE '^\s*(#|$)' .github/CODEOWNERS | awk '{print $1}' | sed 's#^/##')
+          gh api "repos/$REPO/pulls/$PR/files" --paginate --jq '.[].filename' > archivos.txt
+          tocadas=()
+          while read -r f; do
+            for p in "${PATRONES[@]}"; do
+              if [[ "$p" == */ ]]; then [[ "$f" == "$p"* ]] && tocadas+=("$f  ←  /$p") && break
+              else [[ "$f" == "$p" ]] && tocadas+=("$f  ←  /$p") && break; fi
+            done
+          done < archivos.txt
+          if [ ${#tocadas[@]} -eq 0 ]; then
+            echo "OK: el PR no toca rutas de CODEOWNERS."; exit 0
+          fi
+          echo "Rutas de CODEOWNERS tocadas por este PR:"; printf '  - %s\n' "${tocadas[@]}"
+          if echo "$LABELS" | grep -q '"r9-ratificado"'; then
+            echo "OK: label r9-ratificado presente (ratificación R9 registrada en la línea de tiempo del PR)."; exit 0
+          fi
+          echo "::error::Este PR toca rutas de CODEOWNERS y no tiene el label r9-ratificado. Lo aplica solo la Dirección Humana (R9)."
+          exit 1
