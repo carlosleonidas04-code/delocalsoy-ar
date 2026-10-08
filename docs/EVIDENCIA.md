@@ -24,7 +24,7 @@
 | EV-001 | `docker compose up -d` levanta PostGIS sano | **ok** | `2482f63` | `postgis_version` → **3.4** (#1, 2026-10-07, Codespace) |
 | EV-002 | `prisma migrate dev` aplica el schema sin errores | **ok** | `5c3a7a3` | DB desde cero: `0_init` + `20261006120000_territorios_geom_gist` aplicadas sin errores; tablas `events_raw`/`evidencias`/`territorios` creadas (#2; fix P12 vía PR #47) |
 | EV-003 | `prisma generate` genera cliente tipado | **ok @ `ce2d736`** (2026-10-03, PR #7) | `ce2d736` | run [37098706368](https://github.com/carlosleonidas04-code/delocalsoy-ar/actions/runs/37098706368) |
-| EV-004 | API `/health` responde 200 | **ok** | `5c3a7a3` | `{\"status\":\"ok\",...}` + `200`; `/api/health` → `mode:real`, `dataSource:postgres` (salto honesto desde `degraded/none`, R5) (#4). **Actualizado 2026-10-07 (riesgo #57, ADR-028):** la ruta legada `/health` fue retirada; el único health es `/api/health` (R5) — ver EV-025 |
+| EV-004 | API `/health` responde 200 | **ok** | `5c3a7a3` | `{"status":"ok",...}` + `200`; `/api/health` → `mode:real`, `dataSource:postgres` (salto honesto desde `degraded/none`, R5) (#4). **Actualizado 2026-10-07 (riesgo #57, ADR-028):** la ruta legada `/health` fue retirada; el único health es `/api/health` (R5) — ver EV-025 |
 | EV-005 | Insert duplicado en `events_raw` rechazado (idempotencia) | **ok** | `5c3a7a3` | POST doble idéntico: 1º `creado`, 2º `duplicado`, mismo id/hash — `UNIQUE(hash)`, original intacto (#5) |
 | EV-006 | Build del monorepo compila | **ok @ `ce2d736`/`7c8e267`** (2026-10-03, PRs #7/#8) | `ce2d736` | run [37098706368](https://github.com/carlosleonidas04-code/delocalsoy-ar/actions/runs/37098706368); compuerta CI verde en cada merge posterior (#44 → #91) |
 
