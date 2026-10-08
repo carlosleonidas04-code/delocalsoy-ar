@@ -6,7 +6,7 @@ Relanzamiento de DELocalSoy.AR. Este repositorio es la **verdad técnica**: toda
 
 - `apps/api` — API Express: health honesto (R5), identidad JWT/RBAC (`/api/auth`, ADR-031), territorios bbox, vocabulario `/api/nodos`, activos territoriales con escritura ciudadana (`/api/activos` — R5b: POST autenticado con pseudónimo sin PII, moderación, GET público con bbox PostGIS), evidencias, events idempotentes (anti-PII) con transporte Redis Streams fail-open (ADR-032)
 - `apps/worker` — worker del stream `events:raw` (ADR-032): consumer group idempotente que proyecta `events_raw` → `event_projections` (R4b)
-- `apps/web` — Vite + React: demo federado sobre el contrato `DataSource` (`VITE_DATA_SOURCE=synthetic|api`)
+- `apps/web` — Vite + React: demo federado sobre el contrato `DataSource` (`VITE_DATA_SOURCE=synthetic|api`); capa ciudadana de activos (R5-UI, #109): formulario de alta validado con `@delocalsoy/contracts` (mismo schema que el backend), capa propia en el mapa, sesión login/registro en memoria — preview sintético honesto y modo `api` real
 - `packages/db` — Prisma (PostgreSQL + PostGIS): migraciones versionadas + seed idempotente
 - `packages/contracts` — Schemas Zod compartidos (`@delocalsoy/contracts`)
 - `packages/redis` — cliente RESP mínimo (node:net — cero dependencias): transporte Redis Streams compartido API/worker (ADR-032)
@@ -34,12 +34,12 @@ VITE_DATA_SOURCE=api pnpm --filter @delocalsoy/web run dev   # → /demo
 
 Variables de entorno (nombres, nunca valores en el repo): `DATABASE_URL`, `TERRITORIOS_API_KEY`, `HEALTH_MODE_API_KEY`, `REDIS_URL` (transporte ADR-032), `JWT_SECRET` (>= 16 chars — identidad fail-closed sin ella), `BRANCH_PROTECTION` (honesto: `false` — sin regla de rama). Identidad (opcionales, R5a): `RATE_LIMIT_MAX` (default 5) y `RATE_LIMIT_WINDOW_SEG` (default 300) — 429 con `Retry-After` en `/api/auth/{register,login}` (#101). Worker (opcionales): `WORKER_INTERVAL_MS` (default 5000) y `WORKER_STOP_AFTER_PASSES` (0 = infinito).
 
-## Estado (main @ cae25c4, 2026-10-08)
+## Estado (main @ a64685d, 2026-10-08)
 
 - **CORE-001** ("verdad técnica") — ✅ 6/6
 - **CORE-002** (guard R8, schema v5.1, seed, contracts, anti-PII, tests) — ✅ 6/6
 - **Trilogía demo** (#16/#17/#18) — ✅ 3/3 (contrato `DataSource`, ADR-029)
 - **CORE-003** (rutas `/api/nodos` + `ApiDataSource` completo) — ✅ 2/2: el demo en modo `api` consume datos 100% reales (EV-029/EV-030)
-- **CORE-004** (identidad JWT/RBAC, Redis Streams + worker, dominio `activos`) — ratificado R9 (#87), en ejecución: **R1 reconciliación documental ✅ (EV-031)**, **R3 identidad ✅ (registro/login/me + roles, sesiones selladas, H-01 cerrado)**, **R4 Redis Streams ✅ completo (R4a publish fail-open + R4b worker idempotente — ADR-032)**, **R2 cierre de residuos ✅ (EV-036 — #51/#56 cerrados, ramas saneadas)**, **R5a endurecimiento de identidad ✅ (auditoría #99–#102: anti-enumeración por timing en login, rate limiting 429, 5xx sanitizados sin mensajes internos, `/me` con manejo de errores)**, **R5b dominio `activos` ✅ (POST ciudadano con pseudónimo sha256 sin PII + sello en events_raw + moderación moderador|admin + GET público anónimo con bbox PostGIS)**; pendiente R6 (flujo vertical completo en CI)
+- **CORE-004** (identidad JWT/RBAC, Redis Streams + worker, dominio `activos`) — ratificado R9 (#87), en ejecución: **R1 reconciliación documental ✅ (EV-031)**, **R3 identidad ✅ (registro/login/me + roles, sesiones selladas, H-01 cerrado)**, **R4 Redis Streams ✅ completo (R4a publish fail-open + R4b worker idempotente — ADR-032)**, **R2 cierre de residuos ✅ (EV-036 — #51/#56 cerrados, ramas saneadas)**, **R5a endurecimiento de identidad ✅ (auditoría #99–#102: anti-enumeración por timing en login, rate limiting 429, 5xx sanitizados sin mensajes internos, `/me` con manejo de errores)**, **R5b dominio `activos` ✅ (POST ciudadano con pseudónimo sha256 sin PII + sello en events_raw + moderación moderador|admin + GET público anónimo con bbox PostGIS)**, **R5-UI capa ciudadana ✅ (formulario de alta validado con `@delocalsoy/contracts` + capa de activos en el mapa del demo + sesión login/registro en memoria — preview sintético honesto y modo `api` real, #109)**; pendiente R6 (flujo vertical completo en CI)
 
 Ver `docs/EVIDENCIA.md` para la matriz de evidencia y `docs/api/openapi.json` para el contrato vivo. Gobernanza: `docs/GOBERNANZA.md` y `docs/HITUB.md`.

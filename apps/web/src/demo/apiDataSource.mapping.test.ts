@@ -5,6 +5,9 @@
  * contrato DataSource, con fetch mockeado — sin red en CI. Incluye la
  * proyección de presentación lat/lng → x/y (ADR-030). Lo que el backend
  * aún no expone se declara vacío con aserción explícita (R15: no simular).
+ *
+ * R5-UI (#109): incluye el mapeo de GET /api/activos?nodo= (dominio
+ * `activos`, R5b) — datos reales del backend, nunca marcados sintéticos.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiDataSource } from "./ApiDataSource";
@@ -195,6 +198,50 @@ describe("ApiDataSource (CORE-003 R3, #83)", () => {
     expect(r.picked.y).toBeCloseTo(50);
     // sin tabla de historial: única entrada honesta (R15)
     expect(r.history).toEqual([{ status: "received", at: "2026-10-01T12:00:00.000Z" }]);
+  });
+
+  it("getActivos mapea GET /api/activos?nodo= con proyección x/y y origen real (R5-UI, #109)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      ruteaFetch({
+        "/api/nodos/capital": { success: true, data: NODO_CAPITAL },
+        "/api/activos?nodo=capital": {
+          success: true,
+          count: 1,
+          data: [
+            {
+              id: "a1",
+              tipo: "patrimonio",
+              titulo: "Ex estación de ferrocarril",
+              descripcion: null,
+              estado: "propuesto",
+              nodo_key: "capital",
+              lat: -31.537,
+              lng: -68.522,
+              created_by_hash: "abcdef0123456789abcdef0123456789",
+              created_at: "2026-10-08T12:00:00.000Z",
+            },
+          ],
+        },
+      }),
+    );
+    const ds = new ApiDataSource();
+    const activos = await ds.getActivos("capital");
+    expect(activos).toHaveLength(1);
+    const a = activos[0];
+    expect(a.nodeKey).toBe("capital");
+    expect(a.tipo).toBe("patrimonio");
+    expect(a.titulo).toBe("Ex estación de ferrocarril");
+    // descripción null del backend → cadena vacía en el contrato de UI
+    expect(a.descripcion).toBe("");
+    expect(a.estado).toBe("propuesto");
+    expect(a.createdByHash).toBe("abcdef0123456789abcdef0123456789");
+    expect(a.createdAt).toBe("2026-10-08T12:00:00.000Z");
+    // el centro del nodo cae en el medio del lienzo (ADR-030)
+    expect(a.x).toBeCloseTo(50);
+    expect(a.y).toBeCloseTo(50);
+    // datos reales del backend, no ilustrativos (honestidad de origen)
+    expect(a.isSynthetic).toBe(false);
   });
 
   it("getEventos sigue declarado vacío (events_raw sin vínculo con nodos — ADR-030)", async () => {
