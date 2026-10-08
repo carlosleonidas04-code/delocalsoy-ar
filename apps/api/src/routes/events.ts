@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from 'express';
 import { createHash } from 'node:crypto';
 import { prisma } from '@delocalsoy/db';
 import { xaddEventReference } from '@delocalsoy/redis';
+import { detectaPII } from '../lib/anti-pii.js';
 
 /**
  * Eventos crudos del sistema — fuente de verdad.
@@ -10,7 +11,8 @@ import { xaddEventReference } from '@delocalsoy/redis';
  * ADR-020 cond. 1 / Ley 25.326 (CORE-002 T5, #67): la ingesta rechaza payloads
  * con datos personales identificables (DNI/CUIT/CUIL, email, teléfono AR).
  * El rechazo es ANTES de persistir y genérico: nunca repite el valor
- * sospechoso en la respuesta ni en stdout.
+ * sospechoso en la respuesta ni en stdout. Desde R5b los patrones viven en
+ * lib/anti-pii.ts (módulo compartido con la escritura ciudadana de activos).
  *
  * H-01 (auditoría T2 Anthropic, 2026-10-07, corregido en CORE-004 R3): los
  * tipos 'system.*' son sellos del sistema — solo las rutas internas con guard
@@ -27,23 +29,6 @@ const router: Router = Router();
 
 // Prefijo reservado: sellos del sistema, no ingesta pública.
 const SYSTEM_TYPE_PREFIX = 'system.';
-
-// Patrones de PII argentina (ADR-027). Se aplican sobre el contenido de
-// autoría humana del evento (type/payload/occurred_at); el hash hexagonal
-// exógeno queda fuera del escaneo — es un digest de idempotencia, no texto.
-const PII_PATTERNS: Array<{ name: string; regex: RegExp }> = [
-  { name: 'CUIT/CUIL', regex: /\b\d{2}-\d{8}-\d\b/ },
-  { name: 'DNI', regex: /\b\d{1,2}\.?\d{3}\.?\d{3}\b/ },
-  { name: 'email', regex: /[\w.+-]+@[\w-]+\.[\w.-]+/ },
-  { name: 'teléfono AR', regex: /\+54[\d\s().-]{8,}|\b011[\d\s().-]{8,}/ },
-];
-
-function detectaPII(serialized: string): string | null {
-  for (const patron of PII_PATTERNS) {
-    if (patron.regex.test(serialized)) return patron.name;
-  }
-  return null;
-}
 
 router.post('/', async (req: Request, res: Response) => {
   const body = (req.body ?? {}) as {

@@ -11,6 +11,7 @@
 // EXTENSIÓN CORE-004 (identidad por etapas, ADR-031):
 // - usuarios con rol ciudadano | moderador | admin
 // - sin PII en events_raw: sellos system.user_* solo con {usuario_id, rol}
+// - R5b: activos territoriales propuestos por ciudadanos (pseudónimo, sin PII)
 
 generator client {
   provider = "prisma-client-js"
@@ -193,4 +194,34 @@ model event_projections {
   projected_at DateTime @default(now()) @map("projected_at")
 
   @@map("event_projections")
+}
+
+// ─── CORE-004 R5b: dominio activos (#87) ───
+
+/// Activos territoriales propuestos por la ciudadanía (escritura ciudadana
+/// verificada). El autor queda como pseudónimo created_by_hash = sha256(usuario_id)
+/// truncado — nunca PII en la tabla ni en los sellos (Ley 25.326, ADR-027).
+/// Flujo de moderación: propuesto → aprobado | rechazado (PATCH moderador|admin).
+/// La columna PostGIS `geom` vive en la migración versionada
+/// 20261008200000_r5b_activos (trigger lat/lng + índice GiST).
+model activos {
+  id              String   @id @default(cuid())
+  tipo            String   @map("tipo") // inmueble | infraestructura | servicio | patrimonio | otro
+  titulo          String   @map("titulo")
+  descripcion     String?  @map("descripcion")
+  estado          String   @default("propuesto") @map("estado") // propuesto | aprobado | rechazado
+  nodo_key        String   @map("nodo_key") // capital | caucete | iglesia
+  lat             Float    @map("lat")
+  lng             Float    @map("lng")
+  created_by_hash String   @map("created_by_hash") // pseudónimo sha256(usuario_id) — sin PII
+  created_at      DateTime @default(now()) @map("created_at")
+  updated_at      DateTime @updatedAt @map("updated_at")
+
+  /// Geometría puntual WGS84: columna + trigger + índice GiST en la migración
+  /// versionada 20261008200000_r5b_activos (Prisma no tipa geometry).
+  geom Unsupported("geometry(Point,4326)")?
+
+  @@index([estado])
+  @@index([nodo_key])
+  @@map("activos")
 }

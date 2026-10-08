@@ -55,3 +55,35 @@ export const UsuarioLoginSchema = z.object({
   email: z.string().trim().toLowerCase().email("Email inválido"),
   password: z.string().min(1, "La contraseña es requerida"),
 });
+
+// ─── CORE-004 R5b (dominio activos, #87) ───
+
+// Tipos de activo territorial propuestos por la ciudadanía.
+export const ActivoTipoSchema = z.enum([
+  "inmueble",
+  "infraestructura",
+  "servicio",
+  "patrimonio",
+  "otro",
+]);
+
+// Estados del flujo de moderación: propuesto → aprobado | rechazado.
+export const ActivoEstadoSchema = z.enum(["propuesto", "aprobado", "rechazado"]);
+
+// Alta ciudadana de un activo (R5b): el anti-PII de la API se aplica sobre
+// título/descripción ANTES de persistir (ADR-020 cond. 1, Ley 25.326) — el
+// contrato valida forma; la política de PII es de la API, no del schema.
+export const ActivoAltaSchema = z.object({
+  tipo: ActivoTipoSchema,
+  titulo: z.string().trim().min(3, "El título debe tener al menos 3 caracteres").max(120),
+  descripcion: z.string().trim().max(2000).optional(),
+  nodo_key: SanJuanNodeSlugSchema,
+  lat: z.number().min(-90, "lat fuera de rango").max(90, "lat fuera de rango"),
+  lng: z.number().min(-180, "lng fuera de rango").max(180, "lng fuera de rango"),
+});
+
+// Cambio de estado por moderación (R5b): solo aprobado | rechazado.
+export const ActivoEstadoCambioSchema = z.object({
+  estado: z.enum(["aprobado", "rechazado"]),
+  motivo: z.string().trim().max(500).optional(),
+});
