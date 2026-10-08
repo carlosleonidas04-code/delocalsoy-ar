@@ -40,6 +40,6 @@ Variables de entorno (nombres, nunca valores en el repo): `DATABASE_URL`, `TERRI
 - **CORE-002** (guard R8, schema v5.1, seed, contracts, anti-PII, tests) — ✅ 6/6
 - **Trilogía demo** (#16/#17/#18) — ✅ 3/3 (contrato `DataSource`, ADR-029)
 - **CORE-003** (rutas `/api/nodos` + `ApiDataSource` completo) — ✅ 2/2: el demo en modo `api` consume datos 100% reales (EV-029/EV-030)
-- **CORE-004** (identidad JWT/RBAC, Redis Streams + worker, dominio `activos`) — ratificado R9 (#87), en ejecución: **R1 reconciliación documental ✅ (EV-031)**, **R3 identidad ✅ (registro/login/me + roles, sesiones selladas, H-01 cerrado)**, **R4 Redis Streams ✅ completo (R4a publish fail-open + R4b worker idempotente — ADR-032)**; pendiente R2, R5, R6
+- **CORE-004** (identidad JWT/RBAC, Redis Streams + worker, dominio `activos`) — ratificado R9 (#87), en ejecución: **R1 reconciliación documental ✅ (EV-031)**, **R3 identidad ✅ (registro/login/me + roles, sesiones selladas, H-01 cerrado)**, **R4 Redis Streams ✅ completo (R4a publish fail-open + R4b worker idempotente — ADR-032)**, **R2 cierre de residuos ✅ (EV-036 — #51/#56 cerrados, ramas saneadas)**; pendiente R5, R6
 
 Ver `docs/EVIDENCIA.md` para la matriz de evidencia y `docs/api/openapi.json` para el contrato vivo. Gobernanza: `docs/GOBERNANZA.md` y `docs/HITUB.md`.
