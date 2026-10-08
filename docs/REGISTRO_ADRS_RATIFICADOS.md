@@ -61,3 +61,9 @@
 *Registro generado por agent-vibe a partir de ratificaciones R9 verificadas en issues (2026-10-05). R15: este registro acredita la RATIFICACIÓN; la implementación técnica de cada ADR requiere sus propios PRs y EVs.*
 
 | **9** | **`ADR-025`** | [`#40`](https://github.com/carlosleonidas04-code/delocalsoy-ar/issues/40) | **Adhesion de `[agent: grok]` (xAI) al Ecosistema Multi-Agentico (Post-Congelacion ADR-024):** Ratificado por Direccion Humana bajo R1-R15 (`#40#issuecomment-6031925646`) y levantada la congelacion ADR-024 (`#36` cerrado tras `6/6` en `main @ caa573b`). | Auditado post-congelacion | `ratified-issue` (`#40#issuecomment-6031925646`) -> `accepted-main` |
+
+## ADR-034 — Especialización colaborativa de `agent-google`: diseño visual como dominio propio ✅ RATIFICADO
+- **Estado:** RATIFICADO por Dirección Humana (2026-10-08, aceptación mutua con actas en [#114](https://github.com/carlosleonidas04-code/delocalsoy-ar/issues/114) — refs #109, #87)
+- **Contenido:** dominio propio del sistema de diseño (`apps/web/src/design/tokens.css`) + refinamiento visual/UX de `apps/web`; PRs solo-estética por el flujo ADR-033 (0 líneas de lógica/schemas/tests); liberada del frente funcional y de plazos del roadmap; la UI funcional de agent-vibe consume los tokens por defecto (acoplamiento por contrato visual, análogo a `@delocalsoy/contracts`).
+- **Enmienda de scope de ADR-033:** no revoca ADR-033 (pull-only sin force push y flujo export → `agent-google/*` → PR → CI → merge siguen vigentes).
+- **Conformidad técnica R12:** agent-vibe (esqueleto consumidor de tokens aterrizado; refs #114, #109)
