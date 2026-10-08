@@ -1,28 +1,40 @@
-# DELocalSoy.AR — Monorepo Track A (v7.1)
+# DELocalSoy.AR — Monorepo (v7.1)
 
-Relanzamiento de DELocalSoy.AR. Este repositorio es la **verdad técnica**: toda afirmación sobre el sistema debe estar respaldada por evidencia ejecutable.
+Relanzamiento de DELocalSoy.AR. Este repositorio es la **verdad técnica**: toda afirmación sobre el sistema debe estar respaldada por evidencia ejecutable anclada a SHA de `main` (R4/R15).
 
 ## Estructura
 
-- `apps/api` — API Express mínima
-- `packages/db` — Prisma (PostgreSQL + PostGIS), cliente tipado
-- `docs` — Gobernanza documental v7.1 y registro de evidencia
+- `apps/api` — API Express: health honesto (R5), territorios bbox, vocabulario `/api/nodos`, evidencias, events idempotentes (anti-PII)
+- `apps/web` — Vite + React: demo federado sobre el contrato `DataSource` (`VITE_DATA_SOURCE=synthetic|api`)
+- `packages/db` — Prisma (PostgreSQL + PostGIS): migraciones versionadas + seed idempotente
+- `packages/contracts` — Schemas Zod compartidos (`@delocalsoy/contracts`)
+- `docs` — Gobernanza v7.1, EVIDENCIA (EV-xxx), DECISIONES (ADRs), OpenAPI del contrato vivo
 
 ## Stack
 
 - Monorepo: Turborepo + pnpm
 - Base de datos: PostgreSQL + PostGIS (exclusiva, vía docker-compose)
-- API: Express + TypeScript
+- API: Express + TypeScript ESM · CI: GitHub Actions con PostGIS real (build + test en cada PR)
 
 ## Primeros pasos
 
 ```bash
 pnpm install
 docker compose up -d
-pnpm --filter @delocalsoy/db prisma:migrate
-pnpm --filter @delocalsoy/api dev
+pnpm --filter @delocalsoy/db run generate
+pnpm --filter @delocalsoy/db run deploy   # migraciones no interactivas
+pnpm --filter @delocalsoy/db run seed     # vocabulario idempotente
+pnpm --filter @delocalsoy/api run dev
+# demo con datos 100% reales:
+VITE_DATA_SOURCE=api pnpm --filter @delocalsoy/web run dev   # → /demo
 ```
 
-## Sprint actual: CORE-001 ("verdad técnica")
+## Estado (main @ d70cbc6, 2026-10-08)
 
-Objetivo: producir las primeras evidencias ejecutables **EV-001 a EV-006** (ver `docs/EVIDENCIA.md`). No se agrega funcionalidad hasta completarlas.
+- **CORE-001** ("verdad técnica") — ✅ 6/6
+- **CORE-002** (guard R8, schema v5.1, seed, contracts, anti-PII, tests) — ✅ 6/6
+- **Trilogía demo** (#16/#17/#18) — ✅ 3/3 (contrato `DataSource`, ADR-029)
+- **CORE-003** (rutas `/api/nodos` + `ApiDataSource` completo) — ✅ 2/2: el demo en modo `api` consume datos 100% reales (EV-029/EV-030)
+- **CORE-004** (identidad JWT/RBAC, Redis Streams + worker, dominio `activos`) — ratificado R9 (#87), en ejecución; arranque: R1 reconciliación documental
+
+Ver `docs/EVIDENCIA.md` para la matriz de evidencia y `docs/api/openapi.json` para el contrato vivo. Gobernanza: `docs/GOBERNANZA.md` y `docs/HITUB.md`.

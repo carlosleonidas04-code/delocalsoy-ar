@@ -2,7 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "DELocalSoy.AR Federated API Contract",
-    "version": "7.6.3"
+    "version": "7.7.0",
+    "description": "Reconciliado CORE-004 R1 (regla documental, #87): documenta todas las rutas montadas en apps/api/src/app.ts @ d70cbc6. EV-031."
   },
   "paths": {
     "/api/health": {
@@ -65,7 +66,7 @@
     },
     "/api/events": {
       "post": {
-        "summary": "Idempotent SHA-256 Event Log (EV-005)",
+        "summary": "Idempotent SHA-256 Event Log (EV-005); anti-PII server-side (ADR-027, Ley 25.326)",
         "responses": {
           "201": {
             "description": "Created"
@@ -74,7 +75,138 @@
             "description": "Duplicate (re-ingesta idempotente: mismo hash, original intacto)"
           },
           "400": {
-            "description": "Bad Request (type y occurred_at inválidos)"
+            "description": "Bad Request (type y occurred_at inválidos, o PII detectada — sin eco del valor)"
+          }
+        }
+      }
+    },
+    "/api/nodos": {
+      "get": {
+        "summary": "Vocabulario CORE-003 (EV-029): listar nodos federados con población INDEC y centro",
+        "responses": {
+          "200": {
+            "description": "OK — envelope {success, data, count}"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      }
+    },
+    "/api/nodos/{key}": {
+      "get": {
+        "summary": "Un nodo federado por key (capital | caucete | iglesia)",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK — envelope {success, data}"
+          },
+          "404": {
+            "description": "Nodo no encontrado (honesto, R15)"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      }
+    },
+    "/api/nodos/{key}/capas": {
+      "get": {
+        "summary": "Catálogo de capas del nodo",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK — envelope {success, data, count}"
+          },
+          "404": {
+            "description": "Nodo no encontrado"
+          }
+        }
+      }
+    },
+    "/api/nodos/{key}/categorias": {
+      "get": {
+        "summary": "Categorías de reporte del nodo (layer = capa.key)",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK — envelope {success, data, count}"
+          },
+          "404": {
+            "description": "Nodo no encontrado"
+          }
+        }
+      }
+    },
+    "/api/nodos/{key}/features": {
+      "get": {
+        "summary": "Features del nodo (domain heredado de la capa, lat/lng, is_synthetic)",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK — envelope {success, data, count}"
+          },
+          "404": {
+            "description": "Nodo no encontrado"
+          }
+        }
+      }
+    },
+    "/api/nodos/{key}/reportes": {
+      "get": {
+        "summary": "Reportes del nodo (flujo received → resolved)",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK — envelope {success, data, count}"
+          },
+          "404": {
+            "description": "Nodo no encontrado"
           }
         }
       }
