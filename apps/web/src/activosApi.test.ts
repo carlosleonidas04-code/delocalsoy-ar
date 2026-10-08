@@ -172,7 +172,8 @@ describe("crearActivo (POST /api/activos, R5b)", () => {
     expect(activo).toEqual(ACTIVO_CREADO);
     expect(activo.estado).toBe("propuesto");
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [path, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    // vi.fn(async () => ...) no declara parámetros: mock.calls se tipa como [] → cast doble (TS2352)
+    const [path, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
     expect(path).toBe("/api/activos");
     expect(init.method).toBe("POST");
     expect((init.headers as Record<string, string>).Authorization).toBe("Bearer tok-123");
