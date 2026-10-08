@@ -1,7 +1,7 @@
 import { createConnection } from 'node:net';
 
 /**
- * Transporte Redis Streams — CORE-004 R4a (ADR-032, #87).
+ * Transporte Redis Streams — CORE-004 R4a/R4b (ADR-032, #87).
  *
  * events_raw es la única fuente de verdad: el stream events:raw es SOLO
  * transporte (referencias event_id/type/hash/occurred_at, sin payload ni

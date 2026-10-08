@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import { createHash } from 'node:crypto';
 import { prisma } from '@delocalsoy/db';
-import { xaddEventReference } from '../lib/redis.js';
+import { xaddEventReference } from '@delocalsoy/redis';
 
 /**
  * Eventos crudos del sistema — fuente de verdad.

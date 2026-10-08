@@ -180,3 +180,17 @@ model usuarios {
 
   @@map("usuarios")
 }
+
+// ─── CORE-004 R4b: proyección del worker (ADR-032, #87) ───
+
+/// Proyección derivada del worker — NO es fuente de verdad: events_raw manda.
+/// event_id único → el re-consumo de una referencia es idempotente (P2002).
+model event_projections {
+  id           String   @id @default(cuid())
+  event_id     String   @unique @map("event_id")
+  event_type   String   @map("event_type")
+  event_hash   String   @map("event_hash")
+  projected_at DateTime @default(now()) @map("projected_at")
+
+  @@map("event_projections")
+}

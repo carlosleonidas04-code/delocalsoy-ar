@@ -1,6 +1,6 @@
-# ARCHITECTURE_STATE — v7.1 (reconciliado, CORE-004 R1+R3, R4a en aterrizaje)
+# ARCHITECTURE_STATE — v7.1 (reconciliado, CORE-004 R1+R3+R4)
 
-> Actualizado 2026-10-08 contra `main @ 52db812` (CORE-004: R1 `c7cfac1`, R3 completa — R3a `f87b2ea` + R3b `3861fa5` + EV-032 `52db812`). R4a (este PR): transporte Redis Streams. **Regla documental (R9, #87):** todo PR que agrega rutas o cambia arquitectura actualiza OpenAPI + este documento + README en el mismo PR.
+> Actualizado 2026-10-08 contra `main @ 99cfe45` (CORE-004: R1 `c7cfac1`, R3 completa — R3a `f87b2ea` + R3b `3861fa5` + EV-032 `52db812`, R4a `99cfe45`). R4b (este PR): worker idempotente del stream. **Regla documental (R9, #87):** todo PR que agrega rutas o cambia arquitectura actualiza OpenAPI + este documento + README en el mismo PR.
 
 ## Decisiones vigentes
 
@@ -21,5 +21,5 @@
 
 - **Sprint vigente: CORE-004** (ratificado R9 en #87, 2026-10-08) — primera columna vertebral real: escritura ciudadana verificada de extremo a extremo (`ciudadano → web → POST /api/activos → events_raw → Redis Stream → worker → proyección PostGIS → visible`).
 - **Acreditado en main @ 52db812:** CORE-001 6/6 · CORE-002 6/6 · trilogía demo 3/3 · CORE-003 2/2 (EV-029 `e1d9512` / EV-030 `cb197c4`) · CORE-004 R1 (EV-031 `c7cfac1`) · **R3 identidad completa (R3a `f87b2ea` + R3b `3861fa5`, EV-032)** · **R4a transporte: este PR.**
-- Contrato vivo: `docs/api/openapi.json` v7.9.0 documenta todas las rutas montadas en `app.ts`. El demo en modo `api` consume el vocabulario real del backend; `getEventos` declarado vacío (deuda ADR-030, se cierra con el worker de R4).
+- Contrato vivo: `docs/api/openapi.json` v7.9.0 documenta todas las rutas montadas en `app.ts`. El demo en modo `api` consume el vocabulario real del backend; `getEventos` declarado vacío (deuda ADR-030, se cierra en R5/R6 con el dominio `activos` visible).
 - Pendiente del sprint: R2 (cierre de residuos), R4b worker del stream (ADR-032 — R4a transporte = este PR), R5 dominio `activos` territorial, R6 flujo vertical completo en CI (PostGIS + Redis reales).

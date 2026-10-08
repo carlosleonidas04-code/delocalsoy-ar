@@ -10,7 +10,8 @@
     "baseUrl": ".",
     "paths": {
       "@delocalsoy/contracts": ["../../packages/contracts/src/index.ts"],
-      "@delocalsoy/db": ["../../packages/db/src/index.ts"]
+      "@delocalsoy/db": ["../../packages/db/src/index.ts"],
+      "@delocalsoy/redis": ["../../packages/redis/src/index.ts"]
     }
   },
   "include": [

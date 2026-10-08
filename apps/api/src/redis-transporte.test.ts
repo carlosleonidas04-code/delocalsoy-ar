@@ -10,7 +10,7 @@ process.env.REDIS_URL = process.env.TEST_REDIS_URL ?? 'redis://localhost:6379';
 
 const { createApp } = await import('./app.js');
 const { prisma } = await import('@delocalsoy/db');
-const { pingRedis, redisCommand } = await import('./lib/redis.js');
+const { pingRedis, redisCommand } = await import('@delocalsoy/redis');
 
 const dbUp = await prisma
   .$queryRaw`SELECT 1`
