@@ -9,6 +9,9 @@ name: CI
 # (contrato DataSource del demo territorial), sin PostGIS.
 # v14 (CORE-004 R4a, #87): servicio Redis real en el job `test` (ADR-032) —
 # el transporte Redis Streams se prueba contra instancia viva, no simulada (R5).
+# v15 (CORE-004 R4b, #87): suite de apps/worker contra el MISMO PostGIS +
+# Redis del job `test` — consumer group idempotente (ADR-032, R4b):
+# events_raw → event_projections exactamente una vez.
 
 on:
   push:
@@ -95,6 +98,8 @@ jobs:
         run: pnpm --filter @delocalsoy/api test
       - name: Tests web (DEMO-2 #17 — contrato DataSource)
         run: pnpm --filter @delocalsoy/web test
+      - name: Tests worker (CORE-004 R4b — proyección idempotente ADR-032)
+        run: pnpm --filter @delocalsoy/worker test
 
   report:
     needs: [build, test]

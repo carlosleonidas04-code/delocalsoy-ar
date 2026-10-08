@@ -9,6 +9,7 @@ export default defineConfig({
     // los paquetes del workspace por su fuente TS, sin build previo.
     alias: {
       '@delocalsoy/db': r('../../packages/db/src/index.ts'),
+      '@delocalsoy/redis': r('../../packages/redis/src/index.ts'),
       '@delocalsoy/contracts': r('../../packages/contracts/src/index.ts'),
     },
   },
