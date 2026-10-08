@@ -92,7 +92,6 @@ describe.skipIf(!dbUp)('endurecimiento de identidad (R5a — #99/#100/#101/#102)
     expect(retryAfter).toBeGreaterThan(0);
     const body: any = await sexto.json();
     expect(body.success).toBe(false);
-    await sexto.arrayBuffer();
   });
 
   it('#101: register → 201, 409 x4 y 429 en el 6.º intento', async () => {
