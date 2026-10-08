@@ -118,8 +118,9 @@ router.post('/', async (req: Request, res: Response) => {
     });
     res.status(201).json({ status: 'creado', event });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'error desconocido';
-    res.status(500).json({ error: 'fallo al persistir el evento', detail: message });
+    // AUD-06 (#100): el detalle queda en stdout del servidor, nunca en la respuesta.
+    console.error('[events] persistir:', err instanceof Error ? err.message : String(err));
+    res.status(500).json({ error: 'fallo al persistir el evento' });
   }
 });
 

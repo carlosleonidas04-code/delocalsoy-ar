@@ -12,8 +12,9 @@ router.get('/', async (_req, res: Response) => {
     const rows = await prisma.evidencias.findMany({ orderBy: { code: 'asc' } });
     res.json({ count: rows.length, evidencias: rows });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'error desconocido';
-    res.status(500).json({ error: 'fallo al leer evidencias', detail: message });
+    // AUD-06 (#100): el detalle queda en stdout del servidor, nunca en la respuesta.
+    console.error('[evidencias] listar:', err instanceof Error ? err.message : String(err));
+    res.status(500).json({ error: 'fallo al leer evidencias' });
   }
 });
 

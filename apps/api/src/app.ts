@@ -1,4 +1,5 @@
 import express, { type Express, type Request, type Response, type NextFunction } from 'express';
+import { randomUUID } from 'node:crypto';
 import authRouter from './routes/auth.js';
 import evidenciasRouter from './routes/evidencias.js';
 import eventsRouter from './routes/events.js';
@@ -39,9 +40,12 @@ export function createApp(): Express {
   // Verificación ejecutable en health.test.ts: GET /health → 404.
 
   // Manejo de errores centralizado
+  // AUD-06 (#100): los mensajes internos (Prisma/driver) nunca salen al
+  // cliente — quedan server-side con un request_id correlacionable.
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-    console.error('[delocalsoy-ar-api] error:', err.message);
-    res.status(500).json({ error: 'error interno', detail: err.message });
+    const requestId = randomUUID().slice(0, 8);
+    console.error('[delocalsoy-ar-api] error ' + requestId + ':', err.message);
+    res.status(500).json({ error: 'error interno', request_id: requestId });
   });
 
   return app;
