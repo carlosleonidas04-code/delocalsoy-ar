@@ -19,3 +19,13 @@ export declare const EvidenceStatusSchema: z.ZodEnum<[
   "Pendiente",
   "Reemplazado"
 ]>;
+export declare const RolSchema: z.ZodEnum<["ciudadano", "moderador", "admin"]>;
+export declare const UsuarioRegistroSchema: z.ZodObject<{
+  email: z.ZodString;
+  password: z.ZodString;
+  display_name: z.ZodOptional<z.ZodString>;
+}>;
+export declare const UsuarioLoginSchema: z.ZodObject<{
+  email: z.ZodString;
+  password: z.ZodString;
+}>;

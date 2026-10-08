@@ -1,4 +1,5 @@
 import express, { type Express, type Request, type Response, type NextFunction } from 'express';
+import authRouter from './routes/auth.js';
 import evidenciasRouter from './routes/evidencias.js';
 import eventsRouter from './routes/events.js';
 import healthRouter from './routes/health.js';
@@ -8,6 +9,11 @@ import territoriosRouter from './routes/territorios.js';
 export function createApp(): Express {
   const app = express();
   app.use(express.json());
+
+  // Identidad por etapas (CORE-004 R3, ADR-031): registro/login/me con JWT
+  // HS256 y roles. Fail-closed sin JWT_SECRET. La API key R8 subsiste para
+  // operaciones de sistema (guard R8 intocado).
+  app.use('/api/auth', authRouter);
 
   // Salud honesta del sistema: mode real|synthetic|degraded, nunca OK silencioso (R5)
   // Aterrizaje PR 1 — issue #20
@@ -25,6 +31,7 @@ export function createApp(): Express {
   app.use('/api/evidencias', evidenciasRouter);
 
   // Dominio: eventos crudos (fuente de verdad, append-only, idempotentes) — unificado bajo /api (riesgo #53)
+  // H-01 (auditoría T2, corregido en R3a): la ingesta pública rechaza system.*.
   app.use('/api/events', eventsRouter);
 
   // Riesgo #57 (ADR-028): la ruta legada /health fue retirada — sin consumidores
