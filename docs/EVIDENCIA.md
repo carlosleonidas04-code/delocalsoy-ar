@@ -73,7 +73,7 @@
 - **P15 (bug latente del staging-only)**: el schema de `feat/core-002-schema @ 0d18f0f` tenía la relación `categorias.capa` sin campo opuesto en `capas` (P1012). Nunca se ejecutó `prisma generate` sobre él. Detectado por la compuerta CI del PR #73 y corregido en el mismo PR — la "verdad técnica" trabajando: staging proponía, GitHub desacreditaba.
 - **Merges del sprint**: autorizados por delegación R8/R9 de la Dirección Humana (mensaje textual registrado en #63, patrón de #23). Todos los PRs tuvieron CI verde (build + test con PostGIS) antes del merge.
 - **Riesgo 6 (#57)**: ejecutado bajo la misma delegación (registrada en #57). Fix en camino del PR #75: el tipo `allowedHosts` de Vite admite `true | string[] | undefined`, no `false` — la compuerta CI lo detectó en el primer push y se corrigió antes del merge.
-- **Deuda lockfile (resuelta 2026-10-07)**: regenerado y commiteado por la Dirección Humana (PR #81, `1a7b80d`); vitist actualizado a 4.1.11 por Dependabot con compuerta verde (PR #82, `8bbe4f1`).
+- **Deuda lockfile (resuelta 2026-10-07)**: regenerado y commiteado por la Dirección Humana (PR #81, `1a7b80d`); vitest actualizado a 4.1.11 por Dependabot con compuerta verde (PR #82, `8bbe4f1`).
 
 ### Notas de auditoría CORE-001 (2026-10-07, registro completo en #23)
 
