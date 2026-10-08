@@ -3,7 +3,7 @@
 > **Re-base epistémico** (Aterrizaje PR 4 — issue #23). Estado en `main` vs estado en staging.
 > **R4:** una evidencia pasa a `ok` solo con salida de comando o run verificable, anclado por SHA.
 > **R15:** staging propone, GitHub acredita — ninguna evidencia sin CI run en main se etiqueta `ok` en main antes del merge que la prueba.
-> **Vigencia de esta tabla:** hasta el próximo push a main. Última revisión contra API GitHub: main @ `c7cfac1` (2026-10-08).
+> **Vigencia de esta tabla:** hasta el próximo push a main. Última revisión contra API GitHub: main @ `3861fa5` (2026-10-08).
 
 ## Scorecard
 
@@ -15,7 +15,7 @@
 
 **CORE-003 (salto funcional, #83): 2/2** — R1/R2 (rutas del vocabulario + seed, PR #84 `e1d9512`) y R3 (`ApiDataSource` completo, PR #85 `cb197c4`) completados el **2026-10-07** bajo delegación R8/R9 registrada en #83. El demo en modo `api` consume ahora nodos/capas/categorías/features/reportes reales; única lectura vacía: `getEventos` (`events_raw` sin vínculo con nodos — deuda declarada en ADR-030).
 
-**CORE-004 (columna vertebral, #87): 1/6 en curso** — sprint ratificado R9 el **2026-10-08**. R1 reconciliación documental completada (PR #88 `c7cfac1`): OpenAPI v7.7.0 documenta las 11 rutas vivas de `app.ts`, ARCHITECTURE_STATE/README al estado real, ADR-031/032/033 ratificados, regla documental permanente. Pendiente: R2 (cierre de residuos), R3 (identidad JWT/RBAC), R4 (Redis Streams + worker), R5 (dominio `activos`), R6 (flujo vertical en CI).
+**CORE-004 (columna vertebral, #87): 2/6 en curso** — sprint ratificado R9 el **2026-10-08**. R1 reconciliación documental completada (PR #88 `c7cfac1`): OpenAPI v7.7.0 documenta las 11 rutas vivas de `app.ts`, ARCHITECTURE_STATE/README al estado real, ADR-031/032/033 ratificados, regla documental permanente. R3 identidad por etapas completada (PR #90 `f87b2ea` + PR #91 `3861fa5`, ADR-031): guard H-01 de la auditoría T2 (la ingesta pública rechaza `system.*`) + JWT HS256 con roles `ciudadano/gestor/auditor` y sesiones selladas sin PII. Pendiente: R2 (cierre de residuos), R4 (Redis Streams + worker), R5 (dominio `activos`), R6 (flujo vertical en CI).
 
 ## Matriz de evidencia — main (CORE-001)
 
@@ -26,7 +26,7 @@
 | EV-003 | `prisma generate` genera cliente tipado | **ok @ `ce2d736`** (2026-10-03, PR #7) | `ce2d736` | run [37098706368](https://github.com/carlosleonidas04-code/delocalsoy-ar/actions/runs/37098706368) |
 | EV-004 | API `/health` responde 200 | **ok** | `5c3a7a3` | `{"status":"ok",...}` + `200`; `/api/health` → `mode:real`, `dataSource:postgres` (salto honesto desde `degraded/none`, R5) (#4). **Actualizado 2026-10-07 (riesgo #57, ADR-028):** la ruta legada `/health` fue retirada; el único health es `/api/health` (R5) — ver EV-025 |
 | EV-005 | Insert duplicado en `events_raw` rechazado (idempotencia) | **ok** | `5c3a7a3` | POST doble idéntico: 1º `creado`, 2º `duplicado`, mismo id/hash — `UNIQUE(hash)`, original intacto (#5) |
-| EV-006 | Build del monorepo compila | **ok @ `ce2d736`/`7c8e267`** (2026-10-03, PRs #7/#8) | `ce2d736` | run [37098706368](https://github.com/carlosleonidas04-code/delocalsoy-ar/actions/runs/37098706368); compuerta CI verde en cada merge posterior (#44 → #88) |
+| EV-006 | Build del monorepo compila | **ok @ `ce2d736`/`7c8e267`** (2026-10-03, PRs #7/#8) | `ce2d736` | run [37098706368](https://github.com/carlosleonidas04-code/delocalsoy-ar/actions/runs/37098706368); compuerta CI verde en cada merge posterior (#44 → #91) |
 
 ## Matriz de evidencia — main (CORE-002, sprint #12)
 
@@ -65,6 +65,7 @@
 | Código | Título | Estado | Ancla main | Acreditación (salida real) |
 |---|---|---|---|---|
 | EV-031 | CORE-004 R1 (#87): reconciliación documental — `docs/api/openapi.json` **v7.7.0** documenta todas las rutas vivas de `app.ts` (11 paths, incluidas las 6 de `/api/nodos`); `ARCHITECTURE_STATE_v7.1.md` declara el sprint vigente real (CORE-004); README al estado real (apps/web, contracts, demo modo api); ADR-031/032/033 ratificados R9 en #87; regla documental permanente (todo PR con rutas/arquitectura actualiza OpenAPI + ARCHITECTURE_STATE + README) | **ok** | `c7cfac1` (PR #88) | Verificación 1:1 rutas `app.ts` @ `d70cbc6` = paths del spec (11/11). Compuerta CI del PR #88 verde: build×2 + test×2 `success` — incluye el test de contrato OpenAPI↔rutas (ningún path del spec responde 404) contra PostGIS real |
+| EV-032 | CORE-004 R3 (#87): identidad por etapas (ADR-031) — guard H-01 (PR #90 `f87b2ea`): la ingesta pública `POST /api/events` rechaza `system.*` con 403 (el `mode` de `/api/health` no se falsifica); auth (PR #91 `3861fa5`): `POST /api/auth/register|login|me` con scrypt + JWT HS256 (`node:crypto`, 0 dependencias nuevas), roles `ciudadano/gestor/auditor`, `requireJwt`/`requireRole` fail-closed (503 sin `JWT_SECRET` ≥16 chars); sellos `system.user_registered`/`system.user_session` sin email (Ley 25.326) | **ok** | `3861fa5` (PRs #90/#91) | `auth-rutas.test.ts` en CI con PostGIS real: 9 tests (registro/login/me, JWT y rol verificados, 403 rol insuficiente, 401 sin token) + guard H-01: evento `system.*` público → 403 y `mode` sin cambio; job `test` del PR #91 verde (build×2 + test×2 `success`) |
 
 ### Notas de auditoría CORE-002 (2026-10-07)
 
@@ -98,10 +99,11 @@ Catálogo completo vive en staging (18/18 verificadas en sandbox). Nada de esto 
 
 ```bash
 gh run list --branch main --event push -L 5
-# Hito: runs verify/ci en success sobre 43bb1ba..c7cfac1
+# Hito: runs verify/ci en success sobre 43bb1ba..3861fa5
 # (remediación riesgos #52-#59 + sprint CORE-002 + riesgo 6 #57 + trilogía
 # demo #16/#17/#18 + CORE-003 salto funcional #83, 2026-10-07;
-# CORE-004 R1 reconciliación documental #87, 2026-10-08)
+# CORE-004 R1 reconciliación documental + R3 identidad ADR-031
+# (#88/#90/#91), 2026-10-08)
 ```
 
 ---
@@ -114,4 +116,4 @@ gh run list --branch main --event push -L 5
 
 *CORE-003 (#83): cerrado — EV-029 (`e1d9512`) / EV-030 (`cb197c4`) ancladas; el contrato `DataSource` queda servido completo por el backend (`getEventos`: deuda declarada en ADR-030).*
 
-*CORE-004 (#87): en curso — ratificado R9 el 2026-10-08; R1 completada (PR #88 `c7cfac1`, EV-031 anclada); ADR-031/032/033 ratificados; R2–R6 pendientes.*
+*CORE-004 (#87): en curso — ratificado R9 el 2026-10-08; R1 completada (PR #88 `c7cfac1`, EV-031 anclada); R3 completada (PR #90 `f87b2ea` + PR #91 `3861fa5`, EV-032 anclada — identidad JWT/roles ADR-031 y cierre del hallazgo H-01 de la auditoría T2); ADR-031/032/033 ratificados; R2, R4, R5, R6 pendientes.*
