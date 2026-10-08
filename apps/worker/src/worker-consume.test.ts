@@ -26,7 +26,8 @@ const marcador = () => 'r4b.' + stamp + '.' + String(++seq);
 
 // Lo mismo que hace la ruta POST /api/events (R4a): persistir en events_raw
 // (única verdad) y publicar la REFERENCIA al stream (transporte).
-async function persistirYPublicar(): Promise<{ id: string; hash: string }> {
+type EventoPublicado = { id: string; hash: string; type: string; occurred_at: Date };
+async function persistirYPublicar(): Promise<EventoPublicado> {
   const event = await prisma.events_raw.create({
     data: {
       type: 'test.r4b.worker.' + marcador(),
