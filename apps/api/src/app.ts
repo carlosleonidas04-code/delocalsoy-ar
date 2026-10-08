@@ -1,5 +1,6 @@
 import express, { type Express, type Request, type Response, type NextFunction } from 'express';
 import { randomUUID } from 'node:crypto';
+import activosRouter from './routes/activos.js';
 import authRouter from './routes/auth.js';
 import evidenciasRouter from './routes/evidencias.js';
 import eventsRouter from './routes/events.js';
@@ -27,6 +28,12 @@ export function createApp(): Express {
   // categorías, features y reportes en lectura pública. El backend sirve todo
   // lo que el contrato DataSource consume: fin de los "declarado vacío" (R15).
   app.use('/api/nodos', nodosRouter);
+
+  // Dominio: activos territoriales (CORE-004 R5b, #87) — escritura ciudadana
+  // verificada: POST autenticado con pseudónimo sin PII (Ley 25.326), sello
+  // en events_raw, moderación PATCH /:id/estado (moderador|admin) y GET
+  // público anónimo con recorte espacial bbox sobre PostGIS.
+  app.use('/api/activos', activosRouter);
 
   // Dominio: registro de evidencias ejecutables (EV-xxx) — unificado bajo /api (riesgo #53)
   app.use('/api/evidencias', evidenciasRouter);

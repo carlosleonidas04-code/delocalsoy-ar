@@ -29,3 +29,26 @@ export declare const UsuarioLoginSchema: z.ZodObject<{
   email: z.ZodString;
   password: z.ZodString;
 }>;
+
+// ─── CORE-004 R5b (dominio activos, #87): espejo de src/index.ts ───
+
+export declare const ActivoTipoSchema: z.ZodEnum<[
+  "inmueble",
+  "infraestructura",
+  "servicio",
+  "patrimonio",
+  "otro"
+]>;
+export declare const ActivoEstadoSchema: z.ZodEnum<["propuesto", "aprobado", "rechazado"]>;
+export declare const ActivoAltaSchema: z.ZodObject<{
+  tipo: z.ZodEnum<["inmueble", "infraestructura", "servicio", "patrimonio", "otro"]>;
+  titulo: z.ZodString;
+  descripcion: z.ZodOptional<z.ZodString>;
+  nodo_key: z.ZodEnum<["capital", "caucete", "iglesia"]>;
+  lat: z.ZodNumber;
+  lng: z.ZodNumber;
+}>;
+export declare const ActivoEstadoCambioSchema: z.ZodObject<{
+  estado: z.ZodEnum<["aprobado", "rechazado"]>;
+  motivo: z.ZodOptional<z.ZodString>;
+}>;
