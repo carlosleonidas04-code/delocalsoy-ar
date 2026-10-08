@@ -13,9 +13,14 @@
  * presentación, no dato de dominio. Lo que sigue sin backend se declara
  * vacío con comentario explícito (R15): getEventos (events_raw aún no tiene
  * vínculo con nodos) y producedBy de capas (no modelado en el schema).
+ *
+ * R5-UI (#109): getActivos mapea GET /api/activos?nodo= (R5b) y la inversa
+ * `desproyecta` traduce el punto elegido en el mini-mapa del formulario al
+ * lat/lng real del alta — misma envolvente en ambos sentidos.
  */
 import type { DataSource } from "./dataSource";
 import type {
+  ActivoTerritorial,
   Capa,
   CategoriaReporte,
   Evidencia,
@@ -103,6 +108,20 @@ interface ReporteApi {
   updated_at: string;
 }
 
+/** Activo tal como lo sirve GET /api/activos (dominio `activos`, R5b). */
+interface ActivoApi {
+  id: string;
+  tipo: string;
+  titulo: string;
+  descripcion: string | null;
+  estado: string;
+  nodo_key: string;
+  lat: number;
+  lng: number;
+  created_by_hash: string;
+  created_at: string;
+}
+
 /**
  * Paleta de presentación por key de nodo (los colores del demo v5.1).
  * No es dato de dominio: no viaja por la API, se resuelve en la UI.
@@ -115,7 +134,7 @@ const PALETA_NODOS: Record<string, string> = {
 
 export class ApiDataSource implements DataSource {
   /** Envelope de presentación: ±0.05° del centro del nodo (ADR-030). */
-  private static readonly SPAN_GRADOS = 0.1;
+  static readonly SPAN_GRADOS = 0.1;
 
   private centros = new Map<string, { lat: number; lng: number }>();
 
@@ -209,6 +228,34 @@ export class ApiDataSource implements DataSource {
     });
   }
 
+  // R5-UI (#109): lectura pública y anónima del dominio `activos` (R5b) —
+  // el mapa de activos se sirve sin sesión, filtrado por nodo.
+  async getActivos(territorioKey: string): Promise<ActivoTerritorial[]> {
+    const [centro, env] = await Promise.all([
+      this.centroDe(territorioKey),
+      this.getJson<ApiEnvelope<ActivoApi>>("/api/activos?nodo=" + territorioKey),
+    ]);
+    return env.data.map((a) => {
+      const { x, y } = this.proyecta(a.lat, a.lng, centro);
+      return {
+        id: a.id,
+        nodeKey: territorioKey,
+        tipo: a.tipo,
+        titulo: a.titulo,
+        descripcion: a.descripcion ?? "",
+        estado: a.estado,
+        lat: a.lat,
+        lng: a.lng,
+        x,
+        y,
+        createdByHash: a.created_by_hash,
+        createdAt: a.created_at,
+        // Datos reales del backend (no ilustrativos): honestidad de origen.
+        isSynthetic: false,
+      };
+    });
+  }
+
   // events_raw aún no tiene vínculo con nodos (no existe nodo_id): la lectura
   // honesta es vacía hasta que exista la relación (deuda declarada, ADR-030).
   async getEventos(_territorioId: string): Promise<EventoTerritorial[]> {
@@ -268,4 +315,21 @@ export class ApiDataSource implements DataSource {
     }
     return body;
   }
+}
+
+/**
+ * Inversa de la proyección de presentación (ADR-030): x/y (0–100) sobre la
+ * envolvente del centro → lat/lng real. La usa el formulario de activos
+ * (R5-UI, #109) para traducir el punto elegido en el mini-mapa al alta del
+ * backend — así el formulario y el mapa pintan en el mismo sistema.
+ */
+export function desproyecta(
+  x: number,
+  y: number,
+  centro: { lat: number; lng: number },
+): { lat: number; lng: number } {
+  const half = ApiDataSource.SPAN_GRADOS / 2;
+  const lat = centro.lat + half - (y / 100) * ApiDataSource.SPAN_GRADOS;
+  const lng = centro.lng - half + (x / 100) * ApiDataSource.SPAN_GRADOS;
+  return { lat, lng };
 }

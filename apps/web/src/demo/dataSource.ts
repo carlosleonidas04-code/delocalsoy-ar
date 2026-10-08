@@ -7,6 +7,7 @@
  * interfaz, sin cambios en el componente.
  */
 import type {
+  ActivoTerritorial,
   Capa,
   CategoriaReporte,
   Evidencia,
@@ -31,6 +32,9 @@ export interface DataSource {
 
   /** Reportes registrados en un territorio (vacío en modo sintético puro). */
   getReportes(territorioKey: string): Promise<ReporteTerritorial[]>;
+
+  /** Activos ciudadanos del dominio `activos` (CORE-004 R5b/R5-UI, #109). */
+  getActivos(territorioKey: string): Promise<ActivoTerritorial[]>;
 
   /** Eventos de trazabilidad de un territorio (por `territorio.id`). */
   getEventos(territorioId: string): Promise<EventoTerritorial[]>;

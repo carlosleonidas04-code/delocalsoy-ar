@@ -1,6 +1,16 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { NODE_COLORS } from "./syntheticData.js";
 import { SyntheticDataSource } from "./SyntheticDataSource";
+import { desproyecta } from "./ApiDataSource";
+import {
+  cerrarSesion,
+  crearActivo,
+  iniciarSesion,
+  registrarCiudadano,
+  sesionActiva,
+  usuarioActivo,
+  validarAltaActivo,
+} from "../activosApi";
 
 // DEMO TERRITORIAL FEDERADO — DELocalSoy.AR · v5.1 (correcciones de honestidad)
 // Capital (corredor Centro–Cívico–Desamparados) · Caucete (educación, salud y comunidad) · Iglesia (producción y turismo)
@@ -32,6 +42,21 @@ const REPORT_STATUS_UI = {
   evaluating: { label: "En evaluación", color: "#E0B13A" },
   in_progress: { label: "En curso", color: "#7BA7D9" },
   resolved: { label: "Resuelto", color: "#2F9E6B" },
+};
+
+// R5-UI (#109): dominio `activos` (R5b) — vocabulario y estados del flujo
+// ciudadano 'propuesto → moderación'. Mismos enums que @delocalsoy/contracts.
+const ACTIVO_TIPO_UI = {
+  inmueble: "Inmueble",
+  infraestructura: "Infraestructura",
+  servicio: "Servicio comunitario",
+  patrimonio: "Patrimonio",
+  otro: "Otro",
+};
+const ACTIVO_ESTADO_UI = {
+  propuesto: { label: "Propuesto", color: BRAND.sol },
+  aprobado: { label: "Aprobado", color: "#2F9E6B" },
+  rechazado: { label: "Rechazado", color: "#E0703A" },
 };
 
 // ─── UI atómicos ───
@@ -117,7 +142,7 @@ const EntryScreen = ({ nodes, layerCount, onEnter, onCompare }) => (
 );
 
 // ─── Mapa SVG (placeholder sin MapLibre, mismo contrato visual) ───
-const TerritoryMap = ({ node, features, onSelect, selectedId, onReportClick, reportMarkers = [] }) => {
+const TerritoryMap = ({ node, features, onSelect, selectedId, onReportClick, reportMarkers = [], activoMarkers = [], onActivoClick, selectedActivoId = null, onActivoPropose }) => {
   const gridLines = [20, 40, 60, 80];
   return (
     <div className="relative w-full h-full">
@@ -150,20 +175,42 @@ const TerritoryMap = ({ node, features, onSelect, selectedId, onReportClick, rep
             <circle cx={r.x} cy={r.y} r="1" fill={BRAND.sol} />
           </g>
         ))}
+        {/* R5-UI (#109): activos ciudadanos — rombo según estado del flujo */}
+        {activoMarkers.map((a) => {
+          const isSel = a.id === selectedActivoId;
+          const color = (ACTIVO_ESTADO_UI[a.estado] ?? ACTIVO_ESTADO_UI.propuesto).color;
+          return (
+            <g key={"act-" + a.id} onClick={() => onActivoClick && onActivoClick(a)} style={{ cursor: "pointer" }}>
+              <rect x={a.x - 1.5} y={a.y - 1.5} width="3" height="3" fill={color}
+                opacity={isSel ? 1 : 0.9} transform={`rotate(45 ${a.x} ${a.y})`}
+                stroke={isSel ? BRAND.sol : "none"} strokeWidth="0.5" />
+            </g>
+          );
+        })}
       </svg>
       <div className="absolute bottom-3 right-3 flex items-center gap-3 text-[10px]" style={{ color: BRAND.dim }}>
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: "#E0703A" }} /> Problemática</span>
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: "#2F9E6B" }} /> Activo</span>
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ border: "1px solid " + BRAND.sol }} /> Reporte creado (demo)</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2" style={{ background: BRAND.sol, transform: "rotate(45deg)" }} /> Activo propuesto</span>
         <span>· Visor sin tiles (contrato MapLibre pendiente)</span>
       </div>
-      <button
-        onClick={onReportClick}
-        className="absolute top-3 right-3 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors"
-        style={{ background: node.color, color: "#fff" }}
-      >
-        + Reportar problemática
-      </button>
+      <div className="absolute top-3 right-3 flex flex-col gap-1.5 items-end">
+        <button
+          onClick={onReportClick}
+          className="px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors"
+          style={{ background: node.color, color: "#fff" }}
+        >
+          + Reportar problemática
+        </button>
+        <button
+          onClick={onActivoPropose}
+          className="px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors"
+          style={{ background: BRAND.sol, color: "#121212" }}
+        >
+          + Proponer activo
+        </button>
+      </div>
     </div>
   );
 };
@@ -244,6 +291,196 @@ const ReportForm = ({ node, cats, onSubmit, onClose }) => {
             onClick={() => onSubmit({ category, description, picked })}
             className="flex-1 px-3 py-2 rounded-lg text-xs font-bold cursor-pointer"
             style={{ background: node.color, color: "#fff" }}>Crear reporte</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Ficha de activo ciudadano (R5-UI, A3 bis — dominio `activos`, R5b) ───
+const ActivoCard = ({ activo, node, onClose }) => {
+  const estadoUi = ACTIVO_ESTADO_UI[activo.estado] ?? { label: activo.estado, color: BRAND.muted };
+  return (
+    <div className="p-4 rounded-xl" style={{ background: BRAND.surface, border: `1px solid ${BRAND.border}` }}>
+      <div className="flex items-start justify-between gap-2">
+        <h3 className="font-bold text-sm leading-snug">{activo.titulo}</h3>
+        <button onClick={onClose} className="text-xs cursor-pointer shrink-0" style={{ color: BRAND.dim }}>Cerrar</button>
+      </div>
+      <div className="mt-3 space-y-1.5 text-xs">
+        <div className="flex justify-between"><span style={{ color: BRAND.dim }}>Tipo</span><span>{ACTIVO_TIPO_UI[activo.tipo] ?? activo.tipo}</span></div>
+        <div className="flex justify-between items-center">
+          <span style={{ color: BRAND.dim }}>Estado</span>
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-medium"
+            style={{ color: estadoUi.color, background: "rgba(255,255,255,0.05)" }}>{estadoUi.label}</span>
+        </div>
+        {activo.descripcion && (
+          <div className="flex justify-between gap-3">
+            <span className="shrink-0" style={{ color: BRAND.dim }}>Descripción</span>
+            <span className="text-right">{activo.descripcion}</span>
+          </div>
+        )}
+        <div className="flex justify-between">
+          <span style={{ color: BRAND.dim }}>Autor</span>
+          <span style={{ fontFamily: "monospace" }}>{activo.createdByHash.slice(0, 12)}…</span>
+        </div>
+        <div className="flex justify-between"><span style={{ color: BRAND.dim }}>Nodo</span><span>{node.name} · {node.subtitle}</span></div>
+        <div className="flex justify-between"><span style={{ color: BRAND.dim }}>Fecha</span><span>{new Date(activo.createdAt).toLocaleDateString("es-AR")}</span></div>
+        <div className="flex justify-between">
+          <span style={{ color: BRAND.dim }}>Origen</span>
+          <span style={{ color: activo.isSynthetic ? BRAND.sol : BRAND.text }}>
+            {activo.isSynthetic ? "Sintético (demo)" : "API real (R5b)"}
+          </span>
+        </div>
+      </div>
+      <p className="text-[10px] mt-3 leading-relaxed" style={{ color: BRAND.dim }}>
+        Flujo R5b: el activo nace “propuesto” y solo la moderación (moderador|admin) lo aprueba o rechaza.
+        El autor queda identificado únicamente por su pseudónimo — sin datos personales (Ley 25.326, ADR-027).
+      </p>
+    </div>
+  );
+};
+
+// ─── Formulario de activo ciudadano (R5-UI, B1 bis — #109) ───
+// Modo synthetic: alta EN MEMORIA (no persiste — honestidad R15, igual que el
+// reporte del demo). Modo api: exige sesión (login/registro inline, token en
+// memoria) y valida con el MISMO schema del backend (@delocalsoy/contracts)
+// antes de salir a la red; el backend re-valida (nunca se confía en el cliente).
+const ActivoForm = ({ node, modoApi, onSubmit, onClose }) => {
+  const [tipo, setTipo] = useState("patrimonio");
+  const [titulo, setTitulo] = useState("");
+  const [descripcion, setDescripcion] = useState("");
+  const [picked, setPicked] = useState({ x: 50, y: 50 });
+  const [authMode, setAuthMode] = useState("login"); // login | registro
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [error, setError] = useState(null);
+
+  const intentar = async () => {
+    if (enviando) return;
+    setError(null);
+    // Validación local con el schema compartido: mismo criterio que el backend.
+    const { lat, lng } = desproyecta(picked.x, picked.y, node.center);
+    const validacion = validarAltaActivo({ tipo, titulo, descripcion, nodo_key: node.key, lat, lng });
+    if (!validacion.ok) {
+      setError(validacion.errores.join(" · "));
+      return;
+    }
+    if (!modoApi) {
+      // Demo sintético: el alta vive solo en la memoria de la sesión.
+      onSubmit({
+        tipo, titulo, descripcion, lat, lng, picked,
+        id: "act-demo-" + Math.random().toString(16).slice(2, 8),
+        createdByHash: "demo-" + Math.random().toString(16).slice(2, 8),
+        createdAt: new Date().toISOString(),
+        isSynthetic: true,
+      });
+      return;
+    }
+    setEnviando(true);
+    try {
+      if (!sesionActiva()) {
+        if (authMode === "registro") await registrarCiudadano(email, password);
+        else await iniciarSesion(email, password);
+      }
+      const creado = await crearActivo({ tipo, titulo, descripcion, nodo_key: node.key, lat, lng });
+      onSubmit({
+        tipo, titulo, descripcion, lat, lng, picked,
+        id: creado.id,
+        createdByHash: creado.created_by_hash,
+        createdAt: creado.created_at,
+        isSynthetic: false,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  const inputStyle = { background: BRAND.surfaceHi, color: BRAND.text, border: `1px solid ${BRAND.border}` };
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)" }}>
+      <div className="w-full max-w-md rounded-2xl p-5" style={{ background: BRAND.surface, border: `1px solid ${BRAND.border}` }}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-bold">Proponer activo · {node.name}</h3>
+          <button onClick={onClose} className="text-xs cursor-pointer" style={{ color: BRAND.dim }}>Cancelar</button>
+        </div>
+        <label className="block text-[10px] uppercase tracking-widest mb-1" style={{ color: BRAND.dim }}>Tipo</label>
+        <select value={tipo} onChange={(e) => setTipo(e.target.value)}
+          className="w-full mb-3 px-3 py-2 rounded-lg text-sm cursor-pointer" style={inputStyle}>
+          {Object.entries(ACTIVO_TIPO_UI).map(([k, label]) => (
+            <option key={k} value={k}>{label}</option>
+          ))}
+        </select>
+        <label className="block text-[10px] uppercase tracking-widest mb-1" style={{ color: BRAND.dim }}>Título (3–120)</label>
+        <input value={titulo} onChange={(e) => setTitulo(e.target.value)}
+          className="w-full mb-3 px-3 py-2 rounded-lg text-sm" placeholder="Nombre del activo territorial…" style={inputStyle} />
+        <label className="block text-[10px] uppercase tracking-widest mb-1" style={{ color: BRAND.dim }}>Descripción (opcional)</label>
+        <textarea value={descripcion} onChange={(e) => setDescripcion(e.target.value)} rows="3"
+          className="w-full mb-3 px-3 py-2 rounded-lg text-sm" placeholder="Contanos por qué es un activo del territorio…" style={inputStyle} />
+        <label className="block text-[10px] uppercase tracking-widest mb-1" style={{ color: BRAND.dim }}>
+          Ubicación — clic en el mini-mapa
+        </label>
+        <div className="relative mb-3 rounded-lg overflow-hidden" style={{ border: `1px solid ${BRAND.border}` }}>
+          <svg viewBox="0 0 100 60" className="w-full cursor-crosshair"
+            onClick={(e) => {
+              const r = e.currentTarget.getBoundingClientRect();
+              setPicked({ x: ((e.clientX - r.left) / r.width) * 100, y: ((e.clientY - r.top) / r.height) * 100 });
+            }}>
+            <rect width="100" height="60" fill="#161616" />
+            {[20, 40, 60, 80].map((g) => (
+              <g key={g} stroke={BRAND.border} strokeWidth="0.2">
+                <line x1={g} y1="0" x2={g} y2="60" /><line x1="0" y1={g * 0.6} x2="100" y2={g * 0.6} />
+              </g>
+            ))}
+            <circle cx={picked.x} cy={picked.y * 0.6} r="2" fill={BRAND.sol} stroke={node.color} strokeWidth="0.4" />
+          </svg>
+        </div>
+        {modoApi && !sesionActiva() && (
+          <div className="mb-3 p-3 rounded-lg" style={{ background: BRAND.surfaceHi }}>
+            <div className="flex gap-1.5 mb-2">
+              {[["login", "Ya tengo cuenta"], ["registro", "Quiero registrarme"]].map(([k, l]) => (
+                <button key={k} onClick={() => setAuthMode(k)}
+                  className="flex-1 px-2 py-1 rounded-lg text-[10px] font-semibold cursor-pointer"
+                  style={{ background: authMode === k ? BRAND.celeste + "22" : BRAND.surface, color: authMode === k ? BRAND.celeste : BRAND.muted }}>
+                  {l}
+                </button>
+              ))}
+            </div>
+            <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="email"
+              className="w-full mb-2 px-3 py-1.5 rounded-lg text-xs" style={inputStyle} />
+            <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" placeholder="contraseña"
+              className="w-full px-3 py-1.5 rounded-lg text-xs" style={inputStyle} />
+            <p className="text-[10px] mt-2 leading-relaxed" style={{ color: BRAND.dim }}>
+              Registro ciudadano (rol “ciudadano”, ADR-031). El alta sella la sesión en events_raw sin PII
+              y el login tiene límite de intentos (429, R5a #101).
+            </p>
+          </div>
+        )}
+        {modoApi && sesionActiva() && (
+          <div className="mb-3 p-2.5 rounded-lg text-[11px] flex items-center justify-between" style={{ background: BRAND.surfaceHi }}>
+            <span>Sesión: {usuarioActivo()?.email} <span style={{ color: BRAND.dim }}>({usuarioActivo()?.rol})</span></span>
+            <button onClick={cerrarSesion} className="cursor-pointer" style={{ color: BRAND.celeste }}>Cerrar sesión</button>
+          </div>
+        )}
+        <p className="text-[11px] mb-4 p-2.5 rounded-lg" style={{ color: BRAND.sol, background: "rgba(245,200,66,0.08)" }}>
+          ⚠ No incluyas datos personales ni de contacto — el backend rechaza PII (ADR-020, Ley 25.326).
+          {modoApi ? " El activo se crea en estado “propuesto” y la moderación decide." : " En el demo sintético el alta NO persiste: vive en memoria."}
+        </p>
+        {error && (
+          <p className="text-[11px] mb-3 p-2.5 rounded-lg" style={{ color: "#E0703A", background: "rgba(224,112,58,0.08)" }}>{error}</p>
+        )}
+        <div className="flex gap-2">
+          <button onClick={onClose} className="flex-1 px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer"
+            style={{ background: BRAND.surfaceHi, color: BRAND.muted }}>Cancelar</button>
+          <button
+            onClick={intentar}
+            disabled={enviando}
+            className="flex-1 px-3 py-2 rounded-lg text-xs font-bold cursor-pointer disabled:opacity-50"
+            style={{ background: BRAND.sol, color: "#121212" }}>
+            {enviando ? "Enviando…" : modoApi ? "Proponer activo" : "Proponer activo (demo)"}
+          </button>
         </div>
       </div>
     </div>
@@ -562,6 +799,26 @@ export function DemoTerritorialFederado({ dataSource = new SyntheticDataSource()
   const [showTrace, setShowTrace] = useState(false);
   const [events, setEvents] = useState([]);
   const [reports, setReports] = useState([]);
+  // R5-UI (#109): capa ciudadana de activos (dominio `activos`, R5b)
+  const [activosByNode, setActivosByNode] = useState({});
+  const [activosError, setActivosError] = useState(null);
+  const [showActivoForm, setShowActivoForm] = useState(false);
+  const [selectedActivo, setSelectedActivo] = useState(null);
+  const [showActivos, setShowActivos] = useState(true);
+
+  // R5-UI (#109): activos ciudadanos por nodo (contrato DataSource.getActivos).
+  // En modo api son datos reales del backend (R5b); en synthetic, ilustrativos.
+  // Fallo honesto (R15): se declara el error, no se inventan activos.
+  useEffect(() => {
+    if (!nodeKey) return;
+    let alive = true;
+    setActivosError(null);
+    dataSource
+      .getActivos(nodeKey)
+      .then((acts) => { if (alive) setActivosByNode((prev) => ({ ...prev, [nodeKey]: acts })); })
+      .catch((err) => { if (alive) setActivosError(err instanceof Error ? err.message : String(err)); });
+    return () => { alive = false; };
+  }, [nodeKey, dataSource]);
 
   const node = nodeKey ? territorios.find((n) => n.key === nodeKey) : null;
   const nodeLayers = nodeKey ? (capasByNode[nodeKey] ?? []) : [];
@@ -581,6 +838,7 @@ export function DemoTerritorialFederado({ dataSource = new SyntheticDataSource()
   const openNode = (key) => {
     setNodeKey(key);
     setSelected(null);
+    setSelectedActivo(null);
     setShowEthical(false);
   };
 
@@ -628,11 +886,38 @@ export function DemoTerritorialFederado({ dataSource = new SyntheticDataSource()
     setShowEthical(true); // el reporte alimenta inmediatamente el ciclo Productor → Intérprete
   };
 
+  // R5-UI (#109): alta ciudadana de activo. En synthetic vive en memoria (no
+  // persiste, R15); en modo api el backend ya creó el registro sellado (R5b).
+  const submitActivo = ({ tipo, titulo, descripcion, lat, lng, picked, id, createdByHash, createdAt, isSynthetic }) => {
+    setActivosByNode((prev) => ({
+      ...prev,
+      [nodeKey]: [
+        {
+          id, nodeKey, tipo, titulo, descripcion, estado: "propuesto",
+          lat, lng, x: picked.x, y: picked.y, createdByHash, createdAt, isSynthetic,
+        },
+        ...(prev[nodeKey] ?? []),
+      ],
+    }));
+    if (dataSource.esSintetico()) {
+      // Trazabilidad de sesión (en memoria), como el reporte del demo.
+      setEvents((prev) => [
+        { eventId: "ev-" + Math.random().toString(16).slice(2, 8), type: "ActivoPropuesto (demo, en memoria)", nodeId: node.id, occurredAt: new Date().toISOString() },
+        ...prev,
+      ]);
+    }
+    setShowActivoForm(false);
+    setSelectedActivo(null);
+  };
+
   if (compareMode) return <CompareScreen nodes={territorios} capasByNode={capasByNode} featuresByNode={featuresByNode} onBack={() => setCompareMode(false)} onEnterNode={(k) => { setCompareMode(false); openNode(k); }} />;
   if (!node) return <EntryScreen nodes={territorios} layerCount={(k) => (capasByNode[k] ?? []).length} onEnter={openNode} onCompare={() => setCompareMode(true)} />;
 
   const nodeReports = reports.filter((r) => r.nodeKey === nodeKey);
   const nodeEvents = events.filter((e) => e.nodeId === node.id);
+  // R5-UI (#109): capa ciudadana de activos del nodo visible
+  const nodeActivos = activosByNode[nodeKey] ?? [];
+  const visibleActivos = showActivos ? nodeActivos : [];
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: BRAND.bg, color: BRAND.text }}>
@@ -672,6 +957,17 @@ export function DemoTerritorialFederado({ dataSource = new SyntheticDataSource()
               </div>
             ))}
           </div>
+
+          <button onClick={() => setShowActivos(!showActivos)}
+            className="w-full px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer mb-2"
+            style={{ background: showActivos ? BRAND.sol + "22" : BRAND.surfaceHi, color: showActivos ? BRAND.sol : BRAND.muted, border: "1px solid " + (showActivos ? BRAND.sol + "55" : BRAND.border) }}>
+            {showActivos ? "Ocultar" : "Ver"} activos ciudadanos ({nodeActivos.length})
+          </button>
+          {activosError && (
+            <p className="text-[11px] mb-3 p-2.5 rounded-lg" style={{ color: "#E0703A", background: "rgba(224,112,58,0.08)" }}>
+              No se pudieron cargar los activos: {activosError}
+            </p>
+          )}
 
           <div className="text-[10px] uppercase tracking-widest mb-2" style={{ color: BRAND.dim }}>Capas</div>
           <div className="space-y-1.5 mb-4">
@@ -735,9 +1031,14 @@ export function DemoTerritorialFederado({ dataSource = new SyntheticDataSource()
             onSelect={setSelected}
             onReportClick={() => setShowReportForm(true)}
             reportMarkers={nodeReports.map((r) => ({ id: r.id, x: r.picked.x, y: r.picked.y }))}
+            activoMarkers={visibleActivos}
+            onActivoClick={setSelectedActivo}
+            selectedActivoId={selectedActivo?.id ?? null}
+            onActivoPropose={() => setShowActivoForm(true)}
           />
           <div className="absolute top-3 left-3 w-80 space-y-3">
             {selected && <FeatureCard feature={selected} node={node} layers={capasByNode[selected.nodeKey] ?? []} onClose={() => setSelected(null)} />}
+            {selectedActivo && <ActivoCard activo={selectedActivo} node={node} onClose={() => setSelectedActivo(null)} />}
             {showEthical && <EthicalPanel node={node} reports={nodeReports} features={visibleFeatures} onClose={() => setShowEthical(false)} />}
             {showTrace && <TraceabilityPanel events={nodeEvents} node={node} />}
           </div>
@@ -756,6 +1057,15 @@ export function DemoTerritorialFederado({ dataSource = new SyntheticDataSource()
 
       {showReportForm && (
         <ReportForm node={node} cats={catsByNode[nodeKey] ?? []} onSubmit={submitReport} onClose={() => setShowReportForm(false)} />
+      )}
+
+      {showActivoForm && (
+        <ActivoForm
+          node={node}
+          modoApi={!dataSource.esSintetico()}
+          onSubmit={submitActivo}
+          onClose={() => setShowActivoForm(false)}
+        />
       )}
 
       <footer className="py-3 text-center text-xs" style={{ borderTop: "1px solid " + BRAND.border, color: BRAND.dim }}>

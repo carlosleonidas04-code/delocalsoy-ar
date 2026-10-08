@@ -5,11 +5,16 @@
  * (SyntheticDataSource) y un fixture fake — cumplen el mismo contrato
  * observable. Así el contrato queda asegurado antes de agregar ApiDataSource
  * (DEMO-3, #18) sobre los endpoints `/api/*`.
+ *
+ * R5-UI (#109): el contrato incluye `getActivos` (dominio `activos`, R5b) —
+ * toda implementación del DataSource sirve activos ciudadanos con pseudónimo
+ * (createdByHash) y estado del flujo de moderación.
  */
 import { describe, expect, it } from "vitest";
 import type { DataSource } from "./dataSource";
 import { SyntheticDataSource } from "./SyntheticDataSource";
 import type {
+  ActivoTerritorial,
   Capa,
   CategoriaReporte,
   Evidencia,
@@ -61,6 +66,17 @@ class FakeDataSource implements DataSource {
 
   async getReportes(_territorioKey: string): Promise<ReporteTerritorial[]> {
     return [];
+  }
+
+  async getActivos(territorioKey: string): Promise<ActivoTerritorial[]> {
+    return territorioKey
+      ? [{
+          id: "act-fake", nodeKey: territorioKey, tipo: "patrimonio",
+          titulo: "Activo fixture", descripcion: "Fixture", estado: "propuesto",
+          lat: -31.5, lng: -68.5, x: 50, y: 50, createdByHash: "fakehash0000",
+          createdAt: "2026-01-01", isSynthetic: true,
+        }]
+      : [];
   }
 
   async getEventos(_territorioId: string): Promise<EventoTerritorial[]> {
@@ -121,6 +137,16 @@ async function verificarContrato(ds: DataSource): Promise<Territorio[]> {
 
     expect(Array.isArray(await ds.getReportes(t.key))).toBe(true);
     expect(Array.isArray(await ds.getEventos(t.id))).toBe(true);
+
+    // R5-UI (#109): activos ciudadanos — pseudónimo sin PII, estado válido.
+    const activos = await ds.getActivos(t.key);
+    expect(Array.isArray(activos)).toBe(true);
+    for (const a of activos) {
+      expect(a.nodeKey).toBe(t.key);
+      expect(typeof a.titulo).toBe("string");
+      expect(typeof a.createdByHash).toBe("string");
+      expect(["propuesto", "aprobado", "rechazado"]).toContain(a.estado);
+    }
   }
 
   expect(Array.isArray(await ds.getEvidencias())).toBe(true);
@@ -147,5 +173,28 @@ describe("Contrato DataSource (DEMO-2, #17)", () => {
     a.pop();
     const b = await ds.getTerritorios();
     expect(b.length).toBe(3);
+  });
+
+  it("SyntheticDataSource.getActivos deriva lat/lng del centro del nodo (R5-UI, #109)", async () => {
+    const ds = new SyntheticDataSource();
+    const territorios = await ds.getTerritorios();
+    for (const t of territorios) {
+      const activos = await ds.getActivos(t.key);
+      for (const a of activos) {
+        expect(a.nodeKey).toBe(t.key);
+        expect(a.isSynthetic).toBe(true);
+        expect(a.estado).toBe("propuesto");
+        expect(typeof a.createdByHash).toBe("string");
+        // envolvente de presentación ±0.05° alrededor del centro (ADR-030)
+        expect(a.lat).toBeGreaterThan(t.center.lat - 0.05);
+        expect(a.lat).toBeLessThan(t.center.lat + 0.05);
+        expect(a.lng).toBeGreaterThan(t.center.lng - 0.05);
+        expect(a.lng).toBeLessThan(t.center.lng + 0.05);
+      }
+    }
+    // fixture declarado en SyntheticDataSource: 2 en capital, 1 en caucete, 1 en iglesia
+    expect((await ds.getActivos("capital")).length).toBe(2);
+    expect((await ds.getActivos("caucete")).length).toBe(1);
+    expect((await ds.getActivos("iglesia")).length).toBe(1);
   });
 });
