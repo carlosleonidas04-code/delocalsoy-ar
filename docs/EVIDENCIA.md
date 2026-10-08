@@ -55,7 +55,6 @@
 
 ## Matriz de evidencia — main (CORE-003, salto funcional #83)
 
-
 | Código | Título | Estado | Ancla main | Acreditación (salida real) |
 |---|---|---|---|---|
 | EV-029 | CORE-003 R1/R2 (#83): rutas de lectura del vocabulario CORE-002 + seed idempotente del vocabulario v5.1 (nodos con población INDEC 2022 y centro, capas, categorías, features de diseño con lat/lng reales, reportes demo) | **ok** | `e1d9512` (PR #84) | `nodos-rutas.test.ts` en CI con PostGIS real: `GET /api/nodos` → 3 nodos con población > 0 y centro; 404 honesto en key inexistente; catálogo capital completo (6 capas); integridad categoría→capa en los 3 nodos; features con lat/lng de San Juan y fuente "Ilustrativa · …"; `db:seed` re-ejecutado sin duplicados (idempotencia total) |
