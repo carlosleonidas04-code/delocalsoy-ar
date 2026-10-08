@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import { createHash } from 'node:crypto';
 import { prisma } from '@delocalsoy/db';
+import { xaddEventReference } from '../lib/redis.js';
 
 /**
  * Eventos crudos del sistema — fuente de verdad.
@@ -16,6 +17,11 @@ import { prisma } from '@delocalsoy/db';
  * R8 (p. ej. PATCH /api/health/mode, auth de CORE-004 R3) los escriben.
  * La ingesta pública los rechaza: nadie puede falsificar el estado global
  * (mode, sesiones) por el endpoint público de eventos.
+ *
+ * ADR-032 (CORE-004 R4a): tras persistir en events_raw (única fuente de
+ * verdad) se publica una REFERENCIA al stream events:raw — transporte para
+ * el worker de R4b. Fail-open: sin Redis, el POST sigue 201; el stream no
+ * es almacén de la verdad, solo avisa la proyección.
  */
 const router: Router = Router();
 
@@ -100,6 +106,15 @@ router.post('/', async (req: Request, res: Response) => {
         hash,
         occurred_at: occurredAt,
       },
+    });
+
+    // ADR-032 (R4a): transporte — referencia al stream events:raw (fail-open).
+    // events_raw es la verdad; el stream solo avanza la proyección (worker R4b).
+    await xaddEventReference('events:raw', {
+      event_id: event.id,
+      type: event.type,
+      hash: event.hash,
+      occurred_at: event.occurred_at.toISOString(),
     });
     res.status(201).json({ status: 'creado', event });
   } catch (err) {

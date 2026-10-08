@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from 'express';
 import { createHash } from 'node:crypto';
 import { prisma } from '@delocalsoy/db';
 import { RuntimeHealthModeSchema } from '@delocalsoy/contracts';
+import { pingRedis, xaddEventReference } from '../lib/redis.js';
 
 /**
  * Salud honesta del sistema — Aterrizaje PR 1 (issue #20).
@@ -75,6 +76,9 @@ router.get('/', async (_req: Request, res: Response) => {
     }
   }
 
+  // ADR-032 (R4a): transporte Redis Streams — honesto como el resto del health.
+  const redis = await pingRedis();
+
   res.json({
     status: effectiveMode === 'real' ? 'ok' : effectiveMode,
     service: 'delocalsoy-ar-api',
@@ -84,6 +88,7 @@ router.get('/', async (_req: Request, res: Response) => {
     modeDeclaredAt: declared.declaredAt,
     modeSource: declared.source, // events_raw | process (R7)
     dataSource: db ? 'postgres' : 'none',
+    redis, // ok | down — transporte Redis Streams (ADR-032, R4a)
     branchProtection: process.env.BRANCH_PROTECTION === 'true', // honesto: false hasta que exista la regla de rama (issue #25)
     evidencias: evidenciasCount,
     timestamp: new Date().toISOString(),
@@ -119,8 +124,16 @@ router.patch('/mode', async (req: Request, res: Response) => {
   // R4/R5: sin base no hay sello => la transición NO se aplica.
   // R7: el sello ES el estado; la memoria solo acelera el fallback.
   try {
-    await prisma.events_raw.create({
+    const sealed = await prisma.events_raw.create({
       data: { type: 'system.mode_change', payload, hash, occurred_at: occurredAt },
+    });
+    // ADR-032 (R4a): el sello también pasa al transporte (fail-open) — el
+    // worker de R4b reacciona a cambios de modo sin releer events_raw.
+    await xaddEventReference('events:raw', {
+      event_id: sealed.id,
+      type: sealed.type,
+      hash: sealed.hash,
+      occurred_at: sealed.occurred_at.toISOString(),
     });
   } catch (err) {
     res.status(503).json({

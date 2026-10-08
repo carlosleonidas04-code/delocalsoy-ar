@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "DELocalSoy.AR Federated API Contract",
-    "version": "7.8.0",
-    "description": "Reconciliado CORE-004 (regla documental, #87): documenta todas las rutas montadas en apps/api/src/app.ts. R1: 11 rutas v7.7.0. R3 (ADR-031): /api/auth/* + system.* reservado (H-01). EV-031/EV-032."
+    "version": "7.9.0",
+    "description": "Reconciliado CORE-004 (regla documental, #87): documenta todas las rutas montadas en apps/api/src/app.ts. R1: 11 rutas v7.7.0. R3 (ADR-031): /api/auth/* + system.* reservado (H-01). EV-031/EV-032. R4a (ADR-032): transporte Redis Streams (stream events:raw) — events_raw única fuente de verdad, publish fail-open."
   },
   "paths": {
     "/api/health": {
@@ -11,7 +11,7 @@
         "summary": "Honest Runtime Health (R5, mode resuelto desde events_raw — R7)",
         "responses": {
           "200": {
-            "description": "OK (mode: real) o estado declarado (synthetic | degraded)"
+            "description": "OK (mode: real) o estado declarado (synthetic | degraded); redis: ok|down — transporte Redis Streams (ADR-032, R4a)"
           }
         }
       }
@@ -21,7 +21,7 @@
         "summary": "Authenticated Mode Switch, sellado en events_raw (R5/R8)",
         "responses": {
           "200": {
-            "description": "Transición sellada"
+            "description": "Transición sellada (y referencia publicada al stream events:raw — ADR-032, fail-open)"
           },
           "401": {
             "description": "Unauthorized"
@@ -123,7 +123,7 @@
             "description": "Duplicate (re-ingesta idempotente: mismo hash, original intacto)"
           },
           "201": {
-            "description": "Created"
+            "description": "Created — persiste en events_raw (única verdad) y publica referencia al stream events:raw (transporte ADR-032, fail-open)"
           },
           "400": {
             "description": "Bad Request (type y occurred_at inválidos, o PII detectada — sin eco del valor)"

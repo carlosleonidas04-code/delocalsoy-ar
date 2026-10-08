@@ -7,6 +7,8 @@ name: CI
 # + suite vitest (EV-005 / R5 / contrato). El auto-report cubre build y test.
 # v13 (DEMO-2 #17): el job `test` ejecuta también la suite de apps/web
 # (contrato DataSource del demo territorial), sin PostGIS.
+# v14 (CORE-004 R4a, #87): servicio Redis real en el job `test` (ADR-032) —
+# el transporte Redis Streams se prueba contra instancia viva, no simulada (R5).
 
 on:
   push:
@@ -61,8 +63,18 @@ jobs:
           --health-interval 5s
           --health-timeout 3s
           --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
     env:
       DATABASE_URL: "postgresql://delocalsoy:delocalsoy@localhost:5432/delocalsoy?schema=public"
+      REDIS_URL: "redis://localhost:6379"
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
