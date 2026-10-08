@@ -46,7 +46,13 @@
 
 ## ADR-015 — AI Studio como cliente del contrato ✅ RATIFICADO (preexistente)
 - **Estado:** RATIFICADO por Dirección Humana (2026-10-05, issue #24)
-- **Contenido:** AI Studio como cliente de /api/contrato-sistema, no plataforma paralela.
+- **Contenido:** AI Studio como cliente del contrato del sistema (`@delocalsoy/contracts` + `docs/api/openapi.json`), no plataforma paralela.
+- **Enmienda 2026-10-08 (AUD-10, #106):** la ruta `/api/contrato-sistema` nunca existió en `apps/api`. El contrato vigente es `@delocalsoy/contracts` (schemas Zod) + `docs/api/openapi.json` (v7.7.0). Ramas de staging: `agent-google/*` (identidad unificada con ADR-033).
+
+## ADR-033 — Adhesión de Google AI Studio Build (`agent-google`) ✅ RATIFICADO
+- **Estado:** RATIFICADO por Dirección Humana (2026-10-08, R9 en [#87](https://github.com/carlosleonidas04-code/delocalsoy-ar/issues/87#issuecomment-6059183834))
+- **Contenido:** AI Studio Build como agente `agent-google`: diseño visual, staging con preview y prototipado UI. Sincronización pull-only desde GitHub, nunca force push; cambios vía export → rama `agent-google/*` → PR → CI → merge; secrets server-side. Ancla de rollback: `baseline/core003-d70cbc6`.
+- **Enmienda 2026-10-08 (AUD-10, [#106](https://github.com/carlosleonidas04-code/delocalsoy-ar/issues/106)):** identidad unificada `agent-google` (antes `google-studio` / `agent-studio/*`), opción A ratificada R9 — conserva el historial #20–#28, #49, #50.
 
 ## HITUB v2.0 — Contrato Social Territorial y Multi-Agente ✅ RATIFICADO
 - **Estado:** RATIFICADO por Dirección Humana (2026-10-05, issue #29)
