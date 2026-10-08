@@ -15,7 +15,7 @@
 | Auth | **Identidad por etapas implementada (ADR-031, CORE-004 R3):** usuarios + JWT HS256 15 min + roles `ciudadano\|moderador\|admin`; contraseñas scrypt y HMAC con node:crypto nativo (**cero dependencias nuevas**); guards `requireJwt`/`requireRole` fail-closed sin `JWT_SECRET`; alta pública solo crea ciudadanos (promoción = operación de sistema con API key R8); sesiones selladas en `events_raw` sin PII (Ley 25.326) |
 | Asincronía | **R4a (este PR, ADR-032):** publish fail-open de referencias al stream `events:raw` (POST /api/events y sellos de mode; cliente RESP mínimo sobre node:net — cero dependencias; Redis real en CI y docker-compose; health reporta `redis: ok|down`). `events_raw` sigue como única fuente de verdad; worker idempotente = R4b |
 | Gobernanza | Toda afirmación requiere evidencia ejecutable anclada a SHA (R4/R15). Repo privado sin branch protection (decisión DH 2026-10-07): compuerta = disciplina + CI verde en cada PR |
-| Ecosistema multi-agente | agent-vibe, Anthropic (ADR-022), Perplexity (ADR-023), Grok (ADR-025), Google AI Studio (ADR-033: cliente con preview visual, pull-only, sin force push, cambios vía rama + PR + CI) |
+| Ecosistema multi-agente | agent-vibe, Anthropic (ADR-022), Perplexity (ADR-023), Grok (ADR-025), Google AI Studio `agent-google` (ADR-033: cliente con preview visual, pull-only, sin force push, cambios vía rama `agent-google/*` + PR + CI) |
 
 ## Estado
 
