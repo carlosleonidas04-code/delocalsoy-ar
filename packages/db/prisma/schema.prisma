@@ -7,6 +7,10 @@
 // - reportes con flujo received → evaluating → in_progress → resolved
 // - columna PostGIS `geom` en reportes/features (agregada por migración
 //   versionada: Prisma no soporta tipos geometry nativamente)
+//
+// EXTENSIÓN CORE-004 (identidad por etapas, ADR-031):
+// - usuarios con rol ciudadano | moderador | admin
+// - sin PII en events_raw: sellos system.user_* solo con {usuario_id, rol}
 
 generator client {
   provider = "prisma-client-js"
@@ -48,7 +52,7 @@ model territorios {
   provincia String  @map("provincia")
   activo    Boolean @default(true) @map("activo")
 
-  /// Geometría puntal WGS84 (Aterrizaje PR 2 — issue #21).
+  /// Geometría puntual WGS84 (Aterrizaje PR 2 — issue #21).
   /// Prisma no tipa geometry: se administra vía SQL (migración + índice GiST).
   geom Unsupported("geometry(Point,4326)")?
 
@@ -158,4 +162,21 @@ model reportes {
   nodo nodos @relation(fields: [nodo_id], references: [id], onDelete: Cascade)
 
   @@map("reportes")
+}
+
+// ─── CORE-004: identidad por etapas (ADR-031, #87) ───
+
+/// Usuarios con rol (ciudadano | moderador | admin). La contraseña vive solo
+/// como hash scrypt en password_hash (node:crypto — cero dependencias nuevas).
+/// events_raw registra sellos system.user_* sin PII (Ley 25.326, ADR-027).
+model usuarios {
+  id            String   @id @default(cuid())
+  email         String   @unique @map("email")
+  password_hash String   @map("password_hash") // scrypt$<salt hex>$<hash hex>
+  rol           String   @default("ciudadano") @map("rol") // ciudadano | moderador | admin
+  display_name  String?  @map("display_name")
+  created_at    DateTime @default(now()) @map("created_at")
+  updated_at    DateTime @updatedAt @map("updated_at")
+
+  @@map("usuarios")
 }

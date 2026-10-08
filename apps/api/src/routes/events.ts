@@ -10,8 +10,17 @@ import { prisma } from '@delocalsoy/db';
  * con datos personales identificables (DNI/CUIT/CUIL, email, teléfono AR).
  * El rechazo es ANTES de persistir y genérico: nunca repite el valor
  * sospechoso en la respuesta ni en stdout.
+ *
+ * H-01 (auditoría T2 Anthropic, 2026-10-07, corregido en CORE-004 R3): los
+ * tipos 'system.*' son sellos del sistema — solo las rutas internas con guard
+ * R8 (p. ej. PATCH /api/health/mode, auth de CORE-004 R3) los escriben.
+ * La ingesta pública los rechaza: nadie puede falsificar el estado global
+ * (mode, sesiones) por el endpoint público de eventos.
  */
 const router: Router = Router();
+
+// Prefijo reservado: sellos del sistema, no ingesta pública.
+const SYSTEM_TYPE_PREFIX = 'system.';
 
 // Patrones de PII argentina (ADR-027). Se aplican sobre el contenido de
 // autoría humana del evento (type/payload/occurred_at); el hash hexagonal
@@ -40,6 +49,15 @@ router.post('/', async (req: Request, res: Response) => {
 
   if (typeof body.type !== 'string' || body.type.length === 0) {
     res.status(400).json({ error: "'type' es requerido (string no vacío)" });
+    return;
+  }
+
+  // H-01: tipo reservado del sistema — la ingesta pública no puede sellar
+  // system.* (evita falsificar mode/sesiones saltándose los guards R8).
+  if (body.type.startsWith(SYSTEM_TYPE_PREFIX)) {
+    res.status(403).json({
+      error: "tipo reservado del sistema: 'system.*' no se acepta por la ingesta pública",
+    });
     return;
   }
 
