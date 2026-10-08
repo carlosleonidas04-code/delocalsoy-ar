@@ -23,11 +23,9 @@ router.get('/', async (_req, res: Response) => {
     const nodos = await prisma.nodos.findMany({ orderBy: { key: 'asc' } });
     res.json({ success: true, data: nodos, count: nodos.length });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: 'Error al obtener nodos',
-      details: error instanceof Error ? error.message : String(error),
-    });
+    // AUD-06 (#100): el detalle queda en stdout del servidor, nunca en la respuesta.
+    console.error('[nodos] listar:', error instanceof Error ? error.message : String(error));
+    res.status(500).json({ success: false, error: 'Error al obtener nodos' });
   }
 });
 
@@ -40,11 +38,8 @@ router.get('/:key', async (req: Request, res: Response) => {
     }
     res.json({ success: true, data: nodo });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: 'Error al obtener nodo',
-      details: error instanceof Error ? error.message : String(error),
-    });
+    console.error('[nodos] por key:', error instanceof Error ? error.message : String(error));
+    res.status(500).json({ success: false, error: 'Error al obtener nodo' });
   }
 });
 
@@ -61,11 +56,8 @@ router.get('/:key/capas', async (req: Request, res: Response) => {
     });
     res.json({ success: true, data: capas, count: capas.length });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: 'Error al obtener capas',
-      details: error instanceof Error ? error.message : String(error),
-    });
+    console.error('[nodos] capas:', error instanceof Error ? error.message : String(error));
+    res.status(500).json({ success: false, error: 'Error al obtener capas' });
   }
 });
 
@@ -89,11 +81,8 @@ router.get('/:key/categorias', async (req: Request, res: Response) => {
     }));
     res.json({ success: true, data, count: data.length });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: 'Error al obtener categorías',
-      details: error instanceof Error ? error.message : String(error),
-    });
+    console.error('[nodos] categorías:', error instanceof Error ? error.message : String(error));
+    res.status(500).json({ success: false, error: 'Error al obtener categorías' });
   }
 });
 
@@ -124,11 +113,8 @@ router.get('/:key/features', async (req: Request, res: Response) => {
     }));
     res.json({ success: true, data, count: data.length });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: 'Error al obtener features',
-      details: error instanceof Error ? error.message : String(error),
-    });
+    console.error('[nodos] features:', error instanceof Error ? error.message : String(error));
+    res.status(500).json({ success: false, error: 'Error al obtener features' });
   }
 });
 
@@ -145,11 +131,8 @@ router.get('/:key/reportes', async (req: Request, res: Response) => {
     });
     res.json({ success: true, data: rows, count: rows.length });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: 'Error al obtener reportes',
-      details: error instanceof Error ? error.message : String(error),
-    });
+    console.error('[nodos] reportes:', error instanceof Error ? error.message : String(error));
+    res.status(500).json({ success: false, error: 'Error al obtener reportes' });
   }
 });
 

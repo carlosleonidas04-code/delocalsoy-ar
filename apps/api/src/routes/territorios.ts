@@ -74,11 +74,9 @@ router.get('/', async (req, res) => {
       count: territorios.length,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: 'Error al obtener territorios',
-      details: error instanceof Error ? error.message : String(error),
-    });
+    // AUD-06 (#100): el detalle queda en stdout del servidor, nunca en la respuesta.
+    console.error('[territorios] listar:', error instanceof Error ? error.message : String(error));
+    res.status(500).json({ success: false, error: 'Error al obtener territorios' });
   }
 });
 
@@ -103,11 +101,8 @@ router.get('/:id', async (req, res) => {
       data: territorio,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: 'Error al obtener territorio',
-      details: error instanceof Error ? error.message : String(error),
-    });
+    console.error('[territorios] por id:', error instanceof Error ? error.message : String(error));
+    res.status(500).json({ success: false, error: 'Error al obtener territorio' });
   }
 });
 
@@ -138,11 +133,8 @@ router.post('/', requireApiKey, async (req, res) => {
       });
     }
 
-    res.status(500).json({
-      success: false,
-      error: 'Error al crear territorio',
-      details: error instanceof Error ? error.message : String(error),
-    });
+    console.error('[territorios] crear:', error instanceof Error ? error.message : String(error));
+    res.status(500).json({ success: false, error: 'Error al crear territorio' });
   }
 });
 
@@ -182,11 +174,8 @@ router.put('/:id', requireApiKey, async (req, res) => {
       });
     }
 
-    res.status(500).json({
-      success: false,
-      error: 'Error al actualizar territorio',
-      details: error instanceof Error ? error.message : String(error),
-    });
+    console.error('[territorios] actualizar:', error instanceof Error ? error.message : String(error));
+    res.status(500).json({ success: false, error: 'Error al actualizar territorio' });
   }
 });
 
@@ -217,11 +206,8 @@ router.delete('/:id', requireApiKey, async (req, res) => {
       message: 'Territorio desactivado exitosamente',
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: 'Error al desactivar territorio',
-      details: error instanceof Error ? error.message : String(error),
-    });
+    console.error('[territorios] desactivar:', error instanceof Error ? error.message : String(error));
+    res.status(500).json({ success: false, error: 'Error al desactivar territorio' });
   }
 });
 

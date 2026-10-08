@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "DELocalSoy.AR Federated API Contract",
-    "version": "7.9.0",
-    "description": "Reconciliado CORE-004 (regla documental, #87): documenta todas las rutas montadas en apps/api/src/app.ts. R1: 11 rutas v7.7.0. R3 (ADR-031): /api/auth/* + system.* reservado (H-01). EV-031/EV-032. R4a (ADR-032): transporte Redis Streams (stream events:raw) — events_raw única fuente de verdad, publish fail-open."
+    "version": "7.10.0",
+    "description": "Reconciliado CORE-004 (regla documental, #87): documenta todas las rutas montadas en apps/api/src/app.ts. R1: 11 rutas v7.7.0. R3 (ADR-031): /api/auth/* + system.* reservado (H-01). EV-031/EV-032. R4a (ADR-032): transporte Redis Streams (stream events:raw) — events_raw única fuente de verdad, publish fail-open. R5a (auditoría #99–#102): rate limiting 429 por IP+hash(email) en /api/auth/{register,login} (header Retry-After); 5xx sanitizados sin mensajes internos."
   },
   "paths": {
     "/api/health": {
@@ -43,7 +43,13 @@
             "description": "Datos inválidos (contrato Zod)"
           },
           "409": {
-            "description": "Email ya registrado"
+            "description": "Email ya registrado (riesgo residual aceptado y acotado por el rate limit — AUD-04)"
+          },
+          "429": {
+            "description": "Demasiados intentos: rate limit por IP+hash(email), reintentar según Retry-After (R5a, #101)"
+          },
+          "500": {
+            "description": "Error interno sanitizado (sin mensajes del servidor — R5a, #100)"
           }
         }
       }
@@ -59,7 +65,13 @@
             "description": "Datos inválidos"
           },
           "401": {
-            "description": "Credenciales inválidas (genérico)"
+            "description": "Credenciales inválidas (genérico — mismo costo scrypt exista o no el email, R5a #99)"
+          },
+          "429": {
+            "description": "Demasiados intentos: rate limit por IP+hash(email), reintentar según Retry-After (R5a, #101)"
+          },
+          "500": {
+            "description": "Error interno sanitizado (sin mensajes del servidor — R5a, #100)"
           },
           "503": {
             "description": "Sin JWT_SECRET o sin base para sellar"
@@ -76,6 +88,9 @@
           },
           "401": {
             "description": "Bearer token ausente o inválido"
+          },
+          "500": {
+            "description": "Error interno sanitizado, con manejo de errores (R5a, #100/#102)"
           },
           "503": {
             "description": "Sin JWT_SECRET"

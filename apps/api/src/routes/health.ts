@@ -136,10 +136,9 @@ router.patch('/mode', async (req: Request, res: Response) => {
       occurred_at: sealed.occurred_at.toISOString(),
     });
   } catch (err) {
-    res.status(503).json({
-      error: 'no se pudo sellar la transición en events_raw',
-      detail: err instanceof Error ? err.message : String(err),
-    });
+    // AUD-06 (#100): el detalle queda en stdout del servidor, nunca en la respuesta.
+    console.error('[health] sellar modo:', err instanceof Error ? err.message : String(err));
+    res.status(503).json({ error: 'no se pudo sellar la transición en events_raw' });
     return;
   }
 
