@@ -1,0 +1,21 @@
+RATIFICACIÓN DH — EthicalAiCopilotPanel.tsx [agent: google] — 2026-10-09 (~14:10Z)
+
+La DH (Carlos Leonidas) ratificó explícitamente el REENSAMBLADO del archivo
+staging-paste/component-EthicalAiCopilotPanel.tsx (respaldado @ 0bf5065,
+54.272 B / 1.358 líneas tal como llegó):
+
+Al momento del aterrizaje (cuando se resuelvan las dependencias: App.tsx staging con
+type Territorio), la cola desplazada al final del archivo — setLocalSeciRecords(...) /
+setActiveTab('seci_voice') / setStatusFeedback(...) y cierre };` — se colocará en su
+posición original dentro de handlePromoteToSeci, inmediatamente antes del comentario
+"// Crear nuevo registro SECI manual". La divergencia de transmisión quedará documentada
+en el commit de aterrizaje (R4/R12): nunca silenciosa.
+
+El respaldo en scratch permanece TAL COMO LLEGÓ (byte-idéntico a la transmisión):
+el reensamblado ocurre únicamente en el aterrizaje, sobre el árbol de la rama del PR,
+con el respaldo verbatim como fuente de acreditación.
+
+Condiciones de aterrizaje vigentes: R5 (CI verde en el head del PR #116 antes de
+declarar aterrizado), R9 (solo la DH mergea a main), un commit por archivo.
+
+Co-authored-by: Carlos Leonidas <carlosleonidas04@gmail.com>
