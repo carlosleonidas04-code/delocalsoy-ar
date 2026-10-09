@@ -1,0 +1,44 @@
+RATIFICACIÓN DH — federatedModel.ts [agent: google] — 2026-10-09 (~22:03Z)
+
+La DH (Carlos Leonidas) ratificó explícitamente el módulo
+staging-paste/data-federatedModel.ts (respaldado @ 06af651, 9.528 B / 362 líneas /
+md5 889ed6936c13d27a29dc310f72d8af16) como BASE CANÓNICA DEL CONTRATO DE DATOS
+para el reensamblado/aterrizaje de los archivos consumidores respaldados que
+importan ../data/federatedModel (cadena de 13+ archivos bloqueados).
+
+Verificación de contrato registrada (turno 06af651): el módulo exporta exactamente
+las 5 constantes que WorkspacePanel.tsx respaldado importa (QUARTERS,
+REPORT_STATUS_META, STATUS_META, SYNC_PACK_STATUS_META, SYNTHESIS_STATUS_META)
+más los 9 tipos requeridos. Compila as-pasted (módulo pure TS, sin imports).
+
+EVIDENCIA REGISTRADA (no ratificada por este acto): el módulo usa ST_Intersects con
+mayúscula (literal spatialOperator: 'ST_Intersects + ST_DWithin(SRID=4326)' y
+comentario de sección H4). Se registra como evidencia de contrato para el dilema
+HorizonFourFieldAndTelemetryPanel línea 258 (ST_Intersects vs ST_intersects), que
+SIGUE PENDIENTE de ratificación explícita de la DH.
+
+NO ratificados por este acto — cola de ratificación abierta:
+(1) fragmentos desplazados RecursiveProspectiveContractPanel (reensamblado);
+(2) HorizonFour línea 258 ST_Intersects vs ST_intersects;
+(3) typo problemaUportunidad (3 ocurrencias, TerritorialPlatformHub);
+(4) token dev embebido en cliente (delocalsoy-dev-write-token-r8);
+(5) versión canónica de VerifiedAssetsGalleryView (original vs -reenvio con fix
+    onClick setFilterMode('all_node_features'));
+(6) versión canónica de WorkspacePanel (original indentado vs -reenvio con await
+    a columna 0 en handleLocalDownload).
+
+Estado de la cadena de dependencias tras esta ratificación:
+- RESUELTA: ../data/federatedModel (ratificado, canónico).
+- PENDIENTES DE RECEPCIÓN (bloquean aterrizajes): ../lib/apiClient (apiClient.ts),
+  ../App (App.tsx, type Territorio), ../services/googleDriveService
+  (googleDriveService.ts), vite.config.ts.
+- PENDIENTE DE CONFIRMACIÓN DH: drive-integration-pending.txt (18.474 B, en scratch).
+- Regla vigente: recharts aterriza en el mismo commit que su consumidor.
+
+Condiciones de aterrizaje vigentes: R5 (CI verde en el head del PR #116 antes de
+declarar aterrizado), R9 (solo la DH mergea a main), R4/R12 (transcripción verbatim
+y acreditación en cada recepción), un commit por archivo.
+
+El respaldo en scratch permanece TAL COMO LLEGÓ (byte-idéntico a la transmisión).
+
+Co-authored-by: Carlos Leonidas <carlosleonidas04@gmail.com>
