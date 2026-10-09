@@ -1,0 +1,58 @@
+/*
+ * design tokens — delocalsoy-ar
+ * Dominio propio: [agent: google] — ADR-034 (refs #114, #109)
+ *
+ * Este archivo es el contrato visual del ecosistema (ADR-034 §4.1 y §4.6):
+ * toda la UI funcional de apps/web consume estas variables; agent-google
+ * itera sobre ellas en PRs solo-estética (0 líneas de lógica, §4.5).
+ *
+ * v0 = esqueleto neutral de arranque aterrizado por agent-vibe.
+ * La primera iteración real (identidad estética territorial San Juan —
+ * Capital [Centro y Desamparados], Caucete e Iglesia; tipografía y
+ * espaciado) la entrega agent-google sobre #109.
+ */
+:root {
+  /* — Paleta base (v0, placeholders neutrales) — */
+  --dls-color-bg: #f7f5f2;
+  --dls-color-surface: #ffffff;
+  --dls-color-border: #dcd7d0;
+  --dls-color-text: #26221d;
+  --dls-color-text-muted: #6d6659;
+  --dls-color-accent: #7c6a4f;
+  --dls-color-accent-contrast: #ffffff;
+
+  /* — Estados de activos territoriales — */
+  --dls-activo-propuesto: #b08d57;
+  --dls-activo-verificado: #4a7c59;
+  --dls-activo-rechazado: #a44a3f;
+
+  /* — Tipografía — */
+  --dls-font-family-base: "Segoe UI", system-ui, -apple-system, sans-serif;
+  --dls-font-size-xs: 0.75rem;
+  --dls-font-size-sm: 0.875rem;
+  --dls-font-size-md: 1rem;
+  --dls-font-size-lg: 1.25rem;
+  --dls-font-size-xl: 1.5rem;
+  --dls-font-weight-normal: 400;
+  --dls-font-weight-bold: 600;
+
+  /* — Espaciado — */
+  --dls-space-1: 0.25rem;
+  --dls-space-2: 0.5rem;
+  --dls-space-3: 0.75rem;
+  --dls-space-4: 1rem;
+  --dls-space-6: 1.5rem;
+  --dls-space-8: 2rem;
+
+  /* — Radios y sombras — */
+  --dls-radius-sm: 4px;
+  --dls-radius-md: 8px;
+  --dls-radius-full: 9999px;
+  --dls-shadow-card: 0 1px 3px rgba(38, 34, 29, 0.12);
+  --dls-shadow-pop: 0 4px 14px rgba(38, 34, 29, 0.18);
+
+  /* — Motion — */
+  --dls-motion-fast: 120ms;
+  --dls-motion-normal: 220ms;
+  --dls-easing: ease-out;
+}
