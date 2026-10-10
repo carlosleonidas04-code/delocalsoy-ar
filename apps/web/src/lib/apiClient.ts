@@ -8,8 +8,9 @@
  * (lote M26 del staging) ACREDITA que el nombre real del árbol de staging es
  * `lib/apiClient.ts`. El cuerpo del módulo es byte-idéntico al aterrizado en
  * PR #116; solo cambia el nombre de archivo y este encabezado de procedencia.
- * `lib/systemContract.ts` queda como shim de re-export para cualquier consumidor
- * del nombre anterior.
+ * El shim de re-export `lib/systemContract.ts` fue barrido tras el merge de #119
+ * (PR de limpieza posterior: 0 consumidores del nombre anterior, verificado con
+ * GitHub code search antes del borrado).
  */
 
 export interface PrismaModelDiagnostic {
