@@ -1,34 +1,38 @@
 /**
- * DELocalSoy.AR â Modelo Territorial Federado (H1âH4): contratos de tipo del payload
+ * DELocalSoy.AR — Modelo Territorial Federado (H1–H4): contratos de tipo del payload
  * de `GET /api/modelo-federado`.
  *
- * PROCEDENCIA (R4/R12 â reconstrucciÃ³n derivada, divulgada):
- * Este mÃ³dulo NO proviene verbatim de un lote de staging. Fue derivado por [agent: vibe]
+ * PROCEDENCIA (R4/R12 — reconstrucción derivada, divulgada):
+ * Este módulo NO proviene verbatim de un lote de staging. Fue derivado por [agent: vibe]
  * a partir de dos fuentes acreditadas:
  *   1. Las formas de datos reales sembradas por el middleware del staging
- *      (`vite.config.ts`, M29 â seeds `initialLayers`, `initialCategories`, `initialFeatures`,
+ *      (`vite.config.ts`, M29 — seeds `initialLayers`, `initialCategories`, `initialFeatures`,
  *      `initialEvidencias`, `initialSpatialGeometries`, `initialSyncPacks`,
  *      `initialTemporalSnapshots`, `initialMultiScaleSyntheses`, `initialLineageChain`,
  *      `initialSpatialIntersections`, `initialOfflineFieldQueue`,
  *      `initialAccreditedCustodians`, `initialTelemetryWebhooks`,
  *      `buildFederalSovereignty()`, `reports`, `eventsRaw` y `GET /api/modelo-federado`).
- *   2. El uso exacto que hace `App.tsx` (M27, aterrizado en main vÃ­a PR #117) de estos tipos.
+ *   2. El uso exacto que hace `App.tsx` (M27, aterrizado en main vía PR #117) de estos tipos.
  * Si un lote autoritativo posterior de [agent: google] trae el `federatedModel` original,
- * ese lote prevalece y debe reemplazar este archivo (Staging propone, GitHub acredita â R1).
+ * ese lote prevalece y debe reemplazar este archivo (Staging propone, GitHub acredita — R1).
  *
- * Reglas respetadas: R5 (sin fallbacks silenciosos â los tipos reflejan el contrato real
- * del endpoint, incluidos los campos anulables `*_at`), R14 (soberanÃ­a: los modos y roles
- * se modelan como uniones explÃ­citas) y ADR-004 (Contrato Ãtico: `requiresHumanReview`
+ * Reglas respetadas: R5 (sin fallbacks silenciosos — los tipos reflejan el contrato real
+ * del endpoint, incluidos los campos anulables `*_at`), R14 (soberanía: los modos y roles
+ * se modelan como uniones explícitas) y ADR-004 (Contrato Ético: `requiresHumanReview`
  * es parte del contrato de datos, no un decorado).
+ *
+ * NORMALIZACIÓN (commit 6 del PR #119, divulgada): los comentarios del tramo 1
+ * fueron re-normalizados a UTF-8; el push original del PR #118 los había dejado
+ * con mojibake (doble encoding). Solo comentarios — el código es ASCII y no cambia.
  */
 
 // ============================================================================
-// Uniones canÃ³nicas del dominio (derivadas de los seeds H1âH4 del middleware)
+// Uniones canónicas del dominio (derivadas de los seeds H1–H4 del middleware)
 // ============================================================================
 
 /**
  * Dominios territoriales usados por capas (`layers[].domain`), features
- * (`features[].domain`) y sÃ­ntesis (`multiScaleSyntheses[].involvedDomains`).
+ * (`features[].domain`) y síntesis (`multiScaleSyntheses[].involvedDomains`).
  */
 export type DomainKey =
   | 'assets'
@@ -40,28 +44,28 @@ export type DomainKey =
   | 'tourism';
 
 /**
- * Tipos de geometrÃ­a PostGIS gestionados por el motor espacial (SRID=4326).
+ * Tipos de geometría PostGIS gestionados por el motor espacial (SRID=4326).
  */
 export type PostgisGeometryType = 'Point' | 'LineString' | 'Polygon';
 
 /**
- * RÃ©gimen de soberanÃ­a por nodo (Horizonte 3 â toggle `/api/horizonte3/soberania/:nodeKey`).
+ * Régimen de soberanía por nodo (Horizonte 3 — toggle `/api/horizonte3/soberania/:nodeKey`).
  */
 export type SovereigntyMode =
   | 'delegacion_revocable_activa'
   | 'custodia_local_estricta';
 
 /**
- * Roles de custodia tripartita (Comunidad Â· Instituciones Â· Comercios).
+ * Roles de custodia tripartita (Comunidad · Instituciones · Comercios).
  */
 export type CustodianRole = 'community' | 'institutions' | 'businesses';
 
 // ============================================================================
-// H1 â Capas, categorÃ­as y observaciones primarias
+// H1 — Capas, categorías y observaciones primarias
 // ============================================================================
 
 /**
- * Capa temÃ¡tica de un nodo federado (seed `initialLayers`).
+ * Capa temática de un nodo federado (seed `initialLayers`).
  */
 export interface TerritorioLayer {
   key: string;
@@ -73,7 +77,7 @@ export interface TerritorioLayer {
 }
 
 /**
- * CategorÃ­a de reporte dentro de una capa (seed `initialCategories`).
+ * Categoría de reporte dentro de una capa (seed `initialCategories`).
  */
 export interface TerritorioCategory {
   code: string;
@@ -82,8 +86,8 @@ export interface TerritorioCategory {
 }
 
 /**
- * ObservaciÃ³n puntual sobre una capa (seed `initialFeatures` vÃ­a `mkFeature`).
- * `x`/`y` son coordenadas esquemÃ¡ticas 0â100 para el mapa de nodos.
+ * Observación puntual sobre una capa (seed `initialFeatures` vía `mkFeature`).
+ * `x`/`y` son coordenadas esquemáticas 0–100 para el mapa de nodos.
  */
 export interface TerritorioFeature {
   id: string;
@@ -92,7 +96,11 @@ export interface TerritorioFeature {
   x: number;
   y: number;
   title: string;
-  status: string;
+  // AJUSTE R4 (commit 6 del PR #119, derivación divulgada): antes `string`.
+  // `EPISTEMIC_TO_R5_UI: Record<EpistemicStatus, …>` en FederatedNodeExplorer
+  // (M24, líneas 1411/1415/1851) acredita que el estado de una feature es
+  // epistémico: verified | community_validated | pending | synthetic_demo.
+  status: EpistemicStatus;
   observedAt: string;
   sourceLabel: string;
   isSynthetic: boolean;
@@ -102,7 +110,7 @@ export interface TerritorioFeature {
 
 /**
  * Reporte territorial con su historial de estados
- * (`received â evaluating â in_progress â resolved`).
+ * (`received → evaluating → in_progress → resolved`).
  */
 export interface TerritorialReport {
   id: string;
@@ -120,7 +128,7 @@ export interface TerritorialReport {
 }
 
 /**
- * Evento crudo inmutable con hash idempotente (EV-005: duplicado â 409 Conflict).
+ * Evento crudo inmutable con hash idempotente (EV-005: duplicado → 409 Conflict).
  */
 export interface RawEventRecord {
   id: string;
@@ -146,11 +154,11 @@ export interface EvidenciaRecord {
 }
 
 // ============================================================================
-// H2 â MorfologÃ­a espacial PostGIS y custodia cruzada
+// H2 — Morfología espacial PostGIS y custodia cruzada
 // ============================================================================
 
 /**
- * GeometrÃ­a PostGIS SRID=4326 con representaciÃ³n esquemÃ¡tica y coordenadas reales.
+ * Geometría PostGIS SRID=4326 con representación esquemática y coordenadas reales.
  */
 export interface SpatialGeometryRecord {
   id: string;
@@ -171,8 +179,8 @@ export interface SpatialGeometryRecord {
 }
 
 /**
- * Paquete de sincronizaciÃ³n inter-nodos con mapeo explÃ­cito de vocabularios
- * (sin homogeneizaciÃ³n semÃ¡ntica).
+ * Paquete de sincronización inter-nodos con mapeo explícito de vocabularios
+ * (sin homogeneización semántica).
  */
 export interface InterNodeSyncPack {
   id: string;
@@ -210,12 +218,12 @@ export interface TemporalQuarterSnapshot {
 }
 
 // ============================================================================
-// H3 â SÃ­ntesis multi-escala, linaje criptogrÃ¡fico y soberanÃ­a federal
+// H3 — Síntesis multi-escala, linaje criptográfico y soberanía federal
 // ============================================================================
 
 /**
- * SÃ­ntesis multi-escala bajo Contrato Ãtico Tripartito (ADR-004):
- * Dato â InterpretaciÃ³n â Sugerencia, con `requiresHumanReview` como invariante
+ * Síntesis multi-escala bajo Contrato Ético Tripartito (ADR-004):
+ * Dato → Interpretación → Sugerencia, con `requiresHumanReview` como invariante
  * (EV-013) y referencias inmutables a los registros primarios que la sustentan.
  */
 export interface MultiScaleSynthesisItem {
@@ -244,7 +252,7 @@ export interface MultiScaleSynthesisItem {
 }
 
 /**
- * EslabÃ³n de la cadena de linaje SHA-256 (H1 â H2 â H3 â H4).
+ * Eslabón de la cadena de linaje SHA-256 (H1 → H2 → H3 → H4).
  */
 export interface LineageChainStep {
   stepIndex: number;
@@ -260,8 +268,8 @@ export interface LineageChainStep {
 }
 
 /**
- * Registro de soberanÃ­a federal por nodo (derivado de `buildFederalSovereignty()`):
- * `nodeMerkleRoot` sella el estado (capas + geometrÃ­as + paquetes + modo).
+ * Registro de soberanía federal por nodo (derivado de `buildFederalSovereignty()`):
+ * `nodeMerkleRoot` sella el estado (capas + geometrías + paquetes + modo).
  */
 export interface FederalSovereigntyRecord {
   nodeKey: string;
@@ -273,16 +281,20 @@ export interface FederalSovereigntyRecord {
   syncPacksCount: number;
   sovereigntyMode: SovereigntyMode;
   nodeMerkleRoot: string;
-  lastAuditAt: string | null;
+  // AJUSTE R4 (commit 6 del PR #119, derivación divulgada): antes `string | null`.
+  // `formatAuditTimestamp(iso: string)` en AdminSovereigntyDashboard (M23, línea
+  // 109) exige string no anulable; el seed `buildFederalSovereignty()` de
+  // vite.config.ts (M29) siempre emite un ISO-8601 completo.
+  lastAuditAt: string;
 }
 
 // ============================================================================
-// H4 â OperaciÃ³n en terreno: intersecciÃ³n espacial, campo offline-first,
-//      firmas Ed25519 y telemetrÃ­a hÃ­drica/climÃ¡tica
+// H4 — Operación en terreno: intersección espacial, campo offline-first,
+//      firmas Ed25519 y telemetría hídrica/climática
 // ============================================================================
 
 /**
- * Resultado de una intersecciÃ³n espacial con buffer
+ * Resultado de una intersección espacial con buffer
  * (`ST_Intersects + ST_DWithin(SRID=4326)`, EV-015).
  */
 export interface SpatialIntersectionResult {
@@ -301,7 +313,7 @@ export interface SpatialIntersectionResult {
 }
 
 /**
- * Ãtem de la cola de campo offline-first con hash cliente idempotente
+ * Ítem de la cola de campo offline-first con hash cliente idempotente
  * (`occurred_at` en terreno vs `ingested_at` al recobrar cobertura, EV-016).
  */
 export interface OfflineFieldQueueItem {
@@ -320,7 +332,7 @@ export interface OfflineFieldQueueItem {
 }
 
 /**
- * Custodio acreditado con identidad criptogrÃ¡fica Ed25519-SHA256 (EV-017).
+ * Custodio acreditado con identidad criptográfica Ed25519-SHA256 (EV-017).
  */
 export interface AccreditedCustodianRecord {
   id: string;
@@ -337,8 +349,8 @@ export interface AccreditedCustodianRecord {
 }
 
 /**
- * EstaciÃ³n de telemetrÃ­a hÃ­drica/climÃ¡tica ingerida por webhook bajo
- * Contrato Ãtico (EV-018: `requiresHumanReview === true`).
+ * Estación de telemetría hídrica/climática ingerida por webhook bajo
+ * Contrato Ético (EV-018: `requiresHumanReview === true`).
  */
 export interface TelemetryWebhookRecord {
   id: string;
@@ -408,12 +420,16 @@ export const DOMAINS: Array<{ key: DomainKey; label: string }> = [
 /**
  * Trimestres del ciclo 2026 (EV-009 · serie multitemporal H2).
  */
-export const QUARTERS: string[] = [
+// AJUSTE R4 (commit 6 del PR #119, derivación divulgada): antes `string[]`.
+// HorizonTwoSpatialFederationPanel (M20, línea 81) usa
+// useState<'2026-Q1' | '2026-Q2' | '2026-Q3' | '2026-Q4'>; `as const` da a
+// los elementos tipo literal. Usos en M15/M20/M22 son solo `.map`, compatibles.
+export const QUARTERS = [
   '2026-Q1',
   '2026-Q2',
   '2026-Q3',
   '2026-Q4',
-];
+] as const;
 
 export interface StatusMetaEntry {
   label: string;
