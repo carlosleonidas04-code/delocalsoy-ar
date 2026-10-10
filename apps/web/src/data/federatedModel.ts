@@ -20,6 +20,10 @@
  * del endpoint, incluidos los campos anulables `*_at`), R14 (soberanía: los modos y roles
  * se modelan como uniones explícitas) y ADR-004 (Contrato Ético: `requiresHumanReview`
  * es parte del contrato de datos, no un decorado).
+ *
+ * NORMALIZACIÓN (commit 6 del PR #119, divulgada): los comentarios del tramo 1
+ * fueron re-normalizados a UTF-8; el push original del PR #118 los había dejado
+ * con mojibake (doble encoding). Solo comentarios — el código es ASCII y no cambia.
  */
 
 // ============================================================================
@@ -92,7 +96,11 @@ export interface TerritorioFeature {
   x: number;
   y: number;
   title: string;
-  status: string;
+  // AJUSTE R4 (commit 6 del PR #119, derivación divulgada): antes `string`.
+  // `EPISTEMIC_TO_R5_UI: Record<EpistemicStatus, …>` en FederatedNodeExplorer
+  // (M24, líneas 1411/1415/1851) acredita que el estado de una feature es
+  // epistémico: verified | community_validated | pending | synthetic_demo.
+  status: EpistemicStatus;
   observedAt: string;
   sourceLabel: string;
   isSynthetic: boolean;
@@ -273,7 +281,11 @@ export interface FederalSovereigntyRecord {
   syncPacksCount: number;
   sovereigntyMode: SovereigntyMode;
   nodeMerkleRoot: string;
-  lastAuditAt: string | null;
+  // AJUSTE R4 (commit 6 del PR #119, derivación divulgada): antes `string | null`.
+  // `formatAuditTimestamp(iso: string)` en AdminSovereigntyDashboard (M23, línea
+  // 109) exige string no anulable; el seed `buildFederalSovereignty()` de
+  // vite.config.ts (M29) siempre emite un ISO-8601 completo.
+  lastAuditAt: string;
 }
 
 // ============================================================================
@@ -354,3 +366,118 @@ export interface TelemetryWebhookRecord {
   lastEventHash: string;
   lastReceivedAt: string;
 }
+
+// ============================================================================
+// TRAMO 2 — Vocabularios de presentación del modelo federado
+// (AÑADIDO por [agent: vibe] junto al aterrizaje de los 13 componentes UI,
+// lotes M12–M26 del staging — PR posterior a #118)
+//
+// PROCEDENCIA (R4/R12 — reconstrucción derivada, divulgada):
+// Ningún lote de staging trajo el `federatedModel` original con estas
+// exportaciones. Este tramo fue derivado por [agent: vibe] a partir de:
+//   1. Los imports EXACTOS de los componentes acreditados del staging:
+//      `DOMAINS`, `QUARTERS`, `STATUS_META`, `REPORT_STATUS_META`,
+//      `SYNC_PACK_STATUS_META`, `SYNTHESIS_STATUS_META` y `type EpistemicStatus`.
+//   2. Los VALORES de estado acreditados por los seeds del middleware
+//      (`vite.config.ts` M29, ya en main vía PR #117): features/geometrías
+//      `verified | community_validated | pending | synthetic_demo`; reportes
+//      `received → evaluating → in_progress → resolved` (REPORT_FLOW);
+//      syncPacks `federated_active | custodian_verified | proposed`;
+//      síntesis `human_ratified | draft_requires_human | sealed_in_observatory`;
+//      trimestres `2026-Q1..Q4` con etiquetas `T1..T4`.
+//   3. El USO de cada exportación en los componentes (`.label`, `.color`,
+//      `DOMAINS.find(d => d.key === …)`, `QUARTERS.map(q => …)`).
+// Los textos de etiqueta y los colores hex son elección editorial derivada
+// (paleta en uso en los propios componentes: #2e9e5b ok, #38bdf8 info,
+// #d99b26 pendiente, #cbd5e1 sintético, #f59e0b en gestión); si el lote
+// autoritativo trae los originales, prevalece y reemplaza (R1/R12).
+// ============================================================================
+
+/**
+ * Estado epistémico de una observación/activo territorial (mapea 1:1 con las
+ * claves de `EPISTEMIC_TO_R5_UI` en FederatedNodeExplorer y los seeds H1 de
+ * `vite.config.ts`).
+ */
+export type EpistemicStatus =
+  | 'verified'
+  | 'community_validated'
+  | 'pending'
+  | 'synthetic_demo';
+
+/**
+ * Dominios transversales de la plataforma (botoneras de M12/M16/M20/M24).
+ */
+export const DOMAINS: Array<{ key: DomainKey; label: string }> = [
+  { key: 'assets', label: 'Activos y comercios' },
+  { key: 'public_space', label: 'Espacio público' },
+  { key: 'problems', label: 'Problemáticas urbanas' },
+  { key: 'health', label: 'Salud y resiliencia' },
+  { key: 'community', label: 'Comunidad y educación' },
+  { key: 'production', label: 'Producción local' },
+  { key: 'tourism', label: 'Turismo y patrimonio' },
+];
+
+/**
+ * Trimestres del ciclo 2026 (EV-009 · serie multitemporal H2).
+ */
+// AJUSTE R4 (commit 6 del PR #119, derivación divulgada): antes `string[]`.
+// HorizonTwoSpatialFederationPanel (M20, línea 81) usa
+// useState<'2026-Q1' | '2026-Q2' | '2026-Q3' | '2026-Q4'>; `as const` da a
+// los elementos tipo literal. Usos en M15/M20/M22 son solo `.map`, compatibles.
+export const QUARTERS = [
+  '2026-Q1',
+  '2026-Q2',
+  '2026-Q3',
+  '2026-Q4',
+] as const;
+
+export interface StatusMetaEntry {
+  label: string;
+  color: string;
+}
+
+/**
+ * Meta de estado epistémico para features y geometrías PostGIS
+ * (`STATUS_META[status]?.label / ?.color`; fallback estándar `STATUS_META.pending`).
+ */
+export const STATUS_META: Record<string, StatusMetaEntry> = {
+  verified: { label: 'Verificado', color: '#2e9e5b' },
+  community_validated: { label: 'Validación comunitaria', color: '#38bdf8' },
+  pending: { label: 'Pendiente de validación', color: '#d99b26' },
+  synthetic_demo: { label: 'Demo sintética (R5)', color: '#cbd5e1' },
+};
+
+/**
+ * Meta de estado del flujo de reportes ciudadanos
+ * (`received → evaluating → in_progress → resolved`, REPORT_FLOW en M29).
+ */
+export const REPORT_STATUS_META: Record<string, StatusMetaEntry> = {
+  received: { label: 'Recibido', color: '#38bdf8' },
+  evaluating: { label: 'En evaluación', color: '#d99b26' },
+  in_progress: { label: 'En gestión', color: '#f59e0b' },
+  resolved: { label: 'Resuelto', color: '#2e9e5b' },
+};
+
+/**
+ * Meta de estado de los paquetes de sincronización inter-nodos (H2 · EV-008).
+ */
+export const SYNC_PACK_STATUS_META: Record<string, StatusMetaEntry> = {
+  federated_active: { label: 'Federación activa', color: '#2e9e5b' },
+  custodian_verified: { label: 'Verificado por custodios', color: '#38bdf8' },
+  proposed: { label: 'Propuesta (sin ACK)', color: '#d99b26' },
+};
+
+/**
+ * Meta de estado de las síntesis multi-escala bajo Contrato Ético (H3 · EV-011/EV-013).
+ */
+export const SYNTHESIS_STATUS_META: Record<string, StatusMetaEntry> = {
+  human_ratified: { label: 'Ratificada por revisión humana', color: '#2e9e5b' },
+  draft_requires_human: {
+    label: 'Borrador — requiere revisión humana',
+    color: '#d99b26',
+  },
+  sealed_in_observatory: {
+    label: 'Sellada en observatorio (H3)',
+    color: '#38bdf8',
+  },
+};
