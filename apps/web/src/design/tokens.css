@@ -244,3 +244,5 @@
     --duration-slow: 0.01ms;
   }
 }
+
+/* scope-guard-test (RA2): comentario de prueba dentro del alcance estético. Sin cambios de lógica. */
