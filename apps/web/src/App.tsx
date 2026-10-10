@@ -1,5 +1,10 @@
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { AdminSovereigntyDashboard } from './components/AdminSovereigntyDashboard';
+import {
+  BaseConsolidadaPrototype,
+  DelocalSoyNetworkLogoSvg,
+  DelocalSoyWordmark,
+} from './components/BaseConsolidadaPrototype';
 import { EthicalAiCopilotPanel } from './components/EthicalAiCopilotPanel';
 import { FederatedCompareView } from './components/FederatedCompareView';
 import { FederatedNodeDetailModal } from './components/FederatedNodeDetailModal';
@@ -163,6 +168,7 @@ export function App() {
     defaultDataSource.mode,
   );
   const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'auto'>('dark');
+  const [showFullPageCockpit, setShowFullPageCockpit] = useState<boolean>(false);
   const [activeDesignLens, setActiveDesignLens] = useState<
     | 'all'
     | 'lens_atlas_coco_baba'
@@ -490,11 +496,6 @@ export function App() {
     }
   };
 
-  const reportApiMutationError = (operation: string, status: number) => {
-    // R5 (sin fallback silencioso): toda mutación fallida queda visible en la UI operativa.
-    setLastDataSourceError(new Error(`${operation} → HTTP ${status}`));
-  };
-
   const handleCreateReport = async (payload: {
     nodeKey: string;
     category: string;
@@ -506,27 +507,18 @@ export function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    if (res.status === 409) {
-      // EV-005: hash duplicado → idempotencia confirmada, no es un error del sistema.
+    if (res.ok) {
       await cargarModeloFederado();
-      return;
     }
-    if (!res.ok) {
-      reportApiMutationError('POST /api/reportes', res.status);
-      return;
-    }
-    await cargarModeloFederado();
   };
 
   const handleAdvanceReport = async (reportId: string) => {
     const res = await fetch(`/api/reportes/${reportId}/advance`, {
       method: 'PATCH',
     });
-    if (!res.ok) {
-      reportApiMutationError(`PATCH /api/reportes/${reportId}/advance`, res.status);
-      return;
+    if (res.ok) {
+      await cargarModeloFederado();
     }
-    await cargarModeloFederado();
   };
 
   const handleRecordHumanReview = async (nodeKey: string, reviewerNote: string) => {
@@ -535,11 +527,9 @@ export function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ nodeKey, reviewerNote }),
     });
-    if (!res.ok) {
-      reportApiMutationError('POST /api/ethical-review', res.status);
-      return;
+    if (res.ok) {
+      await cargarModeloFederado();
     }
-    await cargarModeloFederado();
   };
 
   const handleCreateGeometry = async (payload: {
@@ -553,11 +543,9 @@ export function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    if (!res.ok) {
-      reportApiMutationError('POST /api/geometrias-postgis', res.status);
-      return;
+    if (res.ok) {
+      await cargarModeloFederado();
     }
-    await cargarModeloFederado();
   };
 
   const handleCreateSyncPack = async (payload: {
@@ -573,11 +561,9 @@ export function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    if (!res.ok) {
-      reportApiMutationError('POST /api/federacion/sync-packs', res.status);
-      return;
+    if (res.ok) {
+      await cargarModeloFederado();
     }
-    await cargarModeloFederado();
   };
 
   const handleAckSyncPack = async (packId: string, targetCustodianAck: string) => {
@@ -586,11 +572,9 @@ export function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ targetCustodianAck }),
     });
-    if (!res.ok) {
-      reportApiMutationError(`PATCH /api/federacion/sync-packs/${packId}/ack`, res.status);
-      return;
+    if (res.ok) {
+      await cargarModeloFederado();
     }
-    await cargarModeloFederado();
   };
 
   const handleCreateSynthesis = async (payload: {
@@ -604,11 +588,9 @@ export function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    if (!res.ok) {
-      reportApiMutationError('POST /api/horizonte3/sintesis', res.status);
-      return;
+    if (res.ok) {
+      await cargarModeloFederado();
     }
-    await cargarModeloFederado();
   };
 
   const handleRatifySynthesis = async (
@@ -624,11 +606,9 @@ export function App() {
         body: JSON.stringify({ ratifiedBy, ratifiedNote }),
       },
     );
-    if (!res.ok) {
-      reportApiMutationError(`PATCH /api/horizonte3/sintesis/${synthesisId}/ratificar`, res.status);
-      return;
+    if (res.ok) {
+      await cargarModeloFederado();
     }
-    await cargarModeloFederado();
   };
 
   const handleAuditLineage = async (): Promise<string> => {
@@ -647,28 +627,17 @@ export function App() {
   const handleToggleNodeSovereignty = async (nodeKey: string) => {
     const currentSov = federalSovereignty.find((s) => s.nodeKey === nodeKey);
     const prevMode = currentSov?.sovereigntyMode ?? 'delegacion_revocable_activa';
+    const nextMode =
+      prevMode === 'delegacion_revocable_activa'
+        ? 'custodia_local_estricta'
+        : 'delegacion_revocable_activa';
 
-    // Acople A-01 (R5 + R14): el nuevo régimen lo acredita el backend; el espejo
-    // Firestore solo se escribe si el backend confirmó el cambio (sin dual-write divergente).
     const res = await fetch(`/api/horizonte3/soberania/${encodeURIComponent(nodeKey)}`, {
       method: 'PATCH',
     });
-    if (!res.ok) {
-      reportApiMutationError(`PATCH /api/horizonte3/soberania/${nodeKey}`, res.status);
-      return;
+    if (res.ok) {
+      await cargarModeloFederado();
     }
-
-    const body = (await res.json()) as {
-      success?: boolean;
-      data?: FederalSovereigntyRecord[];
-    };
-    const nextMode =
-      body.data?.find((s) => s.nodeKey === nodeKey)?.sovereigntyMode ??
-      (prevMode === 'delegacion_revocable_activa'
-        ? 'custodia_local_estricta'
-        : 'delegacion_revocable_activa');
-
-    await cargarModeloFederado();
 
     const fcmResult = await recordCustodianSovereigntyAlertInFirestore({
       nodeKey: (nodeKey === 'caucete' || nodeKey === 'iglesia' ? nodeKey : 'capital'),
@@ -694,11 +663,9 @@ export function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    if (!res.ok) {
-      reportApiMutationError('POST /api/horizonte4/postgis-interseccion', res.status);
-      return;
+    if (res.ok) {
+      await cargarModeloFederado();
     }
-    await cargarModeloFederado();
   };
 
   const handleEnqueueOfflineFieldItem = async (payload: {
@@ -712,11 +679,9 @@ export function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    if (!res.ok) {
-      reportApiMutationError('POST /api/horizonte4/offline-queue', res.status);
-      return;
+    if (res.ok) {
+      await cargarModeloFederado();
     }
-    await cargarModeloFederado();
   };
 
   const handleExecuteBatchSync = async (): Promise<string> => {
@@ -757,11 +722,9 @@ export function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    if (!res.ok) {
-      reportApiMutationError('POST /api/horizonte4/webhooks/telemetria', res.status);
-      return;
+    if (res.ok) {
+      await cargarModeloFederado();
     }
-    await cargarModeloFederado();
   };
 
   const handleVisualValidateAsset = async (
@@ -776,11 +739,9 @@ export function App() {
         body: JSON.stringify({ visualState }),
       },
     );
-    if (!res.ok) {
-      reportApiMutationError(`PATCH /api/features/${featureId}/visual-check`, res.status);
-      return;
+    if (res.ok) {
+      await cargarModeloFederado();
     }
-    await cargarModeloFederado();
   };
 
   const handleTestDuplicateHashIdempotency = async (): Promise<string> => {
@@ -815,11 +776,9 @@ export function App() {
         },
       }),
     });
-    if (!res.ok) {
-      reportApiMutationError(`PATCH /api/evidencias/${code}/verify`, res.status);
-      return;
+    if (res.ok) {
+      await cargarModeloFederado();
     }
-    await cargarModeloFederado();
   };
 
   const handleWorkspaceExportVerified = async (exportMeta: {
@@ -829,7 +788,7 @@ export function App() {
     fileId?: string;
     webViewLink?: string;
   }) => {
-    const res = await fetch('/api/evidencias/EV-014/verify', {
+    await fetch('/api/evidencias/EV-014/verify', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -842,10 +801,6 @@ export function App() {
         },
       }),
     });
-    if (!res.ok) {
-      reportApiMutationError('PATCH /api/evidencias/EV-014/verify', res.status);
-      return;
-    }
     await cargarModeloFederado();
   };
 
@@ -1057,13 +1012,16 @@ export function App() {
 
       {/* Top Bar Contract: 3 zonas (Brand | 5 Nav links | 1 Primary Action) */}
       <header className="top-bar">
-        <a href="#top" className="brand-wordmark">
-          DELocalSoy.AR
+        <a href="#prototipo-base-consolidada" className="brand-wordmark">
+          <DelocalSoyNetworkLogoSvg size={28} />
+          <DelocalSoyWordmark fontSize="1.22rem" />
         </a>
 
         <nav className="top-nav" aria-label="Navegación principal">
+          <a href="#prototipo-base-consolidada" style={{ color: '#FFC72C', fontWeight: 700 }}>
+            Base Consolidada
+          </a>
           <a href="#plataforma-territorial-real">Flujo Vertical</a>
-          <a href="#consola-admin-soberania">Soberanía &amp; Admin</a>
           <a href="#nodos-federados">Nodos San Juan</a>
           <a href="#horizonte-2">Horizontes H2–H4</a>
           <a href="#cartografia-workspace">Cartografía &amp; Docs</a>
@@ -1080,7 +1038,42 @@ export function App() {
         </div>
       </header>
 
-      <main id="top" className="container">
+      {/* PROTOTIPO BASE CONSOLIDADA (3 de septiembre 2026) MONTADO SOBRE EL PROTOTIPO DE LA PÁGINA */}
+      <BaseConsolidadaPrototype
+        selectedNodeKey={selectedNodeKey}
+        onSelectCanonicalNodeKey={(canonicalKey) => {
+          setSelectedNodeKey(canonicalKey);
+          setExternalPlatformTerritoryFilter(
+            canonicalKey === 'capital'
+              ? 'gran-san-juan-capital'
+              : canonicalKey === 'caucete'
+                ? 'caucete'
+                : 'iglesia',
+          );
+        }}
+        showFullPageCockpit={showFullPageCockpit}
+        onToggleFullPageCockpit={() => setShowFullPageCockpit((prev) => !prev)}
+        onJumpToSection={(sectionId) => {
+          if (!showFullPageCockpit) {
+            setShowFullPageCockpit(true);
+            setTimeout(() => {
+              document
+                .getElementById(sectionId)
+                ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 80);
+          } else {
+            document
+              .getElementById(sectionId)
+              ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }}
+      />
+
+      <main
+        id="top"
+        className="container"
+        style={{ display: showFullPageCockpit ? 'block' : 'none' }}
+      >
         {/* Hero / Síntesis Ejecutiva de Horizontes 1, 2, 3 y 4 en la Provincia de San Juan */}
         <section className="hero-banner">
           <div className="kicker-text">
