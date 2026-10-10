@@ -5,6 +5,7 @@ import authRouter from './routes/auth.js';
 import evidenciasRouter from './routes/evidencias.js';
 import eventsRouter from './routes/events.js';
 import healthRouter from './routes/health.js';
+import modeloFederadoRouter from './routes/modeloFederado.js';
 import nodosRouter from './routes/nodos.js';
 import territoriosRouter from './routes/territorios.js';
 
@@ -34,6 +35,12 @@ export function createApp(): Express {
   // en events_raw, moderación PATCH /:id/estado (moderador|admin) y GET
   // público anónimo con recorte espacial bbox sobre PostGIS.
   app.use('/api/activos', activosRouter);
+
+  // Compuerta Pre-C5 (handoff [agent: google] → [agent: vibe], Refs #109/#114,
+  // ADR-034): validación de integridad referencial del schema Prisma REAL
+  // (11 modelos, 6 aristas @relation, huérfanos contra postgres) antes de
+  // habilitar el contrato C5. R4/R15: sin base no hay compuerta abierta.
+  app.use('/api/contracts', modeloFederadoRouter);
 
   // Dominio: registro de evidencias ejecutables (EV-xxx) — unificado bajo /api (riesgo #53)
   app.use('/api/evidencias', evidenciasRouter);
