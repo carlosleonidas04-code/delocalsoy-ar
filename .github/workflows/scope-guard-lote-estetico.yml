@@ -1,0 +1,36 @@
+name: scope-guard-lote-estetico
+
+# Guard de alcance estético (ADR-034 §4.5) — informe R12 de [agent: anthropic], versión corregida.
+# Se aplica a ramas agent-google/* o a cualquier PR con label "lote-estetico".
+# El criterio es de CONTENIDO (diff de archivos), no de prefijo de rama:
+# un lote "estético" que incluye App.tsx ya no es estético.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+jobs:
+  scope:
+    # se aplica a ramas agent-google/* o a cualquier PR con label "lote-estetico"
+    if: >
+      startsWith(github.head_ref, 'agent-google/') ||
+      contains(github.event.pull_request.labels.*.name, 'lote-estetico')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Solo estética (ADR-034 §4.5)
+        env:
+          BASE: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          bad=$(git diff --name-only "origin/${BASE}...HEAD" \
+            | grep -Ev '^(apps/web/src/design/|apps/web/src/styles\.css$|apps/web/index\.html$)' || true)
+          if [ -n "$bad" ]; then
+            echo "Fuera del alcance estético (ADR-034 §4.5):"; echo "$bad"
+            echo "Si el PR debe tocar lógica, quitar el label y pedir ratificación R9 expresa."
+            exit 1
+          fi
