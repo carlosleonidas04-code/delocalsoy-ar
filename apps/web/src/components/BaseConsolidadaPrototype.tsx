@@ -1164,7 +1164,7 @@ const ACTIVOS_FALLBACK: ActivoVerificadoPreview[] = [
     nombre: 'Panadería Social y Horno Comunitario Desamparados',
     categoria: 'comercio_proximidad',
     territoryId: 'gran-san-juan-capital',
-    barrioNodo: 'Subnodo Desamparados – Centro Cívico',
+    barrioNodo: 'Subnodo Capital · Desamparados – Centro Cívico',
     descripcion: 'Elaboración diaria de panificación de masa madre, semitas sanjuaninas y horneado comunitario con harina de molinos regionales.',
     geometria: { latitud: -31.5318, longitud: -68.5542, srid: 4326 },
     horarios: 'Lun a Sáb 07:00 a 14:00 y 17:30 a 20:30',
@@ -1198,7 +1198,7 @@ const ACTIVOS_FALLBACK: ActivoVerificadoPreview[] = [
     nombre: 'Casa de Hilanderas, Semillas y Turismo Comunitario Rodeo-Iglesia',
     categoria: 'espacio_cultural',
     territoryId: 'iglesia',
-    barrioNodo: 'Subnodo Rodeo · Valle de Iglesia',
+    barrioNodo: 'Rodeo · Valle de Iglesia',
     descripcion: 'Comercialización ética de tejidos en telar criollo, banco comunitario de semillas de altura y orientación de senderos cordilleranos.',
     geometria: { latitud: -30.2054, longitud: -69.1392, srid: 4326 },
     horarios: 'Lun a Dom 09:30 a 19:00',
@@ -1218,7 +1218,7 @@ const OFERTAS_FALLBACK: OfertaMarketplacePreview[] = [
     assetId: 'act-sjc-panaderia-desamparados',
     assetNombre: 'Panadería Social y Horno Comunitario Desamparados',
     territoryId: 'gran-san-juan-capital',
-    barrioNodo: 'Subnodo Desamparados – Centro Cívico',
+    barrioNodo: 'Desamparados – Centro Cívico',
     titulo: 'Lote de Pan de Campo de Masa Madre + Semitas Tradicionales (Harina Local)',
     tipo: 'producto_local',
     descripcion: 'Horneado matutino con trigo molido en la provincia y aceite de oliva virgen extra de productores locales.',
@@ -1246,7 +1246,7 @@ const OFERTAS_FALLBACK: OfertaMarketplacePreview[] = [
     assetId: 'act-igl-tejedoras-rodeo',
     assetNombre: 'Casa de Hilanderas, Semillas y Turismo Comunitario Rodeo-Iglesia',
     territoryId: 'iglesia',
-    barrioNodo: 'Subnodo Rodeo · Valle de Iglesia',
+    barrioNodo: 'Rodeo · Valle de Iglesia',
     titulo: 'Tejido en Telar Criollo con Lana Hilada a Mano y Tintes Naturales + Taller Guiado',
     tipo: 'servicio_oficio',
     descripcion: 'Piezas tejidas en Rodeo, Tudcum y Angualasto con ficha de artesana autora y recorrido por el banco de semillas.',
@@ -1261,7 +1261,7 @@ const PROPUESTAS_FALLBACK: PropuestaDeliberativaPreview[] = [
   {
     id: 'prop-sjc-corredor-sombra-accesible',
     territoryId: 'gran-san-juan-capital',
-    barrioNodo: 'Subnodo Desamparados – Centro Cívico',
+    barrioNodo: 'Desamparados – Centro Cívico',
     titulo: 'Corredor Peatonal de Sombra, Acequias Activas y Rampas en el Eje Desamparados – Centro Cívico',
     problemaUportunidad: 'Tres cuadras del corredor presentan discontinuidad de rampas, taponamiento de tazas de arbolado y alta radiación térmica.',
     propuestaAccion: 'Intervenir cooperativamente las 12 esquinas priorizadas, destapar tazas de riego y señalizar cruces accesibles.',
@@ -1291,7 +1291,7 @@ const AMBIENTE_FALLBACK: RegistroAmbientePreview[] = [
     id: 'env-sjc-acequia-desamparados',
     dominio: 'ambiente_paisaje',
     territoryId: 'gran-san-juan-capital',
-    barrioNodo: 'Subnodo Desamparados – Centro Cívico',
+    barrioNodo: 'Desamparados – Centro Cívico',
     subcategoria: 'agua_acequias',
     titulo: 'Rehabilitación de Pasante de Acequia y Tazas de Moreras en Corredor Desamparados',
     evidenciaObservada: 'Se relevó obstrucción por sedimentos en 40 metros lineales que impedía el riego de 9 ejemplares de arbolado urbano.',
@@ -1315,7 +1315,7 @@ const EVENTOS_FALLBACK: EventoComunitarioPreview[] = [
   {
     id: 'evt-sjc-feria-desamparados',
     territoryId: 'gran-san-juan-capital',
-    barrioNodo: 'Subnodo Desamparados – Centro Cívico',
+    barrioNodo: 'Desamparados – Centro Cívico',
     titulo: 'Feria de Abastecimiento Barrial y Taller de Masa Madre en Corredor Desamparados',
     modalidad: 'feria_abastecimiento',
     fechaProgramada: 'Sábado 10:00 a 14:00 hs',
@@ -1326,7 +1326,7 @@ const EVENTOS_FALLBACK: EventoComunitarioPreview[] = [
   {
     id: 'evt-igl-semillas-rodeo',
     territoryId: 'iglesia',
-    barrioNodo: 'Subnodo Rodeo · Tudcum · Angualasto',
+    barrioNodo: 'Rodeo · Tudcum · Angualasto',
     titulo: 'Encuentro de Custodios de Semillas Andinas y Telar Criollo del Valle de Iglesia',
     modalidad: 'taller_oficios',
     fechaProgramada: 'Domingo 11:00 a 17:00 hs',
@@ -1786,6 +1786,43 @@ export function BaseConsolidadaPrototype({
       return;
     }
     const activoBase = activosVerificadosDelNodo[0] ?? activosVerificados[0];
+    const unidadRef = nuevaOfertaMkt.unidadReferencia.trim() || 'Retiro directo en nodo barrial';
+    const senalVerif =
+      nuevaOfertaMkt.señalVerificable.trim() || `Trazabilidad verificada en ${nodoActivo.nombre}`;
+
+    try {
+      const res = await fetch('/api/plataforma/marketplace', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': 'delocalsoy-dev-write-token-r8',
+          Authorization: 'Bearer delocalsoy-dev-write-token-r8',
+        },
+        body: JSON.stringify({
+          assetId: activoBase.id,
+          territoryId: territoryCodeActivo,
+          barrioNodo: nodoActivo.nombre,
+          titulo: nuevaOfertaMkt.titulo.trim(),
+          tipo: 'producto_local',
+          descripcion: `Oferta vinculada al activo verificado ${activoBase.nombre} en ${nodoActivo.nombre}.`,
+          unidadReferencia: unidadRef,
+          disponibilidad: 'disponible_hoy',
+          señalVerificable: senalVerif,
+        }),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json?.data) {
+          setOfertasMarketplace((prev) => [json.data, ...prev]);
+          setNuevaOfertaMkt({ titulo: '', unidadReferencia: '', señalVerificable: '' });
+          mostrarToast('Oferta vinculada a activo publicada en el nodo ✓');
+          return;
+        }
+      }
+    } catch {
+      // Fallback determinista local
+    }
+
     const creada: OfertaMarketplacePreview = {
       id: `mkt-${Date.now()}`,
       assetId: activoBase.id,
@@ -1795,10 +1832,9 @@ export function BaseConsolidadaPrototype({
       titulo: nuevaOfertaMkt.titulo.trim(),
       tipo: 'producto_local',
       descripcion: `Oferta vinculada al activo verificado ${activoBase.nombre} en ${nodoActivo.nombre}.`,
-      unidadReferencia: nuevaOfertaMkt.unidadReferencia.trim() || 'Retiro directo en nodo barrial',
+      unidadReferencia: unidadRef,
       disponibilidad: 'disponible_hoy',
-      señalVerificable:
-        nuevaOfertaMkt.señalVerificable.trim() || `Trazabilidad verificada en ${nodoActivo.nombre}`,
+      señalVerificable: senalVerif,
       evidenciaHash: Math.random().toString(16).slice(2, 18),
     };
     setOfertasMarketplace((prev) => [creada, ...prev]);
@@ -1807,17 +1843,51 @@ export function BaseConsolidadaPrototype({
   }
 
   async function avanzarEtapaPropuesta(propId: string) {
+    const actual = propuestasDeliberativas.find((p) => p.id === propId);
+    const idxActual = actual
+      ? ETAPAS_DELIBERATIVAS.indexOf(actual.etapaActual as (typeof ETAPAS_DELIBERATIVAS)[number])
+      : 0;
+    const siguienteEtapa =
+      ETAPAS_DELIBERATIVAS[Math.min(idxActual + 1, ETAPAS_DELIBERATIVAS.length - 1)];
+
+    try {
+      const res = await fetch(
+        `/api/plataforma/participacion/propuestas/${encodeURIComponent(propId)}/etapa`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': 'delocalsoy-dev-write-token-r8',
+            Authorization: 'Bearer delocalsoy-dev-write-token-r8',
+          },
+          body: JSON.stringify({
+            nuevaEtapa: siguienteEtapa,
+            actor: `Mesa Vecinal ${nodoActivo.nombre}`,
+            comentarioSintesis: `Avance deliberativo verificado a etapa ${siguienteEtapa}`,
+          }),
+        },
+      );
+      if (res.ok) {
+        const json = await res.json();
+        if (json?.data) {
+          setPropuestasDeliberativas((prev) =>
+            prev.map((p) => (p.id === propId ? { ...p, ...json.data } : p)),
+          );
+          mostrarToast(`Propuesta avanzada a etapa: ${siguienteEtapa} ✓`);
+          return;
+        }
+      }
+    } catch {
+      // Fallback determinista local
+    }
+
     setPropuestasDeliberativas((prev) =>
       prev.map((p) => {
         if (p.id !== propId) return p;
-        const idx = ETAPAS_DELIBERATIVAS.indexOf(
-          p.etapaActual as (typeof ETAPAS_DELIBERATIVAS)[number],
-        );
-        const sig = ETAPAS_DELIBERATIVAS[Math.min(idx + 1, ETAPAS_DELIBERATIVAS.length - 1)];
-        mostrarToast(`Propuesta avanzada a etapa: ${sig} ✓`);
+        mostrarToast(`Propuesta avanzada a etapa: ${siguienteEtapa} ✓`);
         return {
           ...p,
-          etapaActual: sig,
+          etapaActual: siguienteEtapa,
           apoyosDeliberativos: p.apoyosDeliberativos + 1,
         };
       }),
