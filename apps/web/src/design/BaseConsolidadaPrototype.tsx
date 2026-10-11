@@ -217,14 +217,14 @@ export type CategoriaId =
   | 'otro';
 
 export const CATEGORIAS: Array<{ id: CategoriaId; label: string; icon: string }> = [
-  { id: 'iluminacion', label: 'Iluminación', icon: '' },
-  { id: 'arbolado', label: 'Arbolado', icon: '' },
-  { id: 'bache', label: 'Bache / calzada', icon: '️' },
+  { id: 'iluminacion', label: 'Iluminación', icon: '💡' },
+  { id: 'arbolado', label: 'Arbolado', icon: '🌳' },
+  { id: 'bache', label: 'Bache / calzada', icon: '🕳️' },
   { id: 'vereda', label: 'Vereda / rampa', icon: '♿' },
-  { id: 'espacio_publico', label: 'Espacio público', icon: '️' },
-  { id: 'riego', label: 'Acequia / riego', icon: '' },
-  { id: 'residuos', label: 'Residuos', icon: '️' },
-  { id: 'otro', label: 'Otro', icon: '' },
+  { id: 'espacio_publico', label: 'Espacio público', icon: '🏞️' },
+  { id: 'riego', label: 'Acequia / riego', icon: '💧' },
+  { id: 'residuos', label: 'Residuos', icon: '🗑️' },
+  { id: 'otro', label: 'Otro', icon: '📌' },
 ];
 
 export type EstadoReporteKey = 'recibido' | 'en_evaluacion' | 'en_gestion' | 'resuelto';
@@ -529,7 +529,7 @@ export const RESPUESTAS_EJEMPLO: Record<string, RespuestaTripartita> = {
 
 export const NOTAS_ARQUITECTURA = [
   {
-    t: 'Auth ( bloqueante, el más viejo)',
+    t: 'Auth (🔴 bloqueante, el más viejo)',
     d: 'Nadie reconstruye el sistema — las 3 sesiones nuevas coinciden en "no tocar, usar el existente (refresh token + TOTP)". Pero ninguna tiene el archivo real todavía. Reviso: tampoco es el JWT de la Arquitectura Técnica v1.0 (ese no tiene TOTP). Sigue perdido.',
   },
   {
@@ -851,7 +851,7 @@ function ReporteCard({
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
         <span style={{ fontSize: '24px', lineHeight: 1, marginTop: '2px' }}>
-          {cat?.icon ?? ''}
+          {cat?.icon ?? '📌'}
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div
@@ -2761,7 +2761,7 @@ export function BaseConsolidadaPrototype({
                       cursor: 'pointer',
                     }}
                   >
-                     Ver {nodoActivo.nombre} en Mapa PostGIS SRID=4326 ↓
+                    📍 Ver {nodoActivo.nombre} en Mapa PostGIS SRID=4326 ↓
                   </button>
                   <button
                     type="button"
@@ -2778,7 +2778,7 @@ export function BaseConsolidadaPrototype({
                       cursor: 'pointer',
                     }}
                   >
-                    吝 Abrir Explorador de Capas y Nodos Federados ↓
+                    🧭 Abrir Explorador de Capas y Nodos Federados ↓
                   </button>
                   <button
                     type="button"
@@ -3321,7 +3321,7 @@ export function BaseConsolidadaPrototype({
                                 color: COLORS.textoSuave,
                               }}
                             >
-                               {prov}
+                              🔗 {prov}
                             </span>
                           ))}
                         </div>
@@ -3940,7 +3940,7 @@ export function BaseConsolidadaPrototype({
                               border: 'none',
                             }}
                           >
-                             Probar PostGIS ?bbox= (Eslabón 10)
+                            📐 Probar PostGIS ?bbox= (Eslabón 10)
                           </button>
                           <button
                             type="button"
@@ -3956,7 +3956,7 @@ export function BaseConsolidadaPrototype({
                               border: `1px solid ${COLORS.celeste}`,
                             }}
                           >
-                             Probar Replay Worker (duplicate_ignored)
+                            🔁 Probar Replay Worker (duplicate_ignored)
                           </button>
                         </div>
                       </div>
@@ -4053,7 +4053,7 @@ export function BaseConsolidadaPrototype({
                             {of.descripcion}
                           </p>
                           <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px', fontSize: '11.5px', color: COLORS.textoTenue }}>
-                            <span>️ Activo origen: {of.assetNombre}</span>
+                            <span>🏛️ Activo origen: {of.assetNombre}</span>
                             <span style={{ color: COLORS.verde }}>✓ {of.señalVerificable}</span>
                           </div>
                         </div>
@@ -4153,7 +4153,7 @@ export function BaseConsolidadaPrototype({
                             {ev.descripcion}
                           </p>
                           <span style={{ fontSize: '11px', color: COLORS.textoTenue }}>
-                             {ev.lugarNombre} ({ev.barrioNodo})
+                            📍 {ev.lugarNombre} ({ev.barrioNodo})
                           </span>
                         </div>
                       ))}
@@ -4241,7 +4241,7 @@ export function BaseConsolidadaPrototype({
                           </div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
                             <span style={{ fontSize: '11.5px', color: COLORS.celeste }}>
-                              欄 {pr.apoyosDeliberativos} apoyos deliberativos ·  {pr.comentariosVerificados} aportes verificados
+                              🤝 {pr.apoyosDeliberativos} apoyos deliberativos · 💬 {pr.comentariosVerificados} aportes verificados
                             </span>
                             <button
                               type="button"
