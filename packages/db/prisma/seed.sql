@@ -38,6 +38,9 @@ VALUES
 ON CONFLICT (key) DO NOTHING;
 
 -- ─── Capas por nodo (catálogo explícito, no inferible en frontend) ───
+-- NODO-CAU R1 (#141, épica #137): vocabulario v6 de caucete — hydrology/seismic_risk/
+-- public_space/accessibility/sustainability. Hydrology declara LineString (misma semántica que
+-- irrigation_channels de Capital); features v1 = puntos de tramo crítico (decisión #140, opción B).
 
 INSERT INTO capas (id, nodo_id, key, nombre, dominio, geometria, default_on)
 VALUES
@@ -52,6 +55,11 @@ VALUES
   (gen_random_uuid()::text, (SELECT id FROM nodos WHERE key = 'caucete'), 'community_spaces', 'Espacios y recursos comunitarios', 'community', 'Point', true),
   (gen_random_uuid()::text, (SELECT id FROM nodos WHERE key = 'caucete'), 'resilience_points', 'Puntos de resiliencia', 'health', 'Point', false),
   (gen_random_uuid()::text, (SELECT id FROM nodos WHERE key = 'caucete'), 'community_resources', 'Agua y recursos básicos', 'community', 'Point', false),
+  (gen_random_uuid()::text, (SELECT id FROM nodos WHERE key = 'caucete'), 'hydrology', 'Hidrología: canales, acequias y drenaje', 'assets', 'LineString', true),
+  (gen_random_uuid()::text, (SELECT id FROM nodos WHERE key = 'caucete'), 'seismic_risk', 'Riesgo sísmico y puntos de encuentro', 'health', 'Point', true),
+  (gen_random_uuid()::text, (SELECT id FROM nodos WHERE key = 'caucete'), 'public_space', 'Espacio público y mejora del común', 'public_space', 'Point', true),
+  (gen_random_uuid()::text, (SELECT id FROM nodos WHERE key = 'caucete'), 'accessibility', 'Accesibilidad: veredas, rampas y transporte', 'problems', 'Point', false),
+  (gen_random_uuid()::text, (SELECT id FROM nodos WHERE key = 'caucete'), 'sustainability', 'Sustentabilidad: agua, arbolado, energía y residuos', 'community', 'Point', false),
   (gen_random_uuid()::text, (SELECT id FROM nodos WHERE key = 'iglesia'), 'productive_units', 'Producción y servicios (olivícola, semillas, frutos secos, frutales, hortalizas)', 'production', 'Point', true),
   (gen_random_uuid()::text, (SELECT id FROM nodos WHERE key = 'iglesia'), 'rural_services', 'Caminos rurales y senderos', 'problems', 'LineString', true),
   (gen_random_uuid()::text, (SELECT id FROM nodos WHERE key = 'iglesia'), 'tourism_resources', 'Turismo y patrimonio', 'tourism', 'Point', true)
@@ -76,6 +84,16 @@ VALUES
   (gen_random_uuid()::text, (SELECT id FROM nodos WHERE key = 'caucete'), 'water_quality_issue', 'Problema de calidad de agua', (SELECT id FROM capas WHERE key = 'community_resources' AND nodo_id = (SELECT id FROM nodos WHERE key = 'caucete'))),
   (gen_random_uuid()::text, (SELECT id FROM nodos WHERE key = 'caucete'), 'school_access_issue', 'Problema de acceso a escuela', (SELECT id FROM capas WHERE key = 'education' AND nodo_id = (SELECT id FROM nodos WHERE key = 'caucete'))),
   (gen_random_uuid()::text, (SELECT id FROM nodos WHERE key = 'caucete'), 'closed_community_space', 'Espacio comunitario cerrado', (SELECT id FROM capas WHERE key = 'community_spaces' AND nodo_id = (SELECT id FROM nodos WHERE key = 'caucete'))),
+  (gen_random_uuid()::text, (SELECT id FROM nodos WHERE key = 'caucete'), 'obstructed_channel', 'Acequia o canal obstruido', (SELECT id FROM capas WHERE key = 'hydrology' AND nodo_id = (SELECT id FROM nodos WHERE key = 'caucete'))),
+  (gen_random_uuid()::text, (SELECT id FROM nodos WHERE key = 'caucete'), 'flood_risk', 'Riesgo hídrico o anegamiento', (SELECT id FROM capas WHERE key = 'hydrology' AND nodo_id = (SELECT id FROM nodos WHERE key = 'caucete'))),
+  (gen_random_uuid()::text, (SELECT id FROM nodos WHERE key = 'caucete'), 'unsafe_building', 'Edificación no sismorresistente', (SELECT id FROM capas WHERE key = 'seismic_risk' AND nodo_id = (SELECT id FROM nodos WHERE key = 'caucete'))),
+  (gen_random_uuid()::text, (SELECT id FROM nodos WHERE key = 'caucete'), 'blocked_evacuation_route', 'Ruta de evacuación obstruida', (SELECT id FROM capas WHERE key = 'seismic_risk' AND nodo_id = (SELECT id FROM nodos WHERE key = 'caucete'))),
+  (gen_random_uuid()::text, (SELECT id FROM nodos WHERE key = 'caucete'), 'damaged_public_space', 'Espacio público dañado', (SELECT id FROM capas WHERE key = 'public_space' AND nodo_id = (SELECT id FROM nodos WHERE key = 'caucete'))),
+  (gen_random_uuid()::text, (SELECT id FROM nodos WHERE key = 'caucete'), 'abandoned_public_space', 'Espacio público en desuso', (SELECT id FROM capas WHERE key = 'public_space' AND nodo_id = (SELECT id FROM nodos WHERE key = 'caucete'))),
+  (gen_random_uuid()::text, (SELECT id FROM nodos WHERE key = 'caucete'), 'missing_ramp', 'Falta rampa de accesibilidad', (SELECT id FROM capas WHERE key = 'accessibility' AND nodo_id = (SELECT id FROM nodos WHERE key = 'caucete'))),
+  (gen_random_uuid()::text, (SELECT id FROM nodos WHERE key = 'caucete'), 'damaged_sidewalk', 'Vereda dañada', (SELECT id FROM capas WHERE key = 'accessibility' AND nodo_id = (SELECT id FROM nodos WHERE key = 'caucete'))),
+  (gen_random_uuid()::text, (SELECT id FROM nodos WHERE key = 'caucete'), 'water_waste', 'Pérdida o desperdicio de agua', (SELECT id FROM capas WHERE key = 'sustainability' AND nodo_id = (SELECT id FROM nodos WHERE key = 'caucete'))),
+  (gen_random_uuid()::text, (SELECT id FROM nodos WHERE key = 'caucete'), 'missing_shade_trees', 'Falta de arbolado y sombra', (SELECT id FROM capas WHERE key = 'sustainability' AND nodo_id = (SELECT id FROM nodos WHERE key = 'caucete'))),
   (gen_random_uuid()::text, (SELECT id FROM nodos WHERE key = 'iglesia'), 'damaged_road', 'Camino rural dañado', (SELECT id FROM capas WHERE key = 'rural_services' AND nodo_id = (SELECT id FROM nodos WHERE key = 'iglesia'))),
   (gen_random_uuid()::text, (SELECT id FROM nodos WHERE key = 'iglesia'), 'blocked_trail', 'Sendero obstruido o dañado', (SELECT id FROM capas WHERE key = 'rural_services' AND nodo_id = (SELECT id FROM nodos WHERE key = 'iglesia'))),
   (gen_random_uuid()::text, (SELECT id FROM nodos WHERE key = 'iglesia'), 'water_shortage', 'Escasez de agua para producción', (SELECT id FROM capas WHERE key = 'productive_units' AND nodo_id = (SELECT id FROM nodos WHERE key = 'iglesia'))),
@@ -103,6 +121,11 @@ VALUES
   ('seed-f-cau-103', (SELECT id FROM nodos WHERE key = 'caucete'), (SELECT id FROM capas WHERE key = 'health_facilities' AND nodo_id = (SELECT id FROM nodos WHERE key = 'caucete')), 'Sin transporte al centro de salud (sector oeste)', 'problem', 'community_validated', 'Ilustrativa · relevamiento comunitario', '2026-09-16T12:00:00Z', -31.376, -68.29, true),
   ('seed-f-cau-104', (SELECT id FROM nodos WHERE key = 'caucete'), (SELECT id FROM capas WHERE key = 'resilience_points' AND nodo_id = (SELECT id FROM nodos WHERE key = 'caucete')), 'Camino bloqueado tras tormenta', 'problem', 'community_validated', 'Ilustrativa · reporte vecinal', '2026-09-21T12:00:00Z', -31.39, -68.272, true),
   ('seed-f-cau-105', (SELECT id FROM nodos WHERE key = 'caucete'), (SELECT id FROM capas WHERE key = 'community_resources' AND nodo_id = (SELECT id FROM nodos WHERE key = 'caucete')), 'Acceso a agua comunitaria irregular', 'problem', 'community_validated', 'Ilustrativa · relevamiento comunitario', '2026-09-17T12:00:00Z', -31.372, -68.266, true),
+  ('seed-f-cau-201', (SELECT id FROM nodos WHERE key = 'caucete'), (SELECT id FROM capas WHERE key = 'hydrology' AND nodo_id = (SELECT id FROM nodos WHERE key = 'caucete')), 'Acequia obstruida — tramo crítico', 'problem', 'community_validated', 'Ilustrativa · relevamiento comunitario', '2026-10-05T12:00:00Z', -31.383, -68.291, true),
+  ('seed-f-cau-202', (SELECT id FROM nodos WHERE key = 'caucete'), (SELECT id FROM capas WHERE key = 'hydrology' AND nodo_id = (SELECT id FROM nodos WHERE key = 'caucete')), 'Desagüe insuficiente — punto de riesgo hídrico', 'problem', 'pending', 'Ilustrativa · reporte vecinal', '2026-10-06T12:00:00Z', -31.371, -68.274, true),
+  ('seed-f-cau-203', (SELECT id FROM nodos WHERE key = 'caucete'), (SELECT id FROM capas WHERE key = 'seismic_risk' AND nodo_id = (SELECT id FROM nodos WHERE key = 'caucete')), 'Punto de encuentro comunitario señalado', 'asset', 'verified', 'Ilustrativa · inventario institucional', '2026-10-04T12:00:00Z', -31.386, -68.279, true),
+  ('seed-f-cau-204', (SELECT id FROM nodos WHERE key = 'caucete'), (SELECT id FROM capas WHERE key = 'public_space' AND nodo_id = (SELECT id FROM nodos WHERE key = 'caucete')), 'Plaza con mobiliario a mejorar', 'problem', 'community_validated', 'Ilustrativa · relevamiento comunitario', '2026-10-05T12:00:00Z', -31.379, -68.283, true),
+  ('seed-f-cau-205', (SELECT id FROM nodos WHERE key = 'caucete'), (SELECT id FROM capas WHERE key = 'sustainability' AND nodo_id = (SELECT id FROM nodos WHERE key = 'caucete')), 'Arbolado faltante en corredor cívico', 'problem', 'pending', 'Ilustrativa · reporte vecinal', '2026-10-06T12:00:00Z', -31.388, -68.276, true),
   ('seed-f-igl-101', (SELECT id FROM nodos WHERE key = 'iglesia'), (SELECT id FROM capas WHERE key = 'productive_units' AND nodo_id = (SELECT id FROM nodos WHERE key = 'iglesia')), 'Producción de semillas — ajo y cebolla', 'asset', 'verified', 'Ilustrativa · productor', '2026-09-15T12:00:00Z', -31.202, -68.86, true),
   ('seed-f-igl-102', (SELECT id FROM nodos WHERE key = 'iglesia'), (SELECT id FROM capas WHERE key = 'productive_units' AND nodo_id = (SELECT id FROM nodos WHERE key = 'iglesia')), 'Viñal en producción — variedad autóctona', 'asset', 'verified', 'Ilustrativa · cooperativa', '2026-09-11T12:00:00Z', -31.21, -68.872, true),
   ('seed-f-igl-103', (SELECT id FROM nodos WHERE key = 'iglesia'), (SELECT id FROM capas WHERE key = 'productive_units' AND nodo_id = (SELECT id FROM nodos WHERE key = 'iglesia')), 'Plaga en cultivo de vid — sector sur', 'problem', 'pending', 'Ilustrativa · productor', '2026-09-22T12:00:00Z', -31.214, -68.862, true),
@@ -119,6 +142,7 @@ VALUES
   (gen_random_uuid()::text, (SELECT id FROM nodos WHERE key = 'capital'), 'broken_lamp', 'Luminaria averiada en Galería céntrica', 'evaluating', -31.533, -68.519, true, 'seed-reporte-capital-2', '2026-10-01T12:00:00Z', '2026-10-01T12:00:00Z'),
   (gen_random_uuid()::text, (SELECT id FROM nodos WHERE key = 'caucete'), 'blocked_road', 'Camino rural bloqueado tras tormenta', 'received', -31.381, -68.279, true, 'seed-reporte-caucete-1', '2026-10-01T12:00:00Z', '2026-10-01T12:00:00Z'),
   (gen_random_uuid()::text, (SELECT id FROM nodos WHERE key = 'caucete'), 'long_distance', 'Distancia excesiva al centro de salud', 'evaluating', -31.377, -68.286, true, 'seed-reporte-caucete-2', '2026-10-01T12:00:00Z', '2026-10-01T12:00:00Z'),
+  (gen_random_uuid()::text, (SELECT id FROM nodos WHERE key = 'caucete'), 'flood_risk', 'Anegamiento en cruce de calle tras tormenta', 'received', -31.383, -68.288, true, 'seed-reporte-caucete-3', '2026-10-05T12:00:00Z', '2026-10-05T12:00:00Z'),
   (gen_random_uuid()::text, (SELECT id FROM nodos WHERE key = 'iglesia'), 'damaged_road', 'Camino de acceso a finca dañado', 'received', -31.204, -68.864, true, 'seed-reporte-iglesia-1', '2026-10-01T12:00:00Z', '2026-10-01T12:00:00Z'),
   (gen_random_uuid()::text, (SELECT id FROM nodos WHERE key = 'iglesia'), 'pest_outbreak', 'Plaga detectada en cultivo de vid', 'in_progress', -31.209, -68.858, true, 'seed-reporte-iglesia-2', '2026-10-01T12:00:00Z', '2026-10-01T12:00:00Z')
 ON CONFLICT (hash) DO NOTHING;
