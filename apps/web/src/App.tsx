@@ -46,6 +46,7 @@ import type {
   FederalSovereigntyRecord,
   InterNodeSyncPack,
   LineageChainStep,
+  ModeloFederadoPayload,
   MultiScaleSynthesisItem,
   OfflineFieldQueueItem,
   PostgisGeometryType,
@@ -55,43 +56,13 @@ import type {
   TelemetryWebhookRecord,
   TemporalQuarterSnapshot,
   TerritorialReport,
+  Territorio,
   TerritorioCategory,
   TerritorioFeature,
   TerritorioLayer,
 } from './data/federatedModel';
 
-export interface Territorio {
-  id: string;
-  key: string;
-  nombre: string;
-  subtitulo?: string;
-  provincia: string;
-  foco?: string;
-  focusLong?: string;
-  poblacion?: number;
-  color?: string;
-  activo: boolean;
-}
-
-interface ModeloFederadoPayload {
-  territorios: Territorio[];
-  layers: Record<string, TerritorioLayer[]>;
-  categories: Record<string, TerritorioCategory[]>;
-  features: TerritorioFeature[];
-  reports: TerritorialReport[];
-  eventsRaw: RawEventRecord[];
-  evidencias: EvidenciaRecord[];
-  spatialGeometries?: SpatialGeometryRecord[];
-  syncPacks?: InterNodeSyncPack[];
-  temporalSnapshots?: TemporalQuarterSnapshot[];
-  multiScaleSyntheses?: MultiScaleSynthesisItem[];
-  lineageChain?: LineageChainStep[];
-  federalSovereignty?: FederalSovereigntyRecord[];
-  spatialIntersections?: SpatialIntersectionResult[];
-  offlineFieldQueue?: OfflineFieldQueueItem[];
-  accreditedCustodians?: AccreditedCustodianRecord[];
-  telemetryWebhooks?: TelemetryWebhookRecord[];
-}
+export type { Territorio, ModeloFederadoPayload };
 
 type HealthState =
   | { status: 'checking' }
@@ -362,10 +333,10 @@ export function App() {
     return () => window.removeEventListener('gmp-quota-exceeded', onQuotaExceeded);
   }, []);
 
-  const cargarModeloFederado = useCallback(async () => {
+  const cargarModeloFederado = useCallback(async (): Promise<ModeloFederadoPayload | null> => {
     try {
       const res = await fetch('/api/modelo-federado');
-      if (!res.ok) return;
+      if (!res.ok) return null;
       const json = (await res.json()) as { success: boolean; data?: ModeloFederadoPayload };
       if (json.success && json.data) {
         setLayersByNode(json.data.layers ?? {});
@@ -384,10 +355,12 @@ export function App() {
         setOfflineFieldQueue(json.data.offlineFieldQueue ?? []);
         setAccreditedCustodians(json.data.accreditedCustodians ?? []);
         setTelemetryWebhooks(json.data.telemetryWebhooks ?? []);
+        return json.data;
       }
     } catch {
       // Mantiene el estado local si el endpoint opcional no responde
     }
+    return null;
   }, []);
 
   const activeDataSource: DataSource = useSyntheticInDemo
@@ -496,6 +469,43 @@ export function App() {
     }
   };
 
+  const reportApiMutationError = useCallback(
+    async (contextLabel: string, res: Response) => {
+      let detail = '';
+      try {
+        const body = (await res.clone().json()) as {
+          error?: string;
+          message?: string;
+          evidencia_actualizada?: string;
+        };
+        detail = body.error ?? body.message ?? '';
+      } catch {
+        // cuerpo no JSON
+      }
+      if (res.status === 409) {
+        const msg409 = `${contextLabel}: ya registrado (HTTP 409 idempotente EV-005)${detail ? ` — ${detail}` : ''}`;
+        setIdempotencyProbeResult(msg409);
+        setLastDataSourceError(
+          new DataSourceHttpError({
+            status: 409,
+            endpoint: contextLabel,
+            message: msg409,
+          }),
+        );
+        return;
+      }
+      const errMsg = `${contextLabel} falló (HTTP ${res.status})${detail ? `: ${detail}` : ''}`;
+      setLastDataSourceError(
+        new DataSourceHttpError({
+          status: res.status,
+          endpoint: contextLabel,
+          message: errMsg,
+        }),
+      );
+    },
+    [],
+  );
+
   const handleCreateReport = async (payload: {
     nodeKey: string;
     category: string;
@@ -507,18 +517,22 @@ export function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    if (res.ok) {
-      await cargarModeloFederado();
+    if (!res.ok) {
+      await reportApiMutationError('POST /api/reportes', res);
+      return;
     }
+    await cargarModeloFederado();
   };
 
   const handleAdvanceReport = async (reportId: string) => {
     const res = await fetch(`/api/reportes/${reportId}/advance`, {
       method: 'PATCH',
     });
-    if (res.ok) {
-      await cargarModeloFederado();
+    if (!res.ok) {
+      await reportApiMutationError('PATCH /api/reportes/:id/advance', res);
+      return;
     }
+    await cargarModeloFederado();
   };
 
   const handleRecordHumanReview = async (nodeKey: string, reviewerNote: string) => {
@@ -527,9 +541,11 @@ export function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ nodeKey, reviewerNote }),
     });
-    if (res.ok) {
-      await cargarModeloFederado();
+    if (!res.ok) {
+      await reportApiMutationError('POST /api/ethical-review', res);
+      return;
     }
+    await cargarModeloFederado();
   };
 
   const handleCreateGeometry = async (payload: {
@@ -543,9 +559,11 @@ export function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    if (res.ok) {
-      await cargarModeloFederado();
+    if (!res.ok) {
+      await reportApiMutationError('POST /api/geometrias-postgis', res);
+      return;
     }
+    await cargarModeloFederado();
   };
 
   const handleCreateSyncPack = async (payload: {
@@ -561,9 +579,11 @@ export function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    if (res.ok) {
-      await cargarModeloFederado();
+    if (!res.ok) {
+      await reportApiMutationError('POST /api/federacion/sync-packs', res);
+      return;
     }
+    await cargarModeloFederado();
   };
 
   const handleAckSyncPack = async (packId: string, targetCustodianAck: string) => {
@@ -572,9 +592,11 @@ export function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ targetCustodianAck }),
     });
-    if (res.ok) {
-      await cargarModeloFederado();
+    if (!res.ok) {
+      await reportApiMutationError('PATCH /api/federacion/sync-packs/:id/ack', res);
+      return;
     }
+    await cargarModeloFederado();
   };
 
   const handleCreateSynthesis = async (payload: {
@@ -588,9 +610,11 @@ export function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    if (res.ok) {
-      await cargarModeloFederado();
+    if (!res.ok) {
+      await reportApiMutationError('POST /api/horizonte3/sintesis', res);
+      return;
     }
+    await cargarModeloFederado();
   };
 
   const handleRatifySynthesis = async (
@@ -606,15 +630,20 @@ export function App() {
         body: JSON.stringify({ ratifiedBy, ratifiedNote }),
       },
     );
-    if (res.ok) {
-      await cargarModeloFederado();
+    if (!res.ok) {
+      await reportApiMutationError('PATCH /api/horizonte3/sintesis/:id/ratificar', res);
+      return;
     }
+    await cargarModeloFederado();
   };
 
   const handleAuditLineage = async (): Promise<string> => {
     const res = await fetch('/api/horizonte3/auditar-linaje', {
       method: 'POST',
     });
+    if (!res.ok) {
+      await reportApiMutationError('POST /api/horizonte3/auditar-linaje', res);
+    }
     const body = (await res.json()) as {
       message?: string;
       auditHash?: string;
@@ -627,20 +656,47 @@ export function App() {
   const handleToggleNodeSovereignty = async (nodeKey: string) => {
     const currentSov = federalSovereignty.find((s) => s.nodeKey === nodeKey);
     const prevMode = currentSov?.sovereigntyMode ?? 'delegacion_revocable_activa';
-    const nextMode =
-      prevMode === 'delegacion_revocable_activa'
-        ? 'custodia_local_estricta'
-        : 'delegacion_revocable_activa';
 
     const res = await fetch(`/api/horizonte3/soberania/${encodeURIComponent(nodeKey)}`, {
       method: 'PATCH',
     });
-    if (res.ok) {
-      await cargarModeloFederado();
+
+    // R5 / Fix A-01: sin fallback silencioso — el espejo Firestore solo refleja estados acreditados por el backend.
+    if (!res.ok) {
+      await reportApiMutationError('PATCH /api/horizonte3/soberania/:nodeKey', res);
+      return;
+    }
+
+    let backendNextMode: 'delegacion_revocable_activa' | 'custodia_local_estricta' | undefined;
+    try {
+      const patchJson = (await res.clone().json()) as {
+        sovereigntyMode?: 'delegacion_revocable_activa' | 'custodia_local_estricta';
+        data?:
+          | { sovereigntyMode?: 'delegacion_revocable_activa' | 'custodia_local_estricta' }
+          | FederalSovereigntyRecord[];
+      };
+      if (patchJson.sovereigntyMode) {
+        backendNextMode = patchJson.sovereigntyMode;
+      } else if (Array.isArray(patchJson.data)) {
+        backendNextMode = patchJson.data.find((s) => s.nodeKey === nodeKey)?.sovereigntyMode;
+      } else {
+        backendNextMode = patchJson.data?.sovereigntyMode;
+      }
+    } catch {
+      // Si el cuerpo de PATCH no incluye data, se relee del modelo federado actualizado
+    }
+
+    const refreshedPayload = await cargarModeloFederado();
+
+    // Fix A-02: el modo real lo define exclusivamente el backend; nunca se invierte en el cliente.
+    const refreshedSov = refreshedPayload?.federalSovereignty?.find((s) => s.nodeKey === nodeKey);
+    const nextMode = backendNextMode ?? refreshedSov?.sovereigntyMode;
+    if (!nextMode) {
+      return;
     }
 
     const fcmResult = await recordCustodianSovereigntyAlertInFirestore({
-      nodeKey: (nodeKey === 'caucete' || nodeKey === 'iglesia' ? nodeKey : 'capital'),
+      nodeKey: nodeKey === 'caucete' || nodeKey === 'iglesia' ? nodeKey : 'capital',
       nodeName: currentSov?.nodeName ?? nodeKey.toUpperCase(),
       previousMode: prevMode,
       nextMode,
@@ -663,9 +719,11 @@ export function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    if (res.ok) {
-      await cargarModeloFederado();
+    if (!res.ok) {
+      await reportApiMutationError('POST /api/horizonte4/postgis-interseccion', res);
+      return;
     }
+    await cargarModeloFederado();
   };
 
   const handleEnqueueOfflineFieldItem = async (payload: {
@@ -679,15 +737,20 @@ export function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    if (res.ok) {
-      await cargarModeloFederado();
+    if (!res.ok) {
+      await reportApiMutationError('POST /api/horizonte4/offline-queue', res);
+      return;
     }
+    await cargarModeloFederado();
   };
 
   const handleExecuteBatchSync = async (): Promise<string> => {
     const res = await fetch('/api/horizonte4/batch-sync', {
       method: 'POST',
     });
+    if (!res.ok) {
+      await reportApiMutationError('POST /api/horizonte4/batch-sync', res);
+    }
     const body = (await res.json()) as {
       message?: string;
       batchHash?: string;
@@ -705,6 +768,9 @@ export function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
+    if (!res.ok) {
+      await reportApiMutationError('POST /api/horizonte4/firmar-ed25519', res);
+    }
     const body = (await res.json()) as {
       signatureHex?: string;
       data?: AccreditedCustodianRecord;
@@ -722,9 +788,11 @@ export function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    if (res.ok) {
-      await cargarModeloFederado();
+    if (!res.ok) {
+      await reportApiMutationError('POST /api/horizonte4/webhooks/telemetria', res);
+      return;
     }
+    await cargarModeloFederado();
   };
 
   const handleVisualValidateAsset = async (
@@ -739,9 +807,11 @@ export function App() {
         body: JSON.stringify({ visualState }),
       },
     );
-    if (res.ok) {
-      await cargarModeloFederado();
+    if (!res.ok) {
+      await reportApiMutationError('PATCH /api/features/:id/visual-check', res);
+      return;
     }
+    await cargarModeloFederado();
   };
 
   const handleTestDuplicateHashIdempotency = async (): Promise<string> => {
@@ -757,6 +827,9 @@ export function App() {
         payload: sampleEvent?.payload ?? { test: 'idempotency' },
       }),
     });
+    if (!res.ok) {
+      await reportApiMutationError('POST /api/events (EV-005)', res);
+    }
     const body = (await res.json()) as {
       error?: string;
       evidencia_actualizada?: string;
@@ -776,9 +849,11 @@ export function App() {
         },
       }),
     });
-    if (res.ok) {
-      await cargarModeloFederado();
+    if (!res.ok) {
+      await reportApiMutationError(`PATCH /api/evidencias/${code}/verify`, res);
+      return;
     }
+    await cargarModeloFederado();
   };
 
   const handleWorkspaceExportVerified = async (exportMeta: {
@@ -788,7 +863,7 @@ export function App() {
     fileId?: string;
     webViewLink?: string;
   }) => {
-    await fetch('/api/evidencias/EV-014/verify', {
+    const res = await fetch('/api/evidencias/EV-014/verify', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -801,6 +876,10 @@ export function App() {
         },
       }),
     });
+    if (!res.ok) {
+      await reportApiMutationError('PATCH /api/evidencias/EV-014/verify', res);
+      return;
+    }
     await cargarModeloFederado();
   };
 
