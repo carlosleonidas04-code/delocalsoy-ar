@@ -217,3 +217,59 @@ export const FEATURES = [
   // Iglesia (compatibilidad con reportes previos)
   mk("f-igl-001", "iglesia", "productive_units", 30, 40, "Escasez de agua para riego en finca", "community_validated", "Productor local", "2026-09-14", { type: "problem", domain: "production" }),
 ];
+
+// ─── NODO-CAU R4 (#149): fichas de valoración comunitaria (testimonios demo) ───
+// Paridad con packages/contracts (FichaRespuestasV1 — snake_case, forma del
+// contrato) y con la API real /api/fichas-valoracion. Ancladas al feature
+// f-cau-204 de la capa public_space de caucete: la ficha NO tiene geometría
+// propia — el espacio acredita la ubicación. Estados ADR-036: testimonio →
+// corroborada | descartada; el estado público derivado es validado|testimonio.
+// Datos de diseño (R15): isSynthetic true, fuente ilustrativa sin
+// organizaciones reales; observables del ESPACIO, nunca personas (#149).
+
+export const FICHAS_VALORACION = [
+  {
+    id: "ficha-cau-demo-001",
+    nodeKey: "caucete",
+    featureId: "f-cau-204",
+    version: "v1",
+    estado: "corroborada",
+    corroboracion: "taller_comunitario",
+    estadoPublico: "validado",
+    isSynthetic: true,
+    sourceLabel: "Ilustrativa · ficha comunitaria",
+    observedAt: "2026-10-11",
+    respuestas: {
+      usos_vitalidad: { usos_detectados: ["recreo", "deporte", "reunion"], nivel_actividad: "media", observaciones: "Uso familiar a la tarde; ferias los fines de semana" },
+      accesibilidad: { rampa_acceso: "parcial", estado_vereda: "regular", obstaculos: false },
+      sombra_arbolado: { arbolado_presente: true, sombra_horario_central: "parcial", lectura_3_30_300: "Se observan 4 árboles maduros en el perímetro" },
+      agua_xerojardin: { riego: "no", perdidas_visibles: false, especies_apto_clima: "desconocido" },
+      seguridad_disenio: { iluminacion: "regular", visibilidad: "buena", mantenimiento: "regular", destinos_activos_cercanos: true },
+      equipamiento: { bancos: true, juegos_infantiles: false, canchas: true, basureros: true, bebedero: false, otro: "Pérgola de sombra" },
+      custodia: { custodia_presente: true, tipo_acuerdo: "vecinal" },
+      notas: "Plaza con potencial de mejora del mobiliario y los juegos",
+    },
+  },
+  {
+    id: "ficha-cau-demo-002",
+    nodeKey: "caucete",
+    featureId: "f-cau-204",
+    version: "v1",
+    estado: "testimonio",
+    corroboracion: null,
+    estadoPublico: "testimonio",
+    isSynthetic: true,
+    sourceLabel: "Ilustrativa · ficha comunitaria",
+    observedAt: "2026-10-12",
+    respuestas: {
+      usos_vitalidad: { usos_detectados: ["descanso", "transito"], nivel_actividad: "baja", observaciones: "Cruce de caminatas escolares por la mañana" },
+      accesibilidad: { rampa_acceso: "no", estado_vereda: "malo", obstaculos: true },
+      sombra_arbolado: { arbolado_presente: false, sombra_horario_central: "nula" },
+      agua_xerojardin: { riego: "desconocido", perdidas_visibles: false, especies_apto_clima: "no" },
+      seguridad_disenio: { iluminacion: "mala", visibilidad: "regular", mantenimiento: "malo", destinos_activos_cercanos: false },
+      equipamiento: { bancos: false, juegos_infantiles: false, canchas: false, basureros: false, bebedero: false },
+      custodia: { custodia_presente: false, tipo_acuerdo: "ninguno" },
+      notas: "Sector perimetral sin uso: veredas rotas y sin iluminación",
+    },
+  },
+];
