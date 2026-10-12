@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "DELocalSoy.AR Federated API Contract",
-    "version": "7.11.0",
-    "description": "Reconciliado CORE-004 (regla documental, #87): documenta todas las rutas montadas en apps/api/src/app.ts. R1: 11 rutas v7.7.0. R3 (ADR-031): /api/auth/* + system.* reservado (H-01). EV-031/EV-032. R4a (ADR-032): transporte Redis Streams (stream events:raw) — events_raw única fuente de verdad, publish fail-open. R5a (auditoría #99–#102): rate limiting 429 por IP+hash(email) en /api/auth/{register,login} (header Retry-After); 5xx sanitizados sin mensajes internos. R5b (dominio activos, #87): /api/activos — POST ciudadano autenticado con pseudónimo sha256 sin PII (Ley 25.326), GET público anónimo con recorte espacial bbox (PostGIS), PATCH /api/activos/{id}/estado para moderación moderador|admin; sellos activo.propuesto y activo.estado_cambiado en events_raw con rollback si el sello falla."
+    "version": "7.12.0",
+    "description": "Reconciliado CORE-004 (regla documental, #87): documenta todas las rutas montadas en apps/api/src/app.ts. R1: 11 rutas v7.7.0. R3 (ADR-031): /api/auth/* + system.* reservado (H-01). EV-031/EV-032. R4a (ADR-032): transporte Redis Streams (stream events:raw) — events_raw única fuente de verdad, publish fail-open. R5a (auditoría #99–#102): rate limiting 429 por IP+hash(email) en /api/auth/{register,login} (header Retry-After); 5xx sanitizados sin mensajes internos. R5b (dominio activos, #87): /api/activos — POST ciudadano autenticado con pseudónimo sha256 sin PII (Ley 25.326), GET público anónimo con recorte espacial bbox (PostGIS), PATCH /api/activos/{id}/estado para moderación moderador|admin; sellos activo.propuesto y activo.estado_cambiado en events_raw con rollback si el sello falla. NODO-CAU R4 (#149): /api/fichas-valoracion — fichas de valoración comunitaria del espacio público (testimonio revisable, ADR-036): POST ciudadano autenticado anclado a features de la capa public_space (pseudónimo sha256 sin PII, anti-PII, idempotencia por hash único), GET público anónimo con recorte espacial bbox por la geometría del espacio ancla y estado derivado validado|testimonio ('descartada' nunca se publica), PATCH /api/fichas-valoracion/{id}/estado moderador|admin (corroborar exige corroboracion individual|taller_comunitario); sellos ficha_valoracion.propuesta y ficha_valoracion.estado_cambiado en events_raw con rollback si fallan."
   },
   "paths": {
     "/api/health": {
@@ -210,6 +210,112 @@
           },
           "409": {
             "description": "El activo ya está en ese estado (sin transición no hay evento)"
+          },
+          "500": {
+            "description": "Error interno sanitizado (R5a, #100)"
+          },
+          "503": {
+            "description": "Sin JWT_SECRET (identidad cerrada, fail-closed)"
+          }
+        }
+      }
+    },
+    "/api/fichas-valoracion": {
+      "get": {
+        "summary": "NODO-CAU R4 (#149): lectura pública y anónima de fichas de valoración ancladas a espacios públicos; ?bbox= recorta por la geometría del ESPACIO ancla (capa public_space, PostGIS SRID=4326); filtros ?estado= (corroborada|testimonio) y ?nodo=; estado público derivado validado|testimonio — 'descartada' nunca se publica (ADR-036)",
+        "parameters": [
+          {
+            "name": "bbox",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "estado",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "nodo",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK — envelope {success, data, count}; cada ficha incluye estado_publico y el espacio ancla (con bbox: feature_titulo/lat/lng + geometry GeoJSON)"
+          },
+          "400": {
+            "description": "bbox/estado/nodo inválidos"
+          },
+          "500": {
+            "description": "Error interno sanitizado (R5a, #100)"
+          }
+        }
+      },
+      "post": {
+        "summary": "NODO-CAU R4 (#149): ficha de valoración ciudadana autenticada (requireJwt) — anclada a un feature de la capa public_space del nodo (404 si no existe); nace 'testimonio' (ADR-036); 7 dimensiones del contrato Zod FichaRespuestasV1; autor = pseudónimo sha256(usuario_id) sin PII (Ley 25.326); anti-PII server-side antes de persistir (ADR-020); idempotencia por hash único (mismo ciudadano+espacio+versión+respuestas → 200 idempotente); sello ficha_valoracion.propuesta en events_raw con rollback si falla",
+        "responses": {
+          "200": {
+            "description": "Ficha idéntica ya existente (idempotente: true)"
+          },
+          "201": {
+            "description": "Ficha creada (estado: testimonio) + sello en events_raw"
+          },
+          "400": {
+            "description": "Datos inválidos (contrato Zod) o PII detectada — sin eco del valor"
+          },
+          "401": {
+            "description": "Bearer token ausente o inválido"
+          },
+          "404": {
+            "description": "Espacio público no encontrado en el nodo indicado (honesto, R15)"
+          },
+          "500": {
+            "description": "Error interno sanitizado (R5a, #100)"
+          },
+          "503": {
+            "description": "Sin JWT_SECRET (identidad cerrada, fail-closed)"
+          }
+        }
+      }
+    },
+    "/api/fichas-valoracion/{id}/estado": {
+      "patch": {
+        "summary": "NODO-CAU R4 (#149): moderación de fichas — requireRole moderador|admin; transición testimonio → corroborada|descartada; corroborar exige declarar corroboracion (individual | taller_comunitario, validación colectiva ratificada); sello ficha_valoracion.estado_cambiado en events_raw con rollback si falla",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Estado actualizado (corroborada | descartada) + sello en events_raw"
+          },
+          "400": {
+            "description": "Datos inválidos (corroboracion requerida para corroborar), contrato Zod o PII en el motivo — sin eco del valor"
+          },
+          "401": {
+            "description": "Bearer token ausente o inválido"
+          },
+          "403": {
+            "description": "Rol insuficiente (requiere moderador|admin)"
+          },
+          "404": {
+            "description": "Ficha no encontrada (honesto, R15)"
+          },
+          "409": {
+            "description": "La ficha ya está en ese estado (sin transición no hay evento)"
           },
           "500": {
             "description": "Error interno sanitizado (R5a, #100)"
