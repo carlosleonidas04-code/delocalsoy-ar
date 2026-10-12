@@ -63,6 +63,32 @@ function estadoPublico(estado: string): 'validado' | 'testimonio' {
   return estado === 'corroborada' ? 'validado' : 'testimonio';
 }
 
+// Filas tipadas de la lectura pública: el cliente prisma se exporta `any`
+// (patrón mock de pruebas en lib/prisma), así que la forma de las filas se
+// declara explícita para que la lectura siga chequeada en tsc.
+type FichaValoracionRow = {
+  id: string;
+  nodo_key: string;
+  feature_id: string;
+  version: string;
+  respuestas: Record<string, unknown>;
+  estado: string;
+  corroboracion: string | null;
+  created_by_hash: string;
+  hash: string;
+  created_at: Date;
+  updated_at: Date;
+};
+
+type EspacioRow = {
+  id: string;
+  titulo: string;
+  lat: number;
+  lng: number;
+  is_synthetic: boolean;
+  fuente_label: string;
+};
+
 // POST /api/fichas-valoracion — ficha de valoración ciudadana (requireJwt):
 // nace 'testimonio', anclada a un feature de public_space del nodo declarado.
 router.post('/', requireJwt, async (req: Request, res: Response) => {
@@ -230,22 +256,26 @@ router.get('/', async (req: Request, res: Response) => {
       return;
     }
 
-    const fichas = await prisma.fichas_valoracion.findMany({
+    const fichas = (await prisma.fichas_valoracion.findMany({
       where: {
         estado: estado !== undefined ? estado : { not: 'descartada' },
         ...(nodo !== undefined ? { nodo_key: nodo } : {}),
       },
       orderBy: { created_at: 'desc' },
       take: 100,
-    });
+    })) as FichaValoracionRow[];
 
     // Espacio ancla: sin bbox no hay recorte espacial, pero la lectura sigue
     // acreditando el feature (título/ubicación/fuente) — la ficha nunca se
     // publica sin su espacio.
     const featureIds = [...new Set(fichas.map((f) => f.feature_id))];
-    const espacios =
-      featureIds.length > 0 ? await prisma.features.findMany({ where: { id: { in: featureIds } } }) : [];
-    const espacioPorId = new Map(espacios.map((e) => [e.id, e]));
+    const espacios = (
+      featureIds.length > 0 ? await prisma.features.findMany({ where: { id: { in: featureIds } } }) : []
+    ) as EspacioRow[];
+    const espacioPorId = new Map<string, EspacioRow>();
+    for (const espacio of espacios) {
+      espacioPorId.set(espacio.id, espacio);
+    }
 
     const data = fichas.map((f) => {
       const espacio = espacioPorId.get(f.feature_id);
