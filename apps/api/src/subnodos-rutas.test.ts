@@ -4,9 +4,12 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 // NODO-VIG VIG-001 (NVIG-R4 #171, épica #167): subnodos territoriales del
 // Valle de Iglesia — jerarquía distrito → paraje → subparaje + localidad
-// INDEC. Requiere Postgres/PostGIS real (job test de CI); sin base → skip
-// honesto (patrón nodos-rutas). El test ejecuta el seed REAL (db:seed, que
-// corre seed.sql + seed-subnodos.sql), no una copia de la lógica.
+// INDEC. LOTE 2 ratificado por la DH (2026-10-13, traza #168 comment
+// 6151285249): 3 parajes de travesía por cercanía + 15 de alta cordillera
+// no-paso como hijos directos del nodo → 52 entidades. Requiere
+// Postgres/PostGIS real (job test de CI); sin base → skip honesto (patrón
+// nodos-rutas). El test ejecuta el seed REAL (db:seed, que corre seed.sql +
+// seed-subnodos.sql), no una copia de la lógica.
 
 process.env.DATABASE_URL =
   process.env.TEST_DATABASE_URL ?? 'postgresql://delocalsoy:delocalsoy@localhost:5432/delocalsoy?schema=public';
@@ -42,16 +45,23 @@ afterAll(async () => {
 });
 
 describe.skipIf(!dbUp)('Subnodos territoriales VIG-001 (#171, épica #167)', () => {
-  it('GET /api/nodos/iglesia/subnodos — primer lote ratificado: 34 entidades', async () => {
+  it('GET /api/nodos/iglesia/subnodos — lotes 1+2 ratificados: 52 entidades', async () => {
     const res = await fetch(base + '/api/nodos/iglesia/subnodos');
     expect(res.status).toBe(200);
     const body: any = await res.json();
     expect(body.success).toBe(true);
-    expect(body.count).toBe(34);
-    // el segundo lote (travesía + alta cordillera no-paso) está diferido por la DH
+    expect(body.count).toBe(52);
+    // el segundo lote (travesía + alta cordillera no-paso) fue ratificado
+    // por la DH y ya vive en el seed
     const keys: string[] = body.data.map((s: any) => s.key);
-    for (const diferido of ['sj_iglesia_p_el_arenal', 'sj_iglesia_p_mina_veladero', 'sj_iglesia_p_campamento_pircas']) {
-      expect(keys, 'entidad diferida cargada por error: ' + diferido).not.toContain(diferido);
+    for (const ratificado of [
+      'sj_iglesia_p_el_arenal',
+      'sj_iglesia_p_minas_de_pinto',
+      'sj_iglesia_p_los_corrales',
+      'sj_iglesia_p_campamento_pircas',
+      'sj_iglesia_p_fierro_nuevo',
+    ]) {
+      expect(keys, 'falta la entidad del lote 2: ' + ratificado).toContain(ratificado);
     }
   });
 
@@ -125,25 +135,51 @@ describe.skipIf(!dbUp)('Subnodos territoriales VIG-001 (#171, épica #167)', () 
     expect(colola.lat).toBeNull(); // local histórico sin punto publicado (R15)
   });
 
-  it('alta cordillera "solo los pasos": Pascua Lama cuelga del nodo (zone alta_cordillera)', async () => {
+  it('lote 2 ratificado — travesía por cercanía: El Arenal→tudcum (A20), Los Corrales→tudcum (A31), Minas de Pinto→villa-iglesia (A36)', async () => {
+    const res = await fetch(base + '/api/nodos/iglesia/subnodos');
+    const body: any = await res.json();
+    const travesia = body.data.filter((s: any) => s.zone === 'travesia');
+    // 3 del lote 2 (provisional por cercanía) + Paso del Agua Negra (dh_directive)
+    expect(travesia.length).toBe(4);
+    const porKey = new Map(travesia.map((s: any) => [s.key, s]));
+    const arenal: any = porKey.get('sj_iglesia_p_el_arenal');
+    expect(arenal, 'falta El Arenal').toBeDefined();
+    expect(arenal.parent_key).toBe('sj_iglesia_tudcum');
+    expect(arenal.external_id).toBe('70049A20');
+    expect(arenal.assignment_status).toBe('nearest_district_provisional');
+    const corrales: any = porKey.get('sj_iglesia_p_los_corrales');
+    expect(corrales, 'falta Los Corrales').toBeDefined();
+    expect(corrales.parent_key).toBe('sj_iglesia_tudcum');
+    expect(corrales.external_id).toBe('70049A31');
+    expect(corrales.assignment_status).toBe('nearest_district_provisional');
+    const pinto: any = porKey.get('sj_iglesia_p_minas_de_pinto');
+    expect(pinto, 'falta Minas de Pinto').toBeDefined();
+    expect(pinto.parent_key).toBe('sj_iglesia_villa_iglesia');
+    expect(pinto.external_id).toBe('70049A36');
+    expect(pinto.assignment_status).toBe('nearest_district_provisional');
+  });
+
+  it('hijos directos del nodo (parent=none): 6 distritos + Pascua Lama + 15 alta cordillera', async () => {
     const res = await fetch(base + '/api/nodos/iglesia/subnodos?parent=none');
     const body: any = await res.json();
-    // 6 distritos + Paso Pascua Lama (hijo directo del nodo)
-    expect(body.count).toBe(7);
+    // 6 distritos + Paso Pascua Lama + 15 parajes de alta cordillera (lote 2)
+    expect(body.count).toBe(22);
     const pascua = body.data.find((s: any) => s.key === 'sj_iglesia_p_paso_pascua_lama');
     expect(pascua, 'falta Paso Pascua Lama').toBeDefined();
     expect(pascua.parent_key).toBeNull();
     expect(pascua.zone).toBe('alta_cordillera');
     expect(pascua.external_id).toBe('70049A38');
-    // los otros 15 de alta cordillera están diferidos (decisión DH)
     expect(pascua.assignment_status).toBe('dh_directive');
+    for (const s of body.data) {
+      expect(s.parent_key).toBeNull(); // hijos directos del nodo, nadie cuelga de un paraje
+    }
   });
 
-  it('parajes de valle con asignación provisional por cercanía (22, punto BAHRA público)', async () => {
+  it('parajes con asignación provisional por cercanía (25 = 22 valle + 3 travesía del lote 2, punto BAHRA público)', async () => {
     const res = await fetch(base + '/api/nodos/iglesia/subnodos');
     const body: any = await res.json();
     const provisional = body.data.filter((s: any) => s.assignment_status === 'nearest_district_provisional');
-    expect(provisional.length).toBe(22);
+    expect(provisional.length).toBe(25);
     for (const s of provisional) {
       expect(s.boundary_status).toBe('provisional');
       expect(s.external_source).toBe('bahra');
@@ -159,6 +195,24 @@ describe.skipIf(!dbUp)('Subnodos territoriales VIG-001 (#171, épica #167)', () 
     const coloColo = body.data.find((s: any) => s.key === 'sj_iglesia_p_colo_colo');
     expect(coloColo.label).toBe('Colo Colo');
     expect(coloColo.parent_key).toBe('sj_iglesia_villa_iglesia');
+  });
+
+  it('lote 2 ratificado — alta cordillera: Pascua Lama + 15 no-paso = 16 hijos directos del nodo', async () => {
+    const res = await fetch(base + '/api/nodos/iglesia/subnodos');
+    const body: any = await res.json();
+    const alta = body.data.filter((s: any) => s.zone === 'alta_cordillera');
+    expect(alta.length).toBe(16);
+    for (const s of alta) {
+      expect(s.parent_key).toBeNull();
+      expect(s.assignment_status).toBe('dh_directive');
+      expect(s.external_source).toBe('bahra');
+      // cordillera frontal (~28,5°–29,6°S), lejos del valle
+      expect(s.lat).toBeLessThan(-28);
+      expect(s.lat).toBeGreaterThan(-30);
+    }
+    const veladero: any = alta.find((s: any) => s.key === 'sj_iglesia_p_mina_veladero');
+    expect(veladero, 'falta Mina Veladero').toBeDefined();
+    expect(veladero.external_id).toBe('70049A35');
   });
 
   it('404 honesto para nodo inexistente; 400 para filtros inválidos', async () => {
@@ -199,7 +253,7 @@ describe.skipIf(!dbUp)('Subnodos territoriales VIG-001 (#171, épica #167)', () 
 
   it('sello subnodo.creado en events_raw: uno por entidad, hash idempotente, sin PII', async () => {
     const sellos: any[] = await prisma.events_raw.findMany({ where: { type: 'subnodo.creado' } });
-    expect(sellos.length).toBe(34);
+    expect(sellos.length).toBe(52);
     const rodeo: any = sellos.find((e: any) => e.hash === 'seed-subnodo-sj_iglesia_rodeo');
     expect(rodeo, 'falta el sello del distrito rodeo').toBeDefined();
     expect(rodeo.payload.nodo_key).toBe('iglesia');
@@ -209,5 +263,10 @@ describe.skipIf(!dbUp)('Subnodos territoriales VIG-001 (#171, épica #167)', () 
     // el sello no lleva PII: solo claves territoriales y procedencia
     const payloadKeys = Object.keys(rodeo.payload).sort();
     expect(payloadKeys).toEqual(['key', 'nodo_key', 'parent_key', 'source', 'type']);
+    // una entidad del lote 2 también queda sellada (alta cordillera, hijo directo)
+    const pircas: any = sellos.find((e: any) => e.hash === 'seed-subnodo-sj_iglesia_p_campamento_pircas');
+    expect(pircas, 'falta el sello de Campamento Pircas (lote 2)').toBeDefined();
+    expect(pircas.payload.parent_key).toBeNull();
+    expect(pircas.payload.type).toBe('paraje');
   });
 });
