@@ -1,6 +1,6 @@
 -- Seed NODO-VIG VIG-001 (NVIG-R4 #171, épica #167): subnodos territoriales
--- del Valle de Iglesia. PRIMER LOTE ratificado por la Dirección Humana
--- (2026-10-13, traza de ratificación en #168): 34 entidades = 6 distritos +
+-- del Valle de Iglesia. LOTES 1+2 ratificados por la Dirección Humana
+-- (2026-10-13, trazas de ratificación en #168): LOTE 1 = 34 entidades = 6 distritos +
 -- 1 localidad INDEC (Pismanta → las-flores) + 22 parajes/subparaje de valle
 -- (asignación provisional por cercanía sobre BAHRA/Georef) + 2 pasos (Agua
 -- Negra → rodeo por función RN 150; Pascua Lama → hijo directo del nodo,
@@ -10,13 +10,13 @@
 -- consulta 13-10-2026) y centroide Georef (localidad 70049050, misma fecha).
 -- Ortografías canónicas ratificadas: Zonda (no "Sonda"), Maipirinqui (no
 -- "Mayiringui"), Colola (rodeo) ≠ Colo Colo (paraje BAHRA A18).
--- SEGUNDO LOTE DIFERIDO (18 entidades, decisión DH): El Arenal, Minas de
--- Pinto, Los Corrales (travesía, unverified) + 15 de alta cordillera no-paso
--- (El Lavadero, Junta de los Champones, Quebrada de Alcaparrosa, Fierro
--- Viejo, Llanos de San Guillermo, Fierro Nuevo, Junta de las Taguas, Agua
--- del Godo, Campamento Veladero, Mina Veladero, Bañitos de Chollay,
--- Campamento Soberado, Mina Las Carachas, Campamento La Brea, Campamento
--- Pircas) — entra como commit trazado posterior.
+-- SEGUNDO LOTE (18 entidades, ratificado por la DH 2026-10-13, traza en
+-- #168 comment 6151285249): 3 de travesía con asignación por cercanía
+-- (El Arenal → tudcum, Minas de Pinto → villa-iglesia, Los Corrales →
+-- tudcum) + 15 de alta cordillera no-paso como hijos directos del nodo.
+-- Coordenadas re-verificadas en vivo contra BAHRA WFS el 13-10-2026
+-- (Fierro Nuevo A24: lng tomada del geometry del GeoJSON — su campo
+-- long_gd trae carácter de control).
 -- Idempotencia: ON CONFLICT (key) DO NOTHING; sellos por hash único.
 
 INSERT INTO subnodos (id, nodo_key, key, label, type, parent_key, boundary_status, assignment_status, zone, lat, lng, external_id, external_source, created_at, updated_at)
@@ -59,7 +59,28 @@ VALUES
   -- Parajes locales sin registro BAHRA (ratificación DH; lat/lng null — R15)
   (gen_random_uuid()::text, 'iglesia', 'sj_iglesia_p_colola', 'Colola', 'paraje', 'sj_iglesia_rodeo', 'provisional', 'dh_directive', 'valle', NULL, NULL, NULL, NULL, '2026-10-13T12:00:00Z', '2026-10-13T12:00:00Z'),
   (gen_random_uuid()::text, 'iglesia', 'sj_iglesia_p_el_jarillal', 'El Jarillal', 'paraje', 'sj_iglesia_las_flores', 'provisional', 'dh_directive', 'valle', NULL, NULL, NULL, NULL, '2026-10-13T12:00:00Z', '2026-10-13T12:00:00Z'),
-  (gen_random_uuid()::text, 'iglesia', 'sj_iglesia_p_maipirinqui', 'Maipirinqui', 'paraje', 'sj_iglesia_villa_iglesia', 'provisional', 'dh_directive', 'valle', NULL, NULL, NULL, NULL, '2026-10-13T12:00:00Z', '2026-10-13T12:00:00Z')
+  (gen_random_uuid()::text, 'iglesia', 'sj_iglesia_p_maipirinqui', 'Maipirinqui', 'paraje', 'sj_iglesia_villa_iglesia', 'provisional', 'dh_directive', 'valle', NULL, NULL, NULL, NULL, '2026-10-13T12:00:00Z', '2026-10-13T12:00:00Z'),
+  -- SEGUNDO LOTE (ratificado DH 2026-10-13): travesía por cercanía
+  (gen_random_uuid()::text, 'iglesia', 'sj_iglesia_p_el_arenal', 'El Arenal', 'paraje', 'sj_iglesia_tudcum', 'provisional', 'nearest_district_provisional', 'travesia', -30.347623, -69.714796, '70049A20', 'bahra', '2026-10-13T12:00:00Z', '2026-10-13T12:00:00Z'),
+  (gen_random_uuid()::text, 'iglesia', 'sj_iglesia_p_los_corrales', 'Los Corrales', 'paraje', 'sj_iglesia_tudcum', 'provisional', 'nearest_district_provisional', 'travesia', -30.271554, -69.793532, '70049A31', 'bahra', '2026-10-13T12:00:00Z', '2026-10-13T12:00:00Z'),
+  (gen_random_uuid()::text, 'iglesia', 'sj_iglesia_p_minas_de_pinto', 'Minas de Pinto', 'paraje', 'sj_iglesia_villa_iglesia', 'provisional', 'nearest_district_provisional', 'travesia', -30.488978, -69.700176, '70049A36', 'bahra', '2026-10-13T12:00:00Z', '2026-10-13T12:00:00Z'),
+  -- SEGUNDO LOTE: alta cordillera no-paso — hijos directos del nodo (estructura v0.2 ratificada)
+  (gen_random_uuid()::text, 'iglesia', 'sj_iglesia_p_agua_del_godo', 'Agua del Godo', 'paraje', NULL, 'provisional', 'dh_directive', 'alta_cordillera', -29.243046, -69.353825, '70049A01', 'bahra', '2026-10-13T12:00:00Z', '2026-10-13T12:00:00Z'),
+  (gen_random_uuid()::text, 'iglesia', 'sj_iglesia_p_banitos_de_chollay', 'Bañitos de Chollay', 'paraje', NULL, 'provisional', 'dh_directive', 'alta_cordillera', -29.197461, -69.693961, '70049A03', 'bahra', '2026-10-13T12:00:00Z', '2026-10-13T12:00:00Z'),
+  (gen_random_uuid()::text, 'iglesia', 'sj_iglesia_p_campamento_la_brea', 'Campamento La Brea', 'paraje', NULL, 'provisional', 'dh_directive', 'alta_cordillera', -28.685662, -69.314200, '70049A07', 'bahra', '2026-10-13T12:00:00Z', '2026-10-13T12:00:00Z'),
+  (gen_random_uuid()::text, 'iglesia', 'sj_iglesia_p_campamento_pircas', 'Campamento Pircas', 'paraje', NULL, 'provisional', 'dh_directive', 'alta_cordillera', -28.507386, -69.485152, '70049A08', 'bahra', '2026-10-13T12:00:00Z', '2026-10-13T12:00:00Z'),
+  (gen_random_uuid()::text, 'iglesia', 'sj_iglesia_p_campamento_soberado', 'Campamento Soberado', 'paraje', NULL, 'provisional', 'dh_directive', 'alta_cordillera', -29.192086, -69.872730, '70049A09', 'bahra', '2026-10-13T12:00:00Z', '2026-10-13T12:00:00Z'),
+  (gen_random_uuid()::text, 'iglesia', 'sj_iglesia_p_campamento_veladero', 'Campamento Veladero', 'paraje', NULL, 'provisional', 'dh_directive', 'alta_cordillera', -29.408789, -69.895021, '70049A10', 'bahra', '2026-10-13T12:00:00Z', '2026-10-13T12:00:00Z'),
+  (gen_random_uuid()::text, 'iglesia', 'sj_iglesia_p_el_lavadero', 'El Lavadero', 'paraje', NULL, 'provisional', 'dh_directive', 'alta_cordillera', -29.579158, -69.293340, '70049A22', 'bahra', '2026-10-13T12:00:00Z', '2026-10-13T12:00:00Z'),
+  (gen_random_uuid()::text, 'iglesia', 'sj_iglesia_p_fierro_nuevo', 'Fierro Nuevo', 'paraje', NULL, 'provisional', 'dh_directive', 'alta_cordillera', -29.450180, -69.473938, '70049A24', 'bahra', '2026-10-13T12:00:00Z', '2026-10-13T12:00:00Z'),
+  (gen_random_uuid()::text, 'iglesia', 'sj_iglesia_p_fierro_viejo', 'Fierro Viejo', 'paraje', NULL, 'provisional', 'dh_directive', 'alta_cordillera', -29.446738, -69.415170, '70049A25', 'bahra', '2026-10-13T12:00:00Z', '2026-10-13T12:00:00Z'),
+  (gen_random_uuid()::text, 'iglesia', 'sj_iglesia_p_junta_de_las_taguas', 'Junta de las Taguas', 'paraje', NULL, 'provisional', 'dh_directive', 'alta_cordillera', -29.341755, -69.595166, '70049A27', 'bahra', '2026-10-13T12:00:00Z', '2026-10-13T12:00:00Z'),
+  (gen_random_uuid()::text, 'iglesia', 'sj_iglesia_p_junta_de_los_champones', 'Junta de los Champones', 'paraje', NULL, 'provisional', 'dh_directive', 'alta_cordillera', -29.809160, -69.677160, '70049A28', 'bahra', '2026-10-13T12:00:00Z', '2026-10-13T12:00:00Z'),
+  (gen_random_uuid()::text, 'iglesia', 'sj_iglesia_p_llanos_de_san_guillermo', 'Llanos de San Guillermo', 'paraje', NULL, 'provisional', 'dh_directive', 'alta_cordillera', -29.401522, -69.261015, '70049A30', 'bahra', '2026-10-13T12:00:00Z', '2026-10-13T12:00:00Z'),
+  (gen_random_uuid()::text, 'iglesia', 'sj_iglesia_p_mina_las_carachas', 'Mina Las Carachas', 'paraje', NULL, 'provisional', 'dh_directive', 'alta_cordillera', -28.804168, -69.436761, '70049A34', 'bahra', '2026-10-13T12:00:00Z', '2026-10-13T12:00:00Z'),
+  (gen_random_uuid()::text, 'iglesia', 'sj_iglesia_p_mina_veladero', 'Mina Veladero', 'paraje', NULL, 'provisional', 'dh_directive', 'alta_cordillera', -29.353641, -69.942003, '70049A35', 'bahra', '2026-10-13T12:00:00Z', '2026-10-13T12:00:00Z'),
+  (gen_random_uuid()::text, 'iglesia', 'sj_iglesia_p_quebrada_de_alcaparrosa', 'Quebrada de Alcaparrosa', 'paraje', NULL, 'provisional', 'dh_directive', 'alta_cordillera', -29.492355, -69.199622, '70049A39', 'bahra', '2026-10-13T12:00:00Z', '2026-10-13T12:00:00Z')
+
 ON CONFLICT (key) DO NOTHING;
 
 -- Sellos subnodo.creado (patrón del dominio: type + payload + hash; events_raw
