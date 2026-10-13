@@ -167,7 +167,7 @@ export function validateOpportunity(opp: LocalOpportunity): string[] {
     errors.push('La oportunidad debe contener al menos un actor con consentimiento.');
   }
 
-  const unconsentedactors = opp.actors.filter((a) => !a.consentConfirmed);
+  const unconsentedActors = opp.actors.filter((a) => !a.consentConfirmed);
   if (unconsentedActors.length > 0) {
     errors.push('Todos los actores registrados deben haber otorgado consentimiento explícito.');
   }

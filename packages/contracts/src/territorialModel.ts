@@ -165,7 +165,7 @@ export function validateTerritorialModel(
       errors.push(`${relation.id}: referencia a entidad territorial inexistente.`);
     }
     if (relation.fromEntityId === relation.toEntityId && relation.relationType === 'connects') {
-      errors.push(`${relation.id}: una entidad no puede conectarse consino misma.`);
+      errors.push(`${relation.id}: una entidad no puede conectarse consigo misma.`);
     }
   }
 
