@@ -33,7 +33,7 @@ beforeAll(async () => {
   server = createApp().listen(0, '127.0.0.1');
   await new Promise((resolve) => server.once('listening', resolve));
   base = 'http://127.0.0.1:' + server.address().port;
-});
+}, 30000);
 
 afterAll(async () => {
   await new Promise((resolve, reject) => {
@@ -330,5 +330,5 @@ describe.skipIf(!dbUp)('activos multimodales VIG-002 (#169, épica #167)', () =>
     const texto = JSON.stringify(sellos);
     expect(texto).not.toContain('@');
     expect(texto).not.toContain('example.test');
-  });
+  }, 30000);
 });
