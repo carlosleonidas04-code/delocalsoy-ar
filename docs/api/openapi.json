@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "DELocalSoy.AR Federated API Contract",
-    "version": "7.11.0",
-    "description": "Reconciliado CORE-004 (regla documental, #87): documenta todas las rutas montadas en apps/api/src/app.ts. R1: 11 rutas v7.7.0. R3 (ADR-031): /api/auth/* + system.* reservado (H-01). EV-031/EV-032. R4a (ADR-032): transporte Redis Streams (stream events:raw) — events_raw única fuente de verdad, publish fail-open. R5a (auditoría #99–#102): rate limiting 429 por IP+hash(email) en /api/auth/{register,login} (header Retry-After); 5xx sanitizados sin mensajes internos. R5b (dominio activos, #87): /api/activos — POST ciudadano autenticado con pseudónimo sha256 sin PII (Ley 25.326), GET público anónimo con recorte espacial bbox (PostGIS), PATCH /api/activos/{id}/estado para moderación moderador|admin; sellos activo.propuesto y activo.estado_cambiado en events_raw con rollback si el sello falla."
+    "version": "7.12.0",
+    "description": "Reconciliado CORE-004 (regla documental, #87): documenta todas las rutas montadas en apps/api/src/app.ts. R1: 11 rutas v7.7.0. R3 (ADR-031): /api/auth/* + system.* reservado (H-01). EV-031/EV-032. R4a (ADR-032): transporte Redis Streams (stream events:raw) — events_raw única fuente de verdad, publish fail-open. R5a (auditoría #99–#102): rate limiting 429 por IP+hash(email) en /api/auth/{register,login} (header Retry-After); 5xx sanitizados sin mensajes internos. R5b (dominio activos, #87): /api/activos — POST ciudadano autenticado con pseudónimo sha256 sin PII (Ley 25.326), GET público anónimo con recorte espacial bbox (PostGIS), PATCH /api/activos/{id}/estado para moderación moderador|admin; sellos activo.propuesto y activo.estado_cambiado en events_raw con rollback si el sello falla. NODO-CAPITAL NCAP-R6 (#158, Bloque 9 — Banco de Potencialidades): /api/oportunidades — registro ciudadano autenticado de capacidades, demandas, vacíos y vínculos del desarrollo local (evidencia obligatoria, actores nombrados con consentimiento confirmado, pseudónimo sha256 sin PII, anti-PII server-side, idempotencia por hash único, contexto territorial nodo+subnodo SIN geometría propia), GET público anónimo con filtros ('discarded' nunca se publica), PATCH /api/oportunidades/{id}/estado moderador|admin con matriz de transiciones del ciclo de vida (400 salto inválido, 409 sin transición); sellos oportunidad.propuesta y oportunidad.estado_cambiado en events_raw con rollback si fallan."
   },
   "paths": {
     "/api/health": {
@@ -217,6 +217,64 @@
           "503": {
             "description": "Sin JWT_SECRET (identidad cerrada, fail-closed)"
           }
+        }
+      }
+    },
+    "/api/oportunidades": {
+      "get": {
+        "summary": "NODO-CAPITAL NCAP-R6 (#158): lectura pública y anónima de oportunidades de desarrollo local (Banco de Potencialidades, Bloque 9); filtros ?nodo= ?tipo= ?estado= (nunca admite discarded) y ?subnodo=; sin recorte espacial — la oportunidad no tiene geometría propia (contexto territorial por nodo+subnodo)",
+        "parameters": [
+          { "name": "nodo", "in": "query", "schema": { "type": "string" } },
+          { "name": "tipo", "in": "query", "schema": { "type": "string" } },
+          { "name": "estado", "in": "query", "schema": { "type": "string" } },
+          { "name": "subnodo", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "OK — envelope {success, data, count}" },
+          "400": { "description": "nodo/tipo/estado/subnodo inválidos" },
+          "500": { "description": "Error interno sanitizado (R5a, #100)" }
+        }
+      },
+      "post": {
+        "summary": "NODO-CAPITAL NCAP-R6 (#158): registro ciudadano autenticado (requireJwt) — la oportunidad nace detected con evidencia obligatoria; autor = pseudónimo sha256(usuario_id) sin PII (Ley 25.326); actores nombrados exigen consentimiento confirmado; anti-PII server-side antes de persistir (ADR-020); idempotencia por hash único (mismo ciudadano+tipo+título+descripción+territorio → 200 idempotente); sello oportunidad.propuesta en events_raw con rollback si falla",
+        "responses": {
+          "200": { "description": "Oportunidad idéntica ya existente (idempotente: true)" },
+          "201": { "description": "Oportunidad creada (estado: detected) + sello en events_raw" },
+          "400": { "description": "Datos inválidos (contrato Zod: evidencia requerida, consentimiento de actores nombrados) o PII detectada — sin eco del valor" },
+          "401": { "description": "Bearer token ausente o inválido" },
+          "500": { "description": "Error interno sanitizado (R5a, #100)" },
+          "503": { "description": "Sin JWT_SECRET (identidad cerrada, fail-closed)" }
+        }
+      }
+    },
+    "/api/oportunidades/{id}": {
+      "get": {
+        "summary": "NODO-CAPITAL NCAP-R6 (#158): ficha pública de una oportunidad; 404 si no existe o fue descartada (honesto, R15)",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "OK — envelope {success, data}" },
+          "404": { "description": "Oportunidad no encontrada o descartada" },
+          "500": { "description": "Error interno sanitizado (R5a, #100)" }
+        }
+      }
+    },
+    "/api/oportunidades/{id}/estado": {
+      "patch": {
+        "summary": "NODO-CAPITAL NCAP-R6 (#158): moderación del ciclo de vida — requireRole moderador|admin; matriz de transiciones detected→under_review→validated→prioritized→in_development→active→implemented (+paused/discarded/archived; 400 salto inválido); sello oportunidad.estado_cambiado (estado_anterior, estado, motivo, moderador_hash) en events_raw con rollback si falla",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Estado actualizado + sello en events_raw" },
+          "400": { "description": "Transición inválida (matriz del ciclo de vida), contrato Zod o PII en el motivo — sin eco del valor" },
+          "401": { "description": "Bearer token ausente o inválido" },
+          "403": { "description": "Rol insuficiente (requiere moderador|admin)" },
+          "404": { "description": "Oportunidad no encontrada (honesto, R15)" },
+          "409": { "description": "La oportunidad ya está en ese estado (sin transición no hay evento)" },
+          "500": { "description": "Error interno sanitizado (R5a, #100)" },
+          "503": { "description": "Sin JWT_SECRET (identidad cerrada, fail-closed)" }
         }
       }
     },

@@ -87,3 +87,106 @@ export const ActivoEstadoCambioSchema = z.object({
   estado: z.enum(["aprobado", "rechazado"]),
   motivo: z.string().trim().max(500).optional(),
 });
+
+// ─── NODO-CAPITAL NCAP-R6 (#158): Bloque 9 — Banco de Potencialidades ───
+
+// Tipos de oportunidad (Bloque 9 del documento de la DH): capacidades,
+// recursos, demandas, vacíos y vínculos del desarrollo local.
+export const OportunidadTipoSchema = z.enum([
+  "human_capacity",
+  "productive_capacity",
+  "physical_asset",
+  "institutional_asset",
+  "cultural_asset",
+  "detected_demand",
+  "market_gap",
+  "partnership_opportunity",
+  "investment_opportunity",
+  "policy_opportunity",
+]);
+
+// Ciclo de vida (Bloque 9): detected → under_review → validated → prioritized
+// → in_development → active → implemented; paused/discarded/archived son
+// estados laterales. La matriz de transiciones vive en la API (route), no aquí.
+export const OportunidadEstadoSchema = z.enum([
+  "detected",
+  "under_review",
+  "validated",
+  "prioritized",
+  "in_development",
+  "active",
+  "implemented",
+  "paused",
+  "discarded",
+  "archived",
+]);
+
+// Filtro de la lectura pública: 'discarded' nunca es filtrable ni publicable.
+export const OportunidadEstadoPublicoFiltroSchema = z.enum([
+  "detected",
+  "under_review",
+  "validated",
+  "prioritized",
+  "in_development",
+  "active",
+  "implemented",
+  "paused",
+  "archived",
+]);
+
+// Evidencia obligatoria (criterio mínimo del Bloque 9: al menos una fuente o
+// evidencia por oportunidad — una búsqueda sin resultados es solo una señal).
+export const OportunidadEvidenciaSchema = z.object({
+  evidence_type: z.enum([
+    "community_input",
+    "survey",
+    "platform_data",
+    "field_observation",
+    "institutional_document",
+    "news_source",
+    "statistical_source",
+  ]),
+  descripcion: z.string().trim().min(3, "La evidencia requiere una descripción").max(1000),
+  reference_url: z.string().trim().url("URL de referencia inválida").max(500).optional(),
+});
+
+// Actor con consentimiento (Ley 25.326): si se nombra a una persona u
+// organización, el consentimiento debe estar confirmado — el anti-PII de la
+// API revisa el nombre ANTES de persistir (ADR-020 cond. 1).
+export const OportunidadActorSchema = z
+  .object({
+    role: z.enum(["proposer", "beneficiary", "provider", "partner", "validator", "supporter"]),
+    name: z.string().trim().max(120).optional(),
+    consent_confirmed: z.boolean(),
+  })
+  .refine((actor) => actor.name === undefined || actor.consent_confirmed === true, {
+    message: "un actor nombrado exige consentimiento confirmado",
+    path: ["consent_confirmed"],
+  });
+
+// Alta de oportunidad (NCAP-R6): contexto territorial por nodo + subnodo —
+// SIN geometría propia (criterio estructural #149/#158: la oportunidad se
+// acredita por territorio declarado, no por un punto inventado). Los campos de
+// texto pasan el anti-PII de la API ANTES de persistir (ADR-027, Ley 25.326).
+export const OportunidadAltaSchema = z.object({
+  tipo: OportunidadTipoSchema,
+  titulo: z.string().trim().min(3, "El título debe tener al menos 3 caracteres").max(120),
+  descripcion: z.string().trim().min(10, "La descripción debe tener al menos 10 caracteres").max(2000),
+  nodo_key: SanJuanNodeSlugSchema,
+  subnodo_key: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9_]+$/, "subnodo_key: slug en minúsculas y guiones bajos")
+    .max(60)
+    .optional(),
+  evidencia: OportunidadEvidenciaSchema,
+  actores: z.array(OportunidadActorSchema).max(10).optional(),
+  tags: z.array(z.string().trim().min(1).max(30)).max(8).optional(),
+});
+
+// Cambio de estado por moderación (NCAP-R6): moderador|admin según la matriz
+// de transiciones del ciclo de vida (ADR-031).
+export const OportunidadEstadoCambioSchema = z.object({
+  estado: OportunidadEstadoSchema,
+  motivo: z.string().trim().max(500).optional(),
+});
