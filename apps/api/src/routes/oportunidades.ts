@@ -194,7 +194,7 @@ router.post('/', requireJwt, async (req: Request, res: Response) => {
 });
 
 // GET /api/oportunidades — lectura pública y anónima. Filtros opcionales:
-// ?estado= (nunma admite 'discarded' — nunca se publica), ?nodo=, ?tipo=,
+// ?estado= (nunca admite 'discarded' — nunca se publica), ?nodo=, ?tipo=,
 // ?subnodo=. Sin recorte espacial: la oportunidad no tiene geometría propia.
 router.get('/', async (req: Request, res: Response) => {
   try {
