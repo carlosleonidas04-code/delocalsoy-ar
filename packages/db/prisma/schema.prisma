@@ -225,3 +225,35 @@ model activos {
   @@index([nodo_key])
   @@map("activos")
 }
+
+// ─── NODO-CAPITAL NCAP-R6 (#158): Bloque 9 — Banco de Potencialidades ───
+
+/// Oportunidades de desarrollo local (Bloque 9 del documento de la DH):
+/// capacidades, recursos, demandas, vacíos y vínculos. Nace 'detected' con
+/// evidencia obligatoria; ciclo de vida detected → under_review → validated
+/// → prioritized → in_development → active → implemented (+ paused/discarded/
+/// archived) — la matriz de transiciones vive en la API. SIN geometría propia:
+/// el contexto territorial se acredita por nodo_key + subnodo_key opcional
+/// (criterio estructural #149/#158 — no duplicar geometría). Autor = pseudónimo
+/// sha256(usuario_id) truncado — sin PII (Ley 25.326, ADR-027). Actores con
+/// consentimiento confirmado si se nombran. hash único → idempotencia del alta.
+model oportunidades {
+  id              String   @id @default(cuid())
+  tipo            String   @map("tipo") // OportunidadTipoSchema (10 tipos)
+  titulo          String   @map("titulo")
+  descripcion     String   @map("descripcion")
+  estado          String   @default("detected") @map("estado") // OportunidadEstadoSchema
+  nodo_key        String   @map("nodo_key") // capital | caucete | iglesia
+  subnodo_key     String?  @map("subnodo_key") // e.g. sj_capital_centro — provisional (NCAP-R2 #154)
+  evidencia       Json     @map("evidencia") // OportunidadEvidenciaSchema validado por Zod
+  actores         Json     @map("actores") // [OportunidadActorSchema] — consentimiento si se nombran
+  tags            Json     @map("tags") // etiquetas libres acotadas
+  created_by_hash String   @map("created_by_hash") // pseudónimo — sin PII
+  hash            String   @unique @map("hash") // idempotencia del alta
+  created_at      DateTime @default(now()) @map("created_at")
+  updated_at      DateTime @updatedAt @map("updated_at")
+
+  @@index([nodo_key])
+  @@index([estado])
+  @@map("oportunidades")
+}
