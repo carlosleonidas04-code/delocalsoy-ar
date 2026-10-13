@@ -48,6 +48,31 @@ if (fs.existsSync(EXPORTS_DIR)) {
   check(true, 'Invariante cumplida: Cero archivos .tar / .tar.gz en exports/nodo-capital/');
 }
 
+if (fs.existsSync(jsonManifestPath)) {
+  const manifest = JSON.parse(fs.readFileSync(jsonManifestPath, 'utf8'));
+
+  check(manifest.formato === 'directo_sin_tar', 'Manifiesto declara formato directo_sin_tar');
+  check(manifest.tarUtilizado === false, 'Manifiesto certifica tarUtilizado === false');
+  check(manifest.sesiones.length === 4, 'Se registraron 4 sesiones de desarrollo');
+
+  for (const sesion of manifest.sesiones) {
+    console.log(`\n  --- Verificando ${sesion.nombre} ---`);
+    for (const arch of sesion.archivos) {
+      const srcFile = path.join(ROOT, arch.rutaRelativa);
+      const rawFile = path.join(EXPORTS_DIR, arch.archivoRawTree);
+
+      check(fs.existsSync(srcFile), `Fuente original existe: ${arch.rutaRelativa}`);
+      check(fs.existsSync(rawFile), `Copia directa raw existe: ${arch.archivoRawTree}`);
+
+      if (fs.existsSync(srcFile) && fs.existsSync(rawFile)) {
+        const srcSha = calculateSha256(srcFile);
+        const rawSha = calculateSha256(rawFile);
+        check(srcSha === rawSha, `SHA-256 coincide para ${arch.rutaRelativa} (${srcSha.slice(0, 10)})`);
+      }
+    }
+  }
+}
+
 console.log('\n============================================================');
 if (failures === 0) {
   console.log('✓ VERIFICACIÓN EXITOSA: Todos los archivos exportados sin TAR son íntegros.');
