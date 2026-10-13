@@ -58,33 +58,105 @@ export const UsuarioLoginSchema = z.object({
 
 // ─── CORE-004 R5b (dominio activos, #87) ───
 
-// Tipos de activo territorial propuestos por la ciudadanía.
+// Tipos de activo territorial: base R5b + kinds multimodales VIG-002 (NVIG-R2
+// #169, épica #167 — ratificado por la DH 2026-10-13: extender el enum español).
 export const ActivoTipoSchema = z.enum([
   "inmueble",
   "infraestructura",
   "servicio",
   "patrimonio",
+  "local",
+  "prestador",
+  "experiencia",
+  "observacion",
   "otro",
 ]);
 
-// Estados del flujo de moderación: propuesto → aprobado | rechazado.
-export const ActivoEstadoSchema = z.enum(["propuesto", "aprobado", "rechazado"]);
+// Estados del flujo de moderación: propuesto → aprobado | rechazado;
+// archivado retira del catálogo vivo un activo aprobado/rechazado (VIG-002).
+export const ActivoEstadoSchema = z.enum(["propuesto", "aprobado", "rechazado", "archivado"]);
+
+// ─── NODO-VIG VIG-002 (NVIG-R2 #169, épica #167): activos multimodales ───
+
+// Visibilidad del punto (ADR-036): public = punto público; generalized =
+// precisión reducida; restricted = excluido de la lectura pública — la ficha
+// sensible queda para custodia (VIG-004 profundiza el acceso custodial).
+export const ActivoVisibilidadSchema = z.enum(["public", "generalized", "restricted"]);
+
+// Capitales territoriales N1 ratificados (taxonomía 3 niveles del VIG-000).
+export const ActivoCapitalN1Schema = z.enum([
+  "productivo_rural",
+  "turistico",
+  "patrimonial",
+  "civico_social",
+]);
+
+// Clasificación multimodal (N1 capital → N2 categoría → N3 subcategoría):
+// toda clasificación declara su fuente (gobernanza VIG-000: "toda
+// clasificación debe tener source, fecha y estado de revisión").
+export const ActivoClasificacionSchema = z.object({
+  n1: ActivoCapitalN1Schema,
+  n2: z.string().trim().regex(/^[a-z0-9_]+$/, "n2: slug en minúsculas y guiones bajos").min(2).max(40),
+  n3: z.string().trim().regex(/^[a-z0-9_]+$/, "n3: slug en minúsculas y guiones bajos").max(40).optional(),
+  is_primary: z.boolean().optional().default(false),
+  source: z.string().trim().min(3, "La clasificación exige fuente").max(120),
+});
+
+// Procedencia (ADR-035): un activo 'aprobado' solo es "verificado" si lleva
+// fuente trazable. Ciudadano: opcional; ingesta curada: obligatoria (R15).
+// La fecha admite año suelto (YYYY) cuando la fuente solo publica el año.
+export const ActivoProcedenciaSchema = z.object({
+  source_id: z.string().trim().min(3, "source_id requerido").max(80),
+  fuente: z.string().trim().min(3, "fuente requerida").max(120),
+  fecha: z.string().trim().regex(/^\d{4}(-\d{2}-\d{2})?$/, "fecha: YYYY-MM-DD o YYYY"),
+  licencia: z.string().trim().max(80).optional(),
+  url: z.string().trim().url("URL de referencia inválida").max(500).optional(),
+});
+
+// Consentimiento granular (patrimonio vivo, Ley 25.326/ADR-027): si un activo
+// nombra a una persona, cada uso de su identidad es opt-in explícito.
+export const ActivoConsentimientoSchema = z.object({
+  nombre_publico: z.boolean(),
+  contacto: z.boolean(),
+  ubicacion_precisa: z.boolean(),
+  foto: z.boolean(),
+});
 
 // Alta ciudadana de un activo (R5b): el anti-PII de la API se aplica sobre
 // título/descripción ANTES de persistir (ADR-020 cond. 1, Ley 25.326) — el
 // contrato valida forma; la política de PII es de la API, no del schema.
-export const ActivoAltaSchema = z.object({
-  tipo: ActivoTipoSchema,
-  titulo: z.string().trim().min(3, "El título debe tener al menos 3 caracteres").max(120),
-  descripcion: z.string().trim().max(2000).optional(),
-  nodo_key: SanJuanNodeSlugSchema,
-  lat: z.number().min(-90, "lat fuera de rango").max(90, "lat fuera de rango"),
-  lng: z.number().min(-180, "lng fuera de rango").max(180, "lng fuera de rango"),
-});
+// VIG-002 (#169): contexto subnodo + clasificaciones multimodales + procedencia
+// (ADR-035) + consentimiento granular — todos opcionales para el ciudadano.
+export const ActivoAltaSchema = z
+  .object({
+    tipo: ActivoTipoSchema,
+    titulo: z.string().trim().min(3, "El título debe tener al menos 3 caracteres").max(120),
+    descripcion: z.string().trim().max(2000).optional(),
+    nodo_key: SanJuanNodeSlugSchema,
+    subnodo_key: z
+      .string()
+      .trim()
+      .regex(/^[a-z0-9_]+$/, "subnodo_key: slug en minúsculas y guiones bajos")
+      .max(60)
+      .optional(),
+    lat: z.number().min(-90, "lat fuera de rango").max(90, "lat fuera de rango"),
+    lng: z.number().min(-180, "lng fuera de rango").max(180, "lng fuera de rango"),
+    clasificaciones: z.array(ActivoClasificacionSchema).max(5).optional(),
+    procedencia: ActivoProcedenciaSchema.optional(),
+    consentimiento: ActivoConsentimientoSchema.optional(),
+  })
+  .refine(
+    (alta) => {
+      if (!alta.clasificaciones || alta.clasificaciones.length === 0) return true;
+      const primarias = alta.clasificaciones.filter((c) => c.is_primary).length;
+      return primarias === 1;
+    },
+    { message: "las clasificaciones exigen exactamente una primaria", path: ["clasificaciones"] }
+  );
 
-// Cambio de estado por moderación (R5b): solo aprobado | rechazado.
+// Cambio de estado por moderación (R5b + VIG-002): aprobado | rechazado | archivado.
 export const ActivoEstadoCambioSchema = z.object({
-  estado: z.enum(["aprobado", "rechazado"]),
+  estado: z.enum(["aprobado", "rechazado", "archivado"]),
   motivo: z.string().trim().max(500).optional(),
 });
 
