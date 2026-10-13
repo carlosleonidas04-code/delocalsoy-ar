@@ -7,6 +7,7 @@ import eventsRouter from './routes/events.js';
 import healthRouter from './routes/health.js';
 import modeloFederadoRouter from './routes/modeloFederado.js';
 import nodosRouter from './routes/nodos.js';
+import oportunidadesRouter from './routes/oportunidades.js';
 import territoriosRouter from './routes/territorios.js';
 
 export function createApp(): Express {
@@ -35,6 +36,13 @@ export function createApp(): Express {
   // en events_raw, moderación PATCH /:id/estado (moderador|admin) y GET
   // público anónimo con recorte espacial bbox sobre PostGIS.
   app.use('/api/activos', activosRouter);
+
+  // Dominio: oportunidades de desarrollo local (NODO-CAPITAL NCAP-R6, #158 —
+  // Bloque 9 Banco de Potencialidades): registro ciudadano autenticado con
+  // evidencia obligatoria, ciclo de vida por matriz de transiciones sellada
+  // en events_raw, moderación moderador|admin y lectura pública anónima
+  // ('discarded' nunca se publica).
+  app.use('/api/oportunidades', oportunidadesRouter);
 
   // Compuerta Pre-C5 (handoff [agent: google] → [agent: vibe], Refs #109/#114,
   // ADR-034): validación de integridad referencial del schema Prisma REAL
