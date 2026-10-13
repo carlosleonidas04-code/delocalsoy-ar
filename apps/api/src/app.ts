@@ -29,6 +29,9 @@ export function createApp(): Express {
   // Dominio: vocabulario del demo federado (CORE-003 R1, #83) — nodos, capas,
   // categorías, features y reportes en lectura pública. El backend sirve todo
   // lo que el contrato DataSource consume: fin de los "declarado vacío" (R15).
+  // NODO-VIG VIG-001 (#171, épica #167): GET /api/nodos/:key/subnodos — jerarquía
+  // territorial del Valle de Iglesia (distrito → paraje → subparaje + localidad
+  // INDEC), con punto público BAHRA/Georef y estados honestos de asignación.
   app.use('/api/nodos', nodosRouter);
 
   // Dominio: activos territoriales (CORE-004 R5b, #87) — escritura ciudadana
