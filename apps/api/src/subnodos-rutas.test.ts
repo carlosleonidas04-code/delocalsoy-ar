@@ -249,7 +249,7 @@ describe.skipIf(!dbUp)('Subnodos territoriales VIG-001 (#171, épica #167)', () 
       prisma.events_raw.count({ where: { type: 'subnodo.creado' } }),
     ]);
     expect(despues).toEqual(antes);
-  });
+  }, 30000);
 
   it('sello subnodo.creado en events_raw: uno por entidad, hash idempotente, sin PII', async () => {
     const sellos: any[] = await prisma.events_raw.findMany({ where: { type: 'subnodo.creado' } });

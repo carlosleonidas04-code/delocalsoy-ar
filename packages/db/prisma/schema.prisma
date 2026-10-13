@@ -156,7 +156,7 @@ model reportes {
   created_at   DateTime @default(now()) @map("created_at")
   updated_at   DateTime @updatedAt @map("updated_at")
 
-  /// Geometría puntal WGS84: columna + trigger + índice GiST en la migración
+  /// Geometría puntual WGS84: columna + trigger + índice GiST en la migración
   /// versionada 20261007120000_core002_schema (Prisma no tipa geometry).
   geom Unsupported("geometry(Point,4326)")?
 
@@ -201,28 +201,51 @@ model event_projections {
 /// Activos territoriales propuestos por la ciudadanía (escritura ciudadana
 /// verificada). El autor queda como pseudónimo created_by_hash = sha256(usuario_id)
 /// truncado — nunca PII en la tabla ni en los sellos (Ley 25.326, ADR-027).
-/// Flujo de moderación: propuesto → aprobado | rechazado (PATCH moderador|admin).
+/// Flujo de moderación: propuesto → aprobado | rechazado (+ archivado, VIG-002).
 /// La columna PostGIS `geom` vive en la migración versionada
 /// 20261008200000_r5b_activos (trigger lat/lng + índice GiST).
+///
+/// VIG-002 (NVIG-R2 #169, épica #167 — Opción A ratificada por la DH
+/// 2026-10-13: extender el dominio, no duplicarlo):
+/// - tipos multimodales: + local | prestador | experiencia | observacion
+/// - subnodo_key: contexto de distrito/paraje (patrón oportunidades)
+/// - lat/lng pasan a opcionales: el punto propio SOLO con fuente (R15) —
+///   el POST ciudadano lo exige por contrato; la ingesta curada no inventa
+/// - visibilidad ADR-036 (public | generalized | restricted): restricted se
+///   excluye de la lectura pública (ficha sensible = custodia, VIG-004)
+/// - procedencia ADR-035: aprobado con fuente trazable = "verificado"
+/// - consentimiento granular (Ley 25.326) si el activo nombra a una persona
+/// - is_synthetic: demo marcada, nunca publicada como real
+/// - hash único opcional: idempotencia de la ingesta curada (seed-activo-*)
 model activos {
   id              String   @id @default(cuid())
-  tipo            String   @map("tipo") // inmueble | infraestructura | servicio | patrimonio | otro
+  tipo            String   @map("tipo") // ActivoTipoSchema: inmueble | infraestructura | servicio | patrimonio | local | prestador | experiencia | observacion | otro
   titulo          String   @map("titulo")
   descripcion     String?  @map("descripcion")
-  estado          String   @default("propuesto") @map("estado") // propuesto | aprobado | rechazado
+  estado          String   @default("propuesto") @map("estado") // propuesto | aprobado | rechazado | archivado
   nodo_key        String   @map("nodo_key") // capital | caucete | iglesia
-  lat             Float    @map("lat")
-  lng             Float    @map("lng")
+  subnodo_key     String?  @map("subnodo_key") // sj_iglesia_* — contexto de distrito/paraje (VIG-002)
+  lat             Float? // punto propio SOLO con fuente (R15): null = se acredita por subnodo
+  lng             Float?
+  visibilidad     String   @default("public") @map("visibilidad") // ActivoVisibilidadSchema: public | generalized | restricted (ADR-036)
+  procedencia     Json?    @map("procedencia") // ActivoProcedenciaSchema (ADR-035)
+  consentimiento  Json?    @map("consentimiento") // ActivoConsentimientoSchema — granular, Ley 25.326
+  is_synthetic    Boolean  @default(false) @map("is_synthetic")
   created_by_hash String   @map("created_by_hash") // pseudónimo sha256(usuario_id) — sin PII
+  hash            String?  @unique @map("hash") // idempotencia de la ingesta curada (seed-activo-*)
   created_at      DateTime @default(now()) @map("created_at")
   updated_at      DateTime @updatedAt @map("updated_at")
 
-  /// Geometría puntual WGS84: columna + trigger + índice GiST en la migración
-  /// versionada 20261008200000_r5b_activos (Prisma no tipa geometry).
+  clasificaciones activos_clasificaciones[]
+
+  /// Geometría puntal WGS84: columna + trigger + índice GiST en la migración
+  /// versionada 20261008200000_r5b_activos (NULL-safe desde VIG-002: sin
+  /// punto verificado, geom es null — no se inventa geometría).
   geom Unsupported("geometry(Point,4326)")?
 
   @@index([estado])
   @@index([nodo_key])
+  @@index([subnodo_key])
   @@map("activos")
 }
 
@@ -292,4 +315,29 @@ model subnodos {
   @@index([type])
   @@index([parent_key])
   @@map("subnodos")
+}
+
+// ─── NODO-VIG VIG-002 (#169, épica #167): clasificación multimodal ───
+
+/// Clasificaciones de activos (taxonomía 3 niveles del VIG-000): N1 capital
+/// (productivo_rural | turistico | patrimonial | civico_social) → N2 categoría
+/// → N3 subcategoría ('' = sin subcategoría). Un activo tiene exactamente una
+/// clasificación primaria y varias secundarias; toda clasificación declara su
+/// fuente (gobernanza VIG-000). Único por (activo, n1, n2, n3) → seed
+/// idempotente vía ON CONFLICT.
+model activos_clasificaciones {
+  id         String   @id @default(cuid())
+  activo_id  String   @map("activo_id")
+  n1         String   @map("n1") // ActivoCapitalN1Schema
+  n2         String   @map("n2")
+  n3         String   @default("") @map("n3")
+  is_primary Boolean  @default(false) @map("is_primary")
+  source     String   @map("source") // fuente de la clasificación
+  created_at DateTime @default(now()) @map("created_at")
+
+  activo activos @relation(fields: [activo_id], references: [id], onDelete: Cascade)
+
+  @@unique([activo_id, n1, n2, n3])
+  @@index([n1])
+  @@map("activos_clasificaciones")
 }
