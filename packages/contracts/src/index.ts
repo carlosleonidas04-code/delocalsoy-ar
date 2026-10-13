@@ -190,3 +190,41 @@ export const OportunidadEstadoCambioSchema = z.object({
   estado: OportunidadEstadoSchema,
   motivo: z.string().trim().max(500).optional(),
 });
+
+// ─── NODO-VIG VIG-001 (NVIG-R4 #171, épica #167): subnodos territoriales ───
+
+// Jerarquía territorial de 3 niveles del nodo Valle de Iglesia (Opción B
+// ratificada R9 2026-10-13 en #167): distrito → paraje → subparaje, más la
+// localidad INDEC como subnodo de distrito. Los parajes que no dependen de un
+// distrito (alta cordillera) cuelgan directamente del nodo (parent null).
+export const SubnodoTipoSchema = z.enum(["district", "paraje", "subparaje", "locality"]);
+
+// Procedencia de la asignación a distrito (estados honestos del nodo):
+// dh_directive = decisión ratificada por la Dirección Humana;
+// nearest_district_provisional = cercanía computada sobre punto público
+// BAHRA/Georef (segundo lote de travesía: unverified);
+// unverified = pendiente de decisión de la DH.
+export const SubnodoAssignmentStatusSchema = z.enum([
+  "dh_directive",
+  "nearest_district_provisional",
+  "unverified",
+]);
+
+// Zona territorial del subnodo (franja del valle, no una capa del vocabulario).
+export const SubnodoZoneSchema = z.enum(["valle", "travesia", "alta_cordillera"]);
+
+// Geometría honesta: provisional hasta contraste oficial; unverified = sin fuente.
+export const SubnodoBoundaryStatusSchema = z.enum(["provisional", "unverified"]);
+
+// Filtros de la lectura pública GET /api/nodos/:key/subnodos.
+// parent='none' = hijos directos del nodo (parent_key IS NULL) — p.ej. los
+// parajes de alta cordillera que no pertenecen a ningún distrito.
+export const SubnodoFiltroSchema = z.object({
+  type: SubnodoTipoSchema.optional(),
+  parent: z
+    .string()
+    .trim()
+    .regex(/^(none|[a-z0-9_]+)$/, "parent: clave del subnodo padre o 'none'")
+    .max(60)
+    .optional(),
+});
