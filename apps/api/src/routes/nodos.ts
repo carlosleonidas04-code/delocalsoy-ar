@@ -1,5 +1,6 @@
 import { Router, type Request, type Response } from 'express';
 import prisma from '../lib/prisma.js';
+import { SubnodoFiltroSchema } from '@delocalsoy/contracts';
 
 /**
  * Rutas de lectura del vocabulario CORE-002 (CORE-003 R1, #83).
@@ -133,6 +134,38 @@ router.get('/:key/reportes', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('[nodos] reportes:', error instanceof Error ? error.message : String(error));
     res.status(500).json({ success: false, error: 'Error al obtener reportes' });
+  }
+});
+
+
+// GET /nodos/:key/subnodos - jerarquía territorial del nodo (VIG-001, #171,
+// épica #167): distritos → parajes → subparajes + localidades INDEC. Lectura
+// pública con filtros ?type= (district|paraje|subparaje|locality) y
+// ?parent=<key>|none (none = hijos directos del nodo, p.ej. alta cordillera).
+// lat/lng solo cuando hay punto público (BAHRA/Georef) — null es honesto (R15).
+router.get('/:key/subnodos', async (req: Request, res: Response) => {
+  try {
+    const nodo = await nodoPorKey(req.params.key);
+    if (!nodo) {
+      return res.status(404).json({ success: false, error: 'Nodo no encontrado' });
+    }
+    const parsed = SubnodoFiltroSchema.safeParse(req.query);
+    if (!parsed.success) {
+      return res.status(400).json({ success: false, error: 'Filtros inválidos (type, parent)' });
+    }
+    const where: any = { nodo_key: nodo.key };
+    if (parsed.data.type) where.type = parsed.data.type;
+    if (parsed.data.parent !== undefined) {
+      where.parent_key = parsed.data.parent === 'none' ? null : parsed.data.parent;
+    }
+    const rows = await prisma.subnodos.findMany({
+      where,
+      orderBy: [{ type: 'asc' }, { key: 'asc' }],
+    });
+    res.json({ success: true, data: rows, count: rows.length });
+  } catch (error) {
+    console.error('[nodos] subnodos:', error instanceof Error ? error.message : String(error));
+    res.status(500).json({ success: false, error: 'Error al obtener subnodos' });
   }
 });
 

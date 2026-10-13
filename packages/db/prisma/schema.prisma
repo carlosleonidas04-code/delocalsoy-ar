@@ -257,3 +257,39 @@ model oportunidades {
   @@index([estado])
   @@map("oportunidades")
 }
+
+// ─── NODO-VIG VIG-001 (#171, épica #167): subnodos territoriales ───
+
+/// Subnodos territoriales del nodo iglesia (Opción B ratificada, #167):
+/// distritos, parajes, subparajes y localidades INDEC. Jerarquía de 3 niveles
+/// por self-relation parent_key → subnodos.key (distrito → paraje →
+/// subparaje); los parajes de alta cordillera cuelgan del nodo (parent_key
+/// null). lat/lng SOLO con punto público (BAHRA/Georef) — null es honesto,
+/// nunca un punto inventado (R15, ADR-036). external_id = cod_ase BAHRA o id
+/// Georef. SIN columna geom: no se duplica dominio espacial (criterio
+/// estructural #149/#167 — mismo patrón que oportunidades).
+model subnodos {
+  id               String   @id @default(cuid())
+  nodo_key         String   @map("nodo_key") // capital | caucete | iglesia
+  key              String   @unique @map("key") // sj_iglesia_<slug> | sj_iglesia_p_<slug>
+  label            String   @map("label")
+  type             String   @map("type") // SubnodoTipoSchema: district | paraje | subparaje | locality
+  parent_key       String?  @map("parent_key")
+  boundary_status  String   @default("provisional") @map("boundary_status") // SubnodoBoundaryStatusSchema
+  assignment_status String  @map("assignment_status") // SubnodoAssignmentStatusSchema
+  zone             String?  @map("zone") // SubnodoZoneSchema — null = sin clasificación aún
+  lat              Float?
+  lng              Float?
+  external_id      String?  @map("external_id") // BAHRA cod_ase | Georef id
+  external_source  String?  @map("external_source") // bahra | georef
+  created_at       DateTime @default(now()) @map("created_at")
+  updated_at       DateTime @updatedAt @map("updated_at")
+
+  parent   subnodos?  @relation("SubnodoJerarquia", fields: [parent_key], references: [key])
+  children subnodos[] @relation("SubnodoJerarquia")
+
+  @@index([nodo_key])
+  @@index([type])
+  @@index([parent_key])
+  @@map("subnodos")
+}
