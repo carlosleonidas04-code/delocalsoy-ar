@@ -160,6 +160,94 @@ export const ActivoEstadoCambioSchema = z.object({
   motivo: z.string().trim().max(500).optional(),
 });
 
+// ─── NODO-CAU R4 (#149): ficha de valoración comunitaria del espacio público ───
+
+// Versión del instrumento: el checklist evoluciona con los talleres; cada
+// respuesta queda registrada con la versión con la que fue relevada.
+export const FichaVersionSchema = z.enum(["v1"]);
+
+// Estados del testimonio revisable (ADR-036): la ficha nace 'testimonio';
+// la moderación la corrobora o descarta. 'descartada' no se publica.
+export const FichaValoracionEstadoSchema = z.enum(["testimonio", "corroborada", "descartada"]);
+
+// Filtro de la lectura pública: nunca admite 'descartada'.
+export const FichaEstadoPublicoFiltroSchema = z.enum(["corroborada", "testimonio"]);
+
+// Quién validó una ficha corroborada: moderación individual o taller
+// comunitario (instancia de validación colectiva — decisión ratificada #149).
+export const FichaCorroboracionSchema = z.enum(["individual", "taller_comunitario"]);
+
+// 7 dimensiones ratificadas (#149) — observables de diseño del ESPACIO,
+// NUNCA personas ni organizaciones (ADR-036 + decisión R9: sin nombres).
+export const FichaRespuestasV1Schema = z.object({
+  usos_vitalidad: z.object({
+    usos_detectados: z
+      .array(z.enum(["recreo", "deporte", "reunion", "descanso", "feria", "cultura", "transito"]))
+      .min(1, "Debe detectarse al menos un uso del espacio"),
+    nivel_actividad: z.enum(["baja", "media", "alta"]),
+    observaciones: z.string().trim().max(300).optional(),
+  }),
+  accesibilidad: z.object({
+    rampa_acceso: z.enum(["si", "parcial", "no", "desconocido"]),
+    estado_vereda: z.enum(["bueno", "regular", "malo", "desconocido"]),
+    obstaculos: z.boolean(),
+  }),
+  sombra_arbolado: z.object({
+    arbolado_presente: z.boolean(),
+    sombra_horario_central: z.enum(["abundante", "parcial", "escasa", "nula", "desconocido"]),
+    lectura_3_30_300: z.string().trim().max(200).optional(), // interpretación con método (R5), no dato oficial
+  }),
+  agua_xerojardin: z.object({
+    riego: z.enum(["si", "no", "desconocido"]),
+    perdidas_visibles: z.boolean(),
+    especies_apto_clima: z.enum(["si", "no", "desconocido"]),
+  }),
+  // CPTED + género: observables del ESPACIO — nunca vigilancia de personas
+  // ni etiquetas de "zona insegura" (ADR-036).
+  seguridad_disenio: z.object({
+    iluminacion: z.enum(["buena", "regular", "mala", "desconocido"]),
+    visibilidad: z.enum(["buena", "regular", "mala", "desconocido"]),
+    mantenimiento: z.enum(["bueno", "regular", "malo", "desconocido"]),
+    destinos_activos_cercanos: z.boolean(),
+  }),
+  equipamiento: z.object({
+    bancos: z.boolean(),
+    juegos_infantiles: z.boolean(),
+    canchas: z.boolean(),
+    basureros: z.boolean(),
+    bebedero: z.boolean(),
+    otro: z.string().trim().max(120).optional(),
+  }),
+  custodia: z.object({
+    custodia_presente: z.boolean(),
+    tipo_acuerdo: z.enum(["vecinal", "escolar", "club", "otro", "ninguno"]), // anclado al espacio — sin nombres (decisión R9)
+  }),
+  notas: z.string().trim().max(500).optional(),
+});
+
+// Alta de ficha (R4): anclada a un feature de la capa public_space — la ficha
+// no crea geometría propia; el espacio acredita la ubicación. Los campos de
+// texto pasan el anti-PII de la API ANTES de persistir (ADR-027, Ley 25.326).
+export const FichaValoracionAltaSchema = z.object({
+  nodo_key: SanJuanNodeSlugSchema,
+  feature_id: z.string().min(1),
+  version: FichaVersionSchema,
+  respuestas: FichaRespuestasV1Schema,
+});
+
+// Cambio de estado por moderación (R4): corroborar exige declarar quién
+// corrobora (individual | taller_comunitario).
+export const FichaValoracionEstadoCambioSchema = z
+  .object({
+    estado: z.enum(["corroborada", "descartada"]),
+    corroboracion: FichaCorroboracionSchema.optional(),
+    motivo: z.string().trim().max(500).optional(),
+  })
+  .refine((value) => value.estado === "descartada" || value.corroboracion !== undefined, {
+    message: "corroboracion es requerida para corroborar una ficha",
+    path: ["corroboracion"],
+  });
+
 // ─── NODO-CAPITAL NCAP-R6 (#158): Bloque 9 — Banco de Potencialidades ───
 
 // Tipos de oportunidad (Bloque 9 del documento de la DH): capacidades,

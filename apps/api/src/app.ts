@@ -4,6 +4,7 @@ import activosRouter from './routes/activos.js';
 import authRouter from './routes/auth.js';
 import evidenciasRouter from './routes/evidencias.js';
 import eventsRouter from './routes/events.js';
+import fichasValoracionRouter from './routes/fichasValoracion.js';
 import healthRouter from './routes/health.js';
 import modeloFederadoRouter from './routes/modeloFederado.js';
 import nodosRouter from './routes/nodos.js';
@@ -42,6 +43,15 @@ export function createApp(): Express {
   // en events_raw, moderación PATCH /:id/estado (moderador|admin) y GET
   // público anónimo con recorte espacial bbox sobre PostGIS.
   app.use('/api/activos', activosRouter);
+
+  // Dominio: fichas de valoración comunitaria del espacio público
+  // (NODO-CAU R4, #149) — testimonio revisable anclado a features de la capa
+  // public_space: POST ciudadano con pseudónimo sin PII y sello
+  // ficha_valoracion.propuesta en events_raw, GET público anónimo con estado
+  // derivado validado|testimonio y recorte bbox por la geometría del espacio,
+  // moderación PATCH /:id/estado (corroborada con corroboracion
+  // individual|taller_comunitario | descartada, ADR-036).
+  app.use('/api/fichas-valoracion', fichasValoracionRouter);
 
   // Dominio: oportunidades de desarrollo local (NODO-CAPITAL NCAP-R6, #158 —
   // Bloque 9 Banco de Potencialidades): registro ciudadano autenticado con
