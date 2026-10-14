@@ -401,3 +401,64 @@ export const PatrimonioFichaSchema = z.object({
   sensible_status: PatrimonioSensibleStatusSchema,
   visibilidad: ActivoVisibilidadSchema,
 });
+
+// ─── NODO-VIG VIG-005 (NVIG-R7 #174, épica #167): producción y turismo ───
+
+// Catálogo de productos del territorio (1:N con activos — Opción A ratificada
+// por la DH 2026-10-14, traza #174 comment 6160361362). Alta ciudadana
+// autenticada con moderación: nace 'propuesto'; 'archivado' retira del
+// catálogo vivo sin borrar la historia (mismo ciclo honesto que activos).
+export const ProductoEstadoSchema = z.enum(["propuesto", "aprobado", "rechazado", "archivado"]);
+
+// Alta de producto (VIG-005): el slug es único por activo; la temporada se
+// declara en meses 1-12 (array vacío = sin_dato honesto, R15); la procedencia
+// es opcional para el ciudadano y obligatoria en la ingesta curada (ADR-035).
+// El anti-PII de la API se aplica sobre el nombre ANTES de persistir.
+export const ProductoAltaSchema = z.object({
+  slug: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "slug: minúsculas, números y guiones")
+    .min(2)
+    .max(60),
+  nombre: z.string().trim().min(3, "El nombre debe tener al menos 3 caracteres").max(120),
+  categoria: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9_]+$/, "categoria: slug en minúsculas y guiones bajos")
+    .min(2)
+    .max(40)
+    .optional(),
+  temporada_meses: z
+    .array(z.number().int().min(1, "mes: 1-12").max(12, "mes: 1-12"))
+    .max(12)
+    .optional(),
+  procedencia: ActivoProcedenciaSchema.optional(),
+});
+
+// Cambio de estado por moderación (patrón activos R5b): aprobado | rechazado |
+// archivado; el motivo pasa el anti-PII de la API (sin eco del valor).
+export const ProductoEstadoCambioSchema = z.object({
+  estado: z.enum(["aprobado", "rechazado", "archivado"]),
+  motivo: z.string().trim().max(500).optional(),
+});
+
+// Estado honesto de la capacidad (R15): unknown = sin aforo, plazas ni
+// protocolo verificado en nuestras fuentes (Cuesta del Viento, tanda 3).
+export const OperativaCapacityStatusSchema = z.enum(["aforo_verificado", "guia_oficial", "unknown"]);
+
+// Habilitación de prestador (tanda 3 Perplexity): 4 atributos separados —
+// "distinguido" ≠ "habilitado". Todos unknown en las cooperativas sembradas
+// (padrón Ley 2400-T no encontrado); nunca se inventa una habilitación (R15).
+export const HabilitacionEstadoSchema = z.enum(["verificado", "unknown", "no_encontrado"]);
+
+export const HabilitacionSchema = z.object({
+  municipal: HabilitacionEstadoSchema,
+  provincial_2400_t: HabilitacionEstadoSchema,
+  sello: HabilitacionEstadoSchema,
+  verified_at: z
+    .string()
+    .trim()
+    .regex(/^\d{4}(-\d{2}-\d{2})?$/, "verified_at: YYYY-MM-DD o YYYY")
+    .nullable(),
+});
