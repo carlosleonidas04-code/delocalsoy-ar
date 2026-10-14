@@ -449,3 +449,32 @@ model activos_operativa {
 
   @@map("activos_operativa")
 }
+
+// ─── NODO-VIG VIG-006 (NVIG-R8 #188, épica #167): RAG territorial ético ───
+
+/// Índice RAG del nodo (consulta territorial ética — Bloque 11 del VIG-000):
+/// fragmentos de prosa autorizada SOLO de contenido publicado (subnodos,
+/// activos aprobados no restricted con sus fichas patrimonial/operativa
+/// públicas, KPIs agregados). NUNCA ingiere: visibilidad restricted
+/// (ADR-036), el campo sensible de custodia (VIG-004), consentimiento ni PII
+/// (Ley 25.326). Recompute idempotente por el consumidor vig006-rag-index del
+/// worker (patrón vig003-kpi): upsert por (nodo_key, source_type, source_id)
+/// que re-deriva desde las tablas de dominio; delete lógico del fragmento si
+/// el registro deja de calificar (p. ej. pasó a restricted). La columna
+/// generada search (to_tsvector('spanish', texto) + índice GIN) vive en la
+/// migración versionada — Prisma no tipa tsvector.
+model rag_index {
+  id          String   @unique @default(cuid())
+  nodo_key    String   @map("nodo_key") // capital | caucete | iglesia
+  source_type String   @map("source_type") // RagSourceTypeSchema: subnodo | activo | kpi
+  source_id   String   @map("source_id") // subnodo.key | activo.id | kpi_key
+  subnodo_key String?  @map("subnodo_key") // contexto distrital del fragmento
+  texto       String   @map("texto") // prosa autorizada — nunca sensible ni PII
+  fuentes     Json     @map("fuentes") // [{fuente, fecha?}] — ADR-035
+  computed_at DateTime @map("computed_at")
+  created_at  DateTime @default(now()) @map("created_at")
+  updated_at  DateTime @updatedAt @map("updated_at")
+
+  @@id([nodo_key, source_type, source_id])
+  @@map("rag_index")
+}

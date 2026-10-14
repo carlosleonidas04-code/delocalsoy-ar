@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import prisma from '../lib/prisma.js';
-import { SubnodoFiltroSchema } from '@delocalsoy/contracts';
+import { Prisma } from '@delocalsoy/db';
+import { AskPreguntaSchema, SubnodoFiltroSchema } from '@delocalsoy/contracts';
 
 /**
  * Rutas de lectura del vocabulario CORE-002 (CORE-003 R1, #83).
@@ -191,4 +192,144 @@ router.get('/:key/kpis', async (req: Request, res: Response) => {
   }
 });
 
+
+// POST /nodos/:key/ask - consulta territorial ética (VIG-006, #188, épica
+// #167): recuperación full-text NATIVA de PostgreSQL sobre rag_index
+// (tsvector 'spanish' generado + GIN, migración 20261014230000) y respuesta
+// Dato–Interpretación–Sugerencia SIN LLM (decisión DH ratificada
+// 2026-10-14): la interpretación y la sugerencia son PLANTILLAS
+// AUTORIZADAS del dominio dominante — nada generado; sin fragmentos son
+// null honesto (R15). Público anónimo (mismo criterio que GET /kpis); toda
+// respuesta nace human_review 'pending' (revisión humana habilitada). El
+// índice solo contiene prosa autorizada: restricted y sensible JAMÁS
+// llegan acá (ADR-036, VIG-004). El 500 es sanitizado (AUD-06).
+router.post('/:key/ask', async (req: Request, res: Response) => {
+  try {
+    const nodo = await nodoPorKey(req.params.key);
+    if (!nodo) {
+      return res.status(404).json({ success: false, error: 'Nodo no encontrado' });
+    }
+    const parsed = AskPreguntaSchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({ success: false, error: 'Pregunta inválida (3-300 caracteres; subnodo y n1 opcionales)' });
+    }
+    const pregunta = parsed.data.pregunta;
+    const subnodo = parsed.data.subnodo;
+    const n1 = parsed.data.n1;
+
+    // Recuperación full-text sobre rag_index (idioma español). Los filtros
+    // opcionales acotan por subnodo o por capital N1 primaria de activos
+    // aprobados no restricted (ADR-036).
+    const conditions: Array<any> = [
+      Prisma.sql`nodo_key = ${nodo.key}`,
+      Prisma.sql`search @@ websearch_to_tsquery('spanish', ${pregunta})`,
+    ];
+    if (subnodo) {
+      conditions.push(Prisma.sql`subnodo_key = ${subnodo}`);
+    }
+    if (n1) {
+      conditions.push(
+        Prisma.sql`source_type = 'activo' AND source_id IN (SELECT c.activo_id FROM activos_clasificaciones c JOIN activos a ON a.id = c.activo_id WHERE c.is_primary = true AND c.n1 = ${n1} AND a.nodo_key = ${nodo.key} AND a.estado = 'aprobado' AND a.visibilidad <> 'restricted')`
+      );
+    }
+    const rows: Array<{ source_type: string; source_id: string; subnodo_key: string | null; texto: string; fuentes: Array<{ fuente: string; fecha?: string }> | null }> = (await prisma.$queryRaw(
+      Prisma.sql`SELECT source_type, source_id, subnodo_key, texto, fuentes FROM rag_index WHERE ${Prisma.join(conditions, ' AND ')} ORDER BY ts_rank(search, websearch_to_tsquery('spanish', ${pregunta})) DESC LIMIT 8`
+    )) as any;
+
+    const dato = rows.map((r) => ({
+      source_type: r.source_type,
+      source_id: r.source_id,
+      subnodo_key: r.subnodo_key,
+      texto: r.texto,
+      fuentes: r.fuentes ?? [],
+    }));
+
+    // Dominio dominante: N1 primaria más frecuente de los activos
+    // recuperados; si solo hay subnodos/KPIs → 'territorial'. Sin
+    // fragmentos → null honesto (R15).
+    const activoIds = dato.filter((f) => f.source_type === 'activo').map((f) => f.source_id);
+    const conteo: Record<string, number> = { patrimonial: 0, productivo_rural: 0, turistico: 0 };
+    if (activoIds.length > 0) {
+      const clasifs = await prisma.activos_clasificaciones.findMany({
+        where: { activo_id: { in: activoIds }, is_primary: true },
+        select: { n1: true },
+      });
+      for (const c of clasifs) {
+        if (c.n1 in conteo) conteo[c.n1] += 1;
+      }
+    }
+    let dominio: 'patrimonial' | 'productivo_rural' | 'turistico' | 'territorial' | null = null;
+    const n = dato.length;
+    if (n > 0) {
+      const mejor = Object.entries(conteo).sort((a, b) => b[1] - a[1])[0];
+      dominio = mejor[1] > 0 ? (mejor[0] as 'patrimonial' | 'productivo_rural' | 'turistico') : 'territorial';
+    }
+
+    // Plantillas autorizadas v1 (nada generado — decisión DH): texto fijo
+    // relleno con el recuento de fragmentos y el titular del principal.
+    const titular = n > 0 ? dato[0].texto.split('.')[0] : null;
+    let interpretacion: string | null = null;
+    let sugerencia: string | null = null;
+    if (n > 0 && dominio !== null) {
+      if (dominio === 'patrimonial') {
+        interpretacion =
+          'La consulta recupera ' + n + ' fragmento(s) del dominio patrimonial — el principal es «' + titular + '». Plantilla autorizada (sin LLM): la protección declarada es registro público y el acceso se rige por las reglas publicadas del activo.';
+        sugerencia =
+          'Revise la ficha patrimonial pública (GET /api/patrimonio/:activoId) y sus reglas de acceso antes de planificar cualquier visita.';
+      } else if (dominio === 'productivo_rural') {
+        interpretacion =
+          'La consulta recupera ' + n + ' fragmento(s) del dominio productivo rural — el principal es «' + titular + '». Plantilla autorizada (sin LLM): la producción se acredita por procedencia trazable (ADR-035), nunca por estimaciones.';
+        sugerencia =
+          'Para compra o cooperación, verifique el catálogo de productos del territorio y su temporada declarada.';
+      } else if (dominio === 'turistico') {
+        interpretacion =
+          'La consulta recupera ' + n + ' fragmento(s) del dominio turístico — el principal es «' + titular + '». Plantilla autorizada (sin LLM): la operativa se publica en su estado honesto — unknown es sin dato verificado (R15).';
+        sugerencia =
+          'Antes de viajar, confirme horario y temporada en la operativa del activo, y las condiciones de acceso cuando el activo sea patrimonial.';
+      } else {
+        interpretacion =
+          'La consulta recupera ' + n + ' fragmento(s) de estructura territorial o KPIs del nodo ' + nodo.key + ' — prosa autorizada derivada del dominio publicado (sin LLM).';
+        sugerencia =
+          'Para profundizar, consulte GET /api/nodos/' + nodo.key + '/subnodos y GET /api/nodos/' + nodo.key + '/kpis.';
+      }
+    }
+
+    // confidence DERIVADO de la cobertura de fuentes (nunca declarado).
+    const conFuente = dato.filter((f) => f.fuentes.length > 0).length;
+    const confidence = n === 0 ? 0 : conFuente / n;
+
+    // Fuentes deduplicadas por fuente+fecha.
+    const vistas = new Set<string>();
+    const fuentes: Array<{ fuente: string; fecha?: string }> = [];
+    for (const f of dato) {
+      for (const fuente of f.fuentes) {
+        const clave = fuente.fuente + '|' + (fuente.fecha ?? '');
+        if (!vistas.has(clave)) {
+          vistas.add(clave);
+          fuentes.push(fuente);
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        nodo_key: nodo.key,
+        pregunta,
+        dato,
+        dominio,
+        interpretacion,
+        sugerencia,
+        fuentes,
+        confidence,
+        recovered: n,
+        human_review: 'pending',
+      },
+    });
+  } catch (error) {
+    // AUD-06: el detalle queda en stdout del servidor, nunca en la respuesta.
+    console.error('[nodos] ask:', error instanceof Error ? error.message : String(error));
+    res.status(500).json({ success: false, error: 'Error al procesar la consulta' });
+  }
+});
 export default router;
