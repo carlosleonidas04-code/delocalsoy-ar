@@ -529,3 +529,44 @@ export const RespuestaAskSchema = z.object({
   recovered: z.number().int().min(0),
   human_review: z.literal("pending"),
 });
+
+// ─── NODO-VIG VIG-007 (NVIG-R9 #193, épica #167): demo final del showcase ───
+
+// Recorrido federado de la demo final (fuente §Guion: Caucete → Capital →
+// Valle de Iglesia). Lectura pública del estado REAL de cada nodo: los
+// counts se derivan de las tablas de dominio con las exclusiones de siempre
+// (ADR-036) y un nodo sin snapshots aún → kpis: 0 honesto, nunca fabricado
+// (R15). El guion ejecutable (13 pasos, 4 escenarios, 10 criterios) vive en
+// docs/nodes/valle-de-iglesia/VIG-007-DEMO-FINAL.md.
+export const ShowcaseKpiDetalleSchema = z.object({
+  kpi_key: KpiKeySchema,
+  valor: KpiValorSchema,
+  detalles: KpiDetallesSchema,
+});
+
+export const ShowcaseNodoResumenSchema = z.object({
+  key: SanJuanNodeSlugSchema,
+  nombre: z.string(),
+  foco: z.string(),
+  poblacion: z.number().int(),
+  activo: z.boolean(),
+  subnodos: z.number().int().min(0),
+  kpis: z.number().int().min(0),
+  activos_aprobados: z.number().int().min(0),
+  fichas_patrimoniales: z.number().int().min(0),
+  operativas: z.number().int().min(0),
+  productos_aprobados: z.number().int().min(0),
+  rag_fragmentos: z.number().int().min(0),
+  kpis_detalle: z.array(ShowcaseKpiDetalleSchema),
+});
+
+export const ShowcaseGuionSchema = z.object({
+  doc: z.string(),
+  pasos: z.number().int().min(1),
+});
+
+export const ShowcaseResponseSchema = z.object({
+  recorrido: z.array(SanJuanNodeSlugSchema),
+  nodos: z.array(ShowcaseNodoResumenSchema),
+  guion: ShowcaseGuionSchema,
+});
