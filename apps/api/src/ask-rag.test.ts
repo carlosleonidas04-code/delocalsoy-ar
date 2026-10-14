@@ -159,10 +159,12 @@ describe.skipIf(!dbUp)('RAG territorial ético VIG-006 (#188, épica #167)', () 
     expect(res.body.data.confidence).toBe(0);
   });
 
-  it('una pregunta por subnodos del valle recupera el KPI agregado (source_type kpi)', async () => {
+  it('una pregunta por el total de subnodos recupera el KPI agregado (source_type kpi)', async () => {
     await recomputeKpisForNode('iglesia');
     await recomputeRagIndexForNode('iglesia');
-    const res = await ask({ pregunta: 'cuántos subnodos tiene el valle' });
+    // La recuperación full-text es AND de todos los términos: la pregunta usa
+    // los términos presentes en la prosa del KPI (total, subnodos, nodo).
+    const res = await ask({ pregunta: 'total de subnodos territoriales del nodo' });
     expect(res.status).toBe(200);
     const tipos = new Set((res.body.data.dato ?? []).map((f: any) => f.source_type));
     expect(tipos.has('kpi')).toBe(true);
