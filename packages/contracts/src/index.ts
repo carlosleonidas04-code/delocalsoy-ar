@@ -386,7 +386,8 @@ export const PatrimonioCustodiaSchema = z.object({
 
 // Ficha patrimonial pública (GET /api/patrimonio/:activoId): declaratoria +
 // conservación + punto público de acceso + reglas + estado honesto de
-// custodia. `sensible` jamás aparece en la lectura pública (ADR-036).
+// custodia. `sensible` ni `sensible_nota` jamás aparecen en la lectura
+// pública (ADR-036: la nota de custodia queda para gestores).
 export const PatrimonioFichaSchema = z.object({
   activo_id: z.string(),
   titulo: z.string(),
@@ -398,6 +399,5 @@ export const PatrimonioFichaSchema = z.object({
   acceso_lng: z.number().nullable(),
   reglas_acceso: z.array(PatrimonioReglaSchema),
   sensible_status: PatrimonioSensibleStatusSchema,
-  sensible_nota: z.string().nullable(),
   visibilidad: ActivoVisibilidadSchema,
 });

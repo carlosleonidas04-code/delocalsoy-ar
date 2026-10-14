@@ -84,7 +84,8 @@ router.get('/:activoId', async (req: Request, res: Response) => {
       res.status(404).json({ success: false, error: 'el activo no tiene ficha patrimonial' });
       return;
     }
-    // La respuesta pública NUNCA contiene `sensible` (ADR-036) ni el punto
+    // La respuesta pública NUNCA contiene `sensible` ni `sensible_nota`
+    // (ADR-036: la nota de custodia es para gestores) ni el punto
     // propio del activo cuando su visibilidad es restricted.
     res.json({
       success: true,
@@ -104,7 +105,6 @@ router.get('/:activoId', async (req: Request, res: Response) => {
         acceso_lng: ficha.acceso_lng,
         reglas_acceso: ficha.reglas_acceso,
         sensible_status: ficha.sensible_status,
-        sensible_nota: ficha.sensible_nota,
       },
     });
   } catch (err) {
