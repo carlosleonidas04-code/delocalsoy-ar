@@ -464,7 +464,7 @@ model activos_operativa {
 /// generada search (to_tsvector('spanish', texto) + índice GIN) vive en la
 /// migración versionada — Prisma no tipa tsvector.
 model rag_index {
-  id          String   @id @default(cuid())
+  id          String   @unique @default(cuid())
   nodo_key    String   @map("nodo_key") // capital | caucete | iglesia
   source_type String   @map("source_type") // RagSourceTypeSchema: subnodo | activo | kpi
   source_id   String   @map("source_id") // subnodo.key | activo.id | kpi_key
