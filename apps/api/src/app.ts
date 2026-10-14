@@ -10,6 +10,7 @@ import nodosRouter from './routes/nodos.js';
 import oportunidadesRouter from './routes/oportunidades.js';
 import patrimonioRouter from './routes/patrimonio.js';
 import productosRouter from './routes/productos.js';
+import showcaseRouter from './routes/showcase.js';
 import territoriosRouter from './routes/territorios.js';
 
 export function createApp(): Express {
@@ -63,6 +64,13 @@ export function createApp(): Express {
   // seguridad y habilitación honesta). ADR-036: restricted queda excluido de
   // toda lectura pública, sin excepción ratificada (traza #174).
   app.use('/api', productosRouter);
+
+  // Demo final (NODO-VIG VIG-007, NVIG-R9 #193 — épica #167): recorrido
+  // federado del showcase — lectura pública del estado REAL de los tres
+  // nodos (counts del dominio con exclusiones ADR-036; sin snapshots →
+  // kpis 0 honesto, R15). El guion ejecutable vive en
+  // docs/nodes/valle-de-iglesia/VIG-007-DEMO-FINAL.md.
+  app.use('/api/showcase', showcaseRouter);
 
   // Compuerta Pre-C5 (handoff [agent: google] → [agent: vibe], Refs #109/#114,
   // ADR-034): validación de integridad referencial del schema Prisma REAL
