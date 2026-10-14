@@ -5,9 +5,9 @@ try {
   prisma = new PrismaClient();
 } catch (err) {
   // R5: el mock existe SOLO en pruebas (NODE_ENV=test). Fuera de pruebas,
-  // sin base de datos se falla ruidosamente (Aterrizaje PR 1 — issue #20).
+  // sin base de datos se falla ruidosamente (Aterrizaje PR 1 â issue #20).
   if (process.env.NODE_ENV === 'test') {
-    console.warn('[test] Database not connected — using mock');
+    console.warn('[test] Database not connected â using mock');
     const noOp = {
       findMany: async () => [],
       findFirst: async () => null,
@@ -26,3 +26,4 @@ try {
 
 export { prisma };
 export * from '@prisma/client';
+export * from './kpi.js';
