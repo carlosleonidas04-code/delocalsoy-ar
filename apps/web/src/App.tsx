@@ -15,6 +15,7 @@ import { HorizonTwoSpatialFederationPanel } from './components/HorizonTwoSpatial
 import { HorizonFourFieldAndTelemetryPanel } from './components/HorizonFourFieldAndTelemetryPanel';
 import { QuarterlyTrendsSection } from './components/QuarterlyTrendsSection';
 import { RecursiveProspectiveContractPanel } from './components/RecursiveProspectiveContractPanel';
+import { ShowcaseRecorridoPanel } from './components/ShowcaseRecorridoPanel';
 import { TerritoriosMap } from './components/TerritoriosMap';
 import { TerritorialPlatformHub } from './components/TerritorialPlatformHub';
 import { TraceabilityAndEvidenciasPanel } from './components/TraceabilityAndEvidenciasPanel';
@@ -6158,6 +6159,11 @@ pnpm install && git status -sb`}
             onTestDuplicateHashIdempotency={handleTestDuplicateHashIdempotency}
             onVerifyEvidencia={handleVerifyEvidencia}
           />
+        )}
+
+        {/* 6b. Recorrido del Showcase (VIG-007 — Demo final): Caucete → Capital → Valle de Iglesia con estado real (R15) */}
+        {(activeDesignLens === 'all' || activeDesignLens === 'lens_atlas_coco_baba') && (
+          <ShowcaseRecorridoPanel />
         )}
 
         {/* 7. Estado de Integración API y Registro Maestro de Nodos Territoriales */}
