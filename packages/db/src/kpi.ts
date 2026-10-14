@@ -54,7 +54,7 @@ type GroupRow = { estado: string; tipo: string; n1: string; type: string; total:
 function distritoDe(row: SubnodoRow, porKey: Map<string, SubnodoRow>): string {
   let actual: SubnodoRow | undefined = row;
   while (actual) {
-    const padre = actual.parent_key ? porKey.get(actual.parent_key) : undefined;
+    const padre: SubnodoRow | undefined = actual.parent_key ? porKey.get(actual.parent_key) : undefined;
     if (!padre) break;
     if (padre.type === 'district') return padre.key;
     actual = padre;
