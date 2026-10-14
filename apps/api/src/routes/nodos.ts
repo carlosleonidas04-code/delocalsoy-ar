@@ -169,4 +169,26 @@ router.get('/:key/subnodos', async (req: Request, res: Response) => {
   }
 });
 
+// GET /nodos/:key/kpis - KPIs materializados del nodo (VIG-003, #182, épica
+// #167): lectura pública anónima del set honesto v1 (9 KPIs, kpi_snapshots)
+// que el consumidor vig003-kpi del worker re-computa desde el dominio
+// (upsert idempotente por nodo_key+kpi_key — nunca incrementos). El nodo
+// inexistente es 404 (R15); count 0 es honesto: nodo sin snapshots aún.
+router.get('/:key/kpis', async (req: Request, res: Response) => {
+  try {
+    const nodo = await nodoPorKey(req.params.key);
+    if (!nodo) {
+      return res.status(404).json({ success: false, error: 'Nodo no encontrado' });
+    }
+    const rows = await prisma.kpi_snapshots.findMany({
+      where: { nodo_key: nodo.key },
+      orderBy: { kpi_key: 'asc' },
+    });
+    res.json({ success: true, data: rows, count: rows.length });
+  } catch (error) {
+    console.error('[nodos] kpis:', error instanceof Error ? error.message : String(error));
+    res.status(500).json({ success: false, error: 'Error al obtener KPIs' });
+  }
+});
+
 export default router;
