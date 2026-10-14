@@ -341,3 +341,25 @@ model activos_clasificaciones {
   @@index([n1])
   @@map("activos_clasificaciones")
 }
+
+// ─── NODO-VIG VIG-003 (NVIG-R3 #182, épica #167): KPIs del nodo ───
+
+/// Snapshots materializados de KPIs por nodo (set honesto v1 ratificado por
+/// la DH 2026-10-14): agregados SIN PII (Ley 25.326), visibilidad
+/// restricted excluida del cálculo (ADR-036). PK compuesta (nodo_key,
+/// kpi_key) → el recompute del consumidor vig003-kpi es un upsert
+/// idempotente que re-deriva desde las tablas de dominio, nunca incrementos.
+/// valor null = métrica sin computar (cobertura v1) — null honesto (R15).
+model kpi_snapshots {
+  id          String   @unique @default(cuid())
+  nodo_key    String   @map("nodo_key") // capital | caucete | iglesia
+  kpi_key     String   @map("kpi_key") // KpiKeySchema (9 KPIs v1)
+  valor       Float?   @map("valor") // null honesto (R15): sin métrica computada
+  detalles    Json     @map("detalles") // desglose por clave — solo agregados numéricos
+  computed_at DateTime @map("computed_at")
+  created_at  DateTime @default(now()) @map("created_at")
+  updated_at  DateTime @updatedAt @map("updated_at")
+
+  @@id([nodo_key, kpi_key])
+  @@map("kpi_snapshots")
+}

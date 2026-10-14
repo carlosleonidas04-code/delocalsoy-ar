@@ -26,3 +26,4 @@ try {
 
 export { prisma };
 export * from '@prisma/client';
+export * from './kpi.js';

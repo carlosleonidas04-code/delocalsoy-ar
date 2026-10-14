@@ -300,3 +300,42 @@ export const SubnodoFiltroSchema = z.object({
     .max(60)
     .optional(),
 });
+
+// ─── NODO-VIG VIG-003 (NVIG-R3 #182, épica #167): KPIs del nodo ───
+
+// Set honesto v1 de KPIs por nodo (ratificado por la DH 2026-10-14, traza
+// #182 comment 6158288630): SOLO agregados sin PII (Ley 25.326); la
+// visibilidad `restricted` queda EXCLUIDA de todo cálculo (ADR-036). El
+// consumidor vig003-kpi del worker re-computa desde el dominio (nunca
+// incrementos: cada snapshot es derivable de las tablas fuente en cualquier
+// momento) y lo materializa en kpi_snapshots por (nodo_key, kpi_key).
+export const KpiKeySchema = z.enum([
+  "subnodos_total",
+  "subnodos_por_distrito",
+  "subnodos_con_punto",
+  "activos_por_estado",
+  "activos_por_tipo",
+  "activos_por_capital_n1",
+  "activos_verificados",
+  "eventos_por_tipo",
+  "cobertura_geometrica",
+]);
+
+// Valor honesto: número O null (cobertura_geometrica es null en v1 — sin
+// métrica de cobertura computada; null ≠ 0, R15).
+export const KpiValorSchema = z.union([z.number(), z.null()]);
+
+// Detalles del KPI: desglose por clave (distrito, estado, tipo, N1 o tipo
+// de evento) — siempre agregados numéricos, nunca datos personales.
+export const KpiDetallesSchema = z.record(z.string(), z.number());
+
+// Snapshot materializado de un KPI de un nodo (tabla kpi_snapshots,
+// VIG-003): upsert idempotente por (nodo_key, kpi_key) — el recompute no
+// acumula. computed_at acredita el momento del cálculo.
+export const KpiSnapshotSchema = z.object({
+  nodo_key: SanJuanNodeSlugSchema,
+  kpi_key: KpiKeySchema,
+  valor: KpiValorSchema,
+  detalles: KpiDetallesSchema,
+  computed_at: z.string().datetime(),
+});
