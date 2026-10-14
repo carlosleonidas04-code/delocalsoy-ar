@@ -183,6 +183,8 @@ router.get('/', async (req: Request, res: Response) => {
     const tipoCrudo = typeof req.query.tipo === 'string' ? req.query.tipo : undefined;
     const subnodoCrudo = typeof req.query.subnodo === 'string' ? req.query.subnodo : undefined;
     const n1Crudo = typeof req.query.n1 === 'string' ? req.query.n1 : undefined;
+    const productoCrudo = typeof req.query.producto === 'string' ? req.query.producto : undefined;
+    const mesCrudo = typeof req.query.mes === 'string' ? req.query.mes : undefined;
 
     let estado: z.infer<typeof ActivoEstadoSchema> | undefined;
     if (estadoCrudo !== undefined) {
@@ -234,13 +236,39 @@ router.get('/', async (req: Request, res: Response) => {
       n1 = parsedN1.data;
     }
 
-    if (bboxCrudo !== undefined) {
-      const parsedBbox = BboxStringSchema.safeParse(bboxCrudo);
-      if (!parsedBbox.success) {
-        res.status(400).json({ success: false, error: 'bbox inválido', details: parsedBbox.error.errors });
+    // VIG-005 (NVIG-R7 #174): filtros de producción y turismo.
+    let producto: string | undefined;
+    if (productoCrudo !== undefined) {
+      if (!/^[a-z0-9-]+$/.test(productoCrudo) || productoCrudo.length > 60) {
+        res.status(400).json({ success: false, error: 'producto inválido' });
         return;
       }
-      const [minLng, minLat, maxLng, maxLat] = parsedBbox.data.split(',').map(Number);
+      producto = productoCrudo;
+    }
+
+    let mes: number | undefined;
+    if (mesCrudo !== undefined) {
+      const parsedMes = Number(mesCrudo);
+      if (!Number.isInteger(parsedMes) || parsedMes < 1 || parsedMes > 12) {
+        res.status(400).json({ success: false, error: 'mes inválido' });
+        return;
+      }
+      mes = parsedMes;
+    }
+
+    if (bboxCrudo !== undefined || producto !== undefined || mes !== undefined) {
+      // VIG-005: la rama cruda se activa con cualquiera de los filtros
+      // espacial/temporales; el bbox solo se valida y siembra si vino.
+      let bboxFiltro = Prisma.empty;
+      if (bboxCrudo !== undefined) {
+        const parsedBbox = BboxStringSchema.safeParse(bboxCrudo);
+        if (!parsedBbox.success) {
+          res.status(400).json({ success: false, error: 'bbox inválido', details: parsedBbox.error.errors });
+          return;
+        }
+        const [minLng, minLat, maxLng, maxLat] = parsedBbox.data.split(',').map(Number);
+        bboxFiltro = Prisma.sql`AND ST_Intersects(a.geom, ST_MakeEnvelope(${minLng}, ${minLat}, ${maxLng}, ${maxLat}, 4326))`;
+      }
       const estadoFiltro = estado !== undefined ? Prisma.sql`AND a.estado = ${estado}` : Prisma.empty;
       const nodoFiltro = nodo !== undefined ? Prisma.sql`AND a.nodo_key = ${nodo}` : Prisma.empty;
       const tipoFiltro = tipo !== undefined ? Prisma.sql`AND a.tipo = ${tipo}` : Prisma.empty;
@@ -248,6 +276,19 @@ router.get('/', async (req: Request, res: Response) => {
       const n1Join =
         n1 !== undefined
           ? Prisma.sql`JOIN activos_clasificaciones ac ON ac.activo_id = a.id AND ac.n1 = ${n1}`
+          : Prisma.empty;
+      // VIG-005: ?producto= — JOIN por slug de producto APROBADO (la
+      // propuesta 'propuesto' no altera el mapa: moderación primero).
+      const productoJoin =
+        producto !== undefined
+          ? Prisma.sql`JOIN productos pr ON pr.activo_id = a.id AND pr.slug = ${producto} AND pr.estado = 'aprobado'`
+          : Prisma.empty;
+      // VIG-005: ?mes= — temporada del activo por operativa O producto
+      // aprobado (jsonb @>): [] = sin_dato, no matchea (R15 honesto).
+      const mesJson = mes !== undefined ? '[' + mes + ']' : undefined;
+      const temporadaFiltro =
+        mes !== undefined
+          ? Prisma.sql`AND (EXISTS (SELECT 1 FROM activos_operativa o WHERE o.activo_id = a.id AND o.temporada_meses @> ${mesJson}::jsonb) OR EXISTS (SELECT 1 FROM productos pr2 WHERE pr2.activo_id = a.id AND pr2.estado = 'aprobado' AND pr2.temporada_meses @> ${mesJson}::jsonb))`
           : Prisma.empty;
 
       const data = await prisma.$queryRaw`
@@ -257,9 +298,9 @@ router.get('/', async (req: Request, res: Response) => {
                ST_AsGeoJSON(a.geom)::json AS geometry
         FROM activos a
           ${n1Join}
-        WHERE ST_Intersects(a.geom, ST_MakeEnvelope(${minLng}, ${minLat}, ${maxLng}, ${maxLat}, 4326))
-          AND a.visibilidad <> 'restricted'
-          ${estadoFiltro} ${nodoFiltro} ${tipoFiltro} ${subnodoFiltro}
+          ${productoJoin}
+        WHERE a.visibilidad <> 'restricted'
+          ${bboxFiltro} ${estadoFiltro} ${nodoFiltro} ${tipoFiltro} ${subnodoFiltro} ${temporadaFiltro}
         ORDER BY a.created_at DESC
         LIMIT 100`;
 

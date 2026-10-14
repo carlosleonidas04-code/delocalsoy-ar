@@ -238,6 +238,8 @@ model activos {
 
   clasificaciones activos_clasificaciones[]
   patrimonio activos_patrimonio?
+  productos      productos[]
+  operativa      activos_operativa?
 
   /// Geometría puntal WGS84: columna + trigger + índice GiST en la migración
   /// versionada 20261008200000_r5b_activos (NULL-safe desde VIG-002: sin
@@ -394,4 +396,56 @@ model activos_patrimonio {
   activo activos @relation(fields: [activo_id], references: [id], onDelete: Cascade)
 
   @@map("activos_patrimonio")
+}
+
+// ─── NODO-VIG VIG-005 (NVIG-R7 #174, épica #167): producción y turismo ───
+
+/// Catálogo de productos del territorio (1:N con activos — Opción A ratificada
+/// por la DH 2026-10-14, traza #174 comment 6160361362): vinos pateros,
+/// tejidos, servicios de temporada. Alta ciudadana autenticada con moderación:
+/// nace 'propuesto' (la propuesta es registro comunitario, nunca publicada
+/// como verificado); autor = pseudónimo sha256(usuario_id) — sin PII.
+/// temporada_meses es un array JSON de meses 1-12: [] = sin_dato honesto
+/// (R15). La semilla siembra 0 productos: solo se publica lo verificado.
+model productos {
+  id              String   @id @default(cuid())
+  activo_id       String   @map("activo_id")
+  slug            String   @map("slug")
+  nombre          String   @map("nombre")
+  categoria       String?  @map("categoria")
+  temporada_meses Json     @map("temporada_meses") // [1..12] — [] = sin_dato (R15)
+  estado          String   @default("propuesto") @map("estado") // ProductoEstadoSchema
+  procedencia     Json?    @map("procedencia") // ActivoProcedenciaSchema (ADR-035)
+  created_by_hash String   @map("created_by_hash") // pseudónimo — sin PII
+  created_at      DateTime @default(now()) @map("created_at")
+  updated_at      DateTime @updatedAt @map("updated_at")
+
+  activo activos @relation(fields: [activo_id], references: [id], onDelete: Cascade)
+
+  @@unique([activo_id, slug])
+  @@index([estado])
+  @@map("productos")
+}
+
+/// Operativa del activo (1:1): horario, temporada, capacidad y seguridad.
+/// Semilla solo-verificada (decisión DH 2026-10-14): dique Cuesta del Viento
+/// con horario Ley 826-G + temporada de picos + capacity_status 'unknown'
+/// honesto (sin aforos/plazas verificados — R15); cooperativas solo con
+/// habilitación unknown en 4 atributos (padrón Ley 2400-T no encontrado).
+/// SIN columna geom (criterio estructural #149/#167, patrón patrimonio).
+model activos_operativa {
+  activo_id        String   @id @map("activo_id")
+  horario          String?  @map("horario")
+  temporada_meses  Json     @map("temporada_meses") // [1..12] — [] = sin_dato
+  capacity_status  String   @default("unknown") @map("capacity_status") // OperativaCapacityStatusSchema
+  capacidad_plazas Int?     @map("capacidad_plazas")
+  seguridad        Json?    @map("seguridad") // protocolos verificados con fuente
+  habilitacion     Json?    @map("habilitacion") // HabilitacionSchema (4 atributos)
+  procedencia      Json?    @map("procedencia") // ActivoProcedenciaSchema (ADR-035)
+  created_at       DateTime @default(now()) @map("created_at")
+  updated_at       DateTime @updatedAt @map("updated_at")
+
+  activo activos @relation(fields: [activo_id], references: [id], onDelete: Cascade)
+
+  @@map("activos_operativa")
 }

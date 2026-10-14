@@ -9,6 +9,7 @@ import modeloFederadoRouter from './routes/modeloFederado.js';
 import nodosRouter from './routes/nodos.js';
 import oportunidadesRouter from './routes/oportunidades.js';
 import patrimonioRouter from './routes/patrimonio.js';
+import productosRouter from './routes/productos.js';
 import territoriosRouter from './routes/territorios.js';
 
 export function createApp(): Express {
@@ -53,6 +54,15 @@ export function createApp(): Express {
   // punto de acceso — NUNCA el campo sensible, ADR-036) y custodia PATCH
   // moderador|admin con sello patrimonio.custodiado en events_raw + rollback.
   app.use('/api/patrimonio', patrimonioRouter);
+
+  // Dominio: producción y turismo (NODO-VIG VIG-005, NVIG-R7 #174 — épica
+  // #167): catálogo de productos del territorio por activo (GET público
+  // propuesto|aprobado, alta ciudadana autenticada que nace 'propuesto' y
+  // moderación moderador|admin en PATCH /api/productos/:id/estado) y operativa
+  // del activo (GET /api/operativa/:id — horario, temporada, capacidad,
+  // seguridad y habilitación honesta). ADR-036: restricted queda excluido de
+  // toda lectura pública, sin excepción ratificada (traza #174).
+  app.use('/api', productosRouter);
 
   // Compuerta Pre-C5 (handoff [agent: google] → [agent: vibe], Refs #109/#114,
   // ADR-034): validación de integridad referencial del schema Prisma REAL
