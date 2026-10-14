@@ -8,6 +8,10 @@ import fichasValoracionRouter from './routes/fichasValoracion.js';
 import healthRouter from './routes/health.js';
 import modeloFederadoRouter from './routes/modeloFederado.js';
 import nodosRouter from './routes/nodos.js';
+import oportunidadesRouter from './routes/oportunidades.js';
+import patrimonioRouter from './routes/patrimonio.js';
+import productosRouter from './routes/productos.js';
+import showcaseRouter from './routes/showcase.js';
 import territoriosRouter from './routes/territorios.js';
 
 export function createApp(): Express {
@@ -29,6 +33,9 @@ export function createApp(): Express {
   // Dominio: vocabulario del demo federado (CORE-003 R1, #83) — nodos, capas,
   // categorías, features y reportes en lectura pública. El backend sirve todo
   // lo que el contrato DataSource consume: fin de los "declarado vacío" (R15).
+  // NODO-VIG VIG-001 (#171, épica #167): GET /api/nodos/:key/subnodos — jerarquía
+  // territorial del Valle de Iglesia (distrito → paraje → subparaje + localidad
+  // INDEC), con punto público BAHRA/Georef y estados honestos de asignación.
   app.use('/api/nodos', nodosRouter);
 
   // Dominio: activos territoriales (CORE-004 R5b, #87) — escritura ciudadana
@@ -45,6 +52,35 @@ export function createApp(): Express {
   // moderación PATCH /:id/estado (corroborada con corroboracion
   // individual|taller_comunitario | descartada, ADR-036).
   app.use('/api/fichas-valoracion', fichasValoracionRouter);
+
+  // Dominio: oportunidades de desarrollo local (NODO-CAPITAL NCAP-R6, #158 —
+  // Bloque 9 Banco de Potencialidades): registro ciudadano autenticado con
+  // evidencia obligatoria, ciclo de vida por matriz de transiciones sellada
+  // en events_raw, moderación moderador|admin y lectura pública anónima
+  // ('discarded' nunca se publica).
+  app.use('/api/oportunidades', oportunidadesRouter);
+
+  // Dominio: patrimonio protegido (NODO-VIG VIG-004, NVIG-R6 #173 — épica
+  // #167): ficha patrimonial pública (declaratoria + conservación + reglas +
+  // punto de acceso — NUNCA el campo sensible, ADR-036) y custodia PATCH
+  // moderador|admin con sello patrimonio.custodiado en events_raw + rollback.
+  app.use('/api/patrimonio', patrimonioRouter);
+
+  // Dominio: producción y turismo (NODO-VIG VIG-005, NVIG-R7 #174 — épica
+  // #167): catálogo de productos del territorio por activo (GET público
+  // propuesto|aprobado, alta ciudadana autenticada que nace 'propuesto' y
+  // moderación moderador|admin en PATCH /api/productos/:id/estado) y operativa
+  // del activo (GET /api/operativa/:id — horario, temporada, capacidad,
+  // seguridad y habilitación honesta). ADR-036: restricted queda excluido de
+  // toda lectura pública, sin excepción ratificada (traza #174).
+  app.use('/api', productosRouter);
+
+  // Demo final (NODO-VIG VIG-007, NVIG-R9 #193 — épica #167): recorrido
+  // federado del showcase — lectura pública del estado REAL de los tres
+  // nodos (counts del dominio con exclusiones ADR-036; sin snapshots →
+  // kpis 0 honesto, R15). El guion ejecutable vive en
+  // docs/nodes/valle-de-iglesia/VIG-007-DEMO-FINAL.md.
+  app.use('/api/showcase', showcaseRouter);
 
   // Compuerta Pre-C5 (handoff [agent: google] → [agent: vibe], Refs #109/#114,
   // ADR-034): validación de integridad referencial del schema Prisma REAL

@@ -156,7 +156,7 @@ model reportes {
   created_at   DateTime @default(now()) @map("created_at")
   updated_at   DateTime @updatedAt @map("updated_at")
 
-  /// Geometría puntal WGS84: columna + trigger + índice GiST en la migración
+  /// Geometría puntual WGS84: columna + trigger + índice GiST en la migración
   /// versionada 20261007120000_core002_schema (Prisma no tipa geometry).
   geom Unsupported("geometry(Point,4326)")?
 
@@ -201,29 +201,282 @@ model event_projections {
 /// Activos territoriales propuestos por la ciudadanía (escritura ciudadana
 /// verificada). El autor queda como pseudónimo created_by_hash = sha256(usuario_id)
 /// truncado — nunca PII en la tabla ni en los sellos (Ley 25.326, ADR-027).
-/// Flujo de moderación: propuesto → aprobado | rechazado (PATCH moderador|admin).
+/// Flujo de moderación: propuesto → aprobado | rechazado (+ archivado, VIG-002).
 /// La columna PostGIS `geom` vive en la migración versionada
 /// 20261008200000_r5b_activos (trigger lat/lng + índice GiST).
+///
+/// VIG-002 (NVIG-R2 #169, épica #167 — Opción A ratificada por la DH
+/// 2026-10-13: extender el dominio, no duplicarlo):
+/// - tipos multimodales: + local | prestador | experiencia | observacion
+/// - subnodo_key: contexto de distrito/paraje (patrón oportunidades)
+/// - lat/lng pasan a opcionales: el punto propio SOLO con fuente (R15) —
+///   el POST ciudadano lo exige por contrato; la ingesta curada no inventa
+/// - visibilidad ADR-036 (public | generalized | restricted): restricted se
+///   excluye de la lectura pública (ficha sensible = custodia, VIG-004)
+/// - procedencia ADR-035: aprobado con fuente trazable = "verificado"
+/// - consentimiento granular (Ley 25.326) si el activo nombra a una persona
+/// - is_synthetic: demo marcada, nunca publicada como real
+/// - hash único opcional: idempotencia de la ingesta curada (seed-activo-*)
 model activos {
   id              String   @id @default(cuid())
-  tipo            String   @map("tipo") // inmueble | infraestructura | servicio | patrimonio | otro
+  tipo            String   @map("tipo") // ActivoTipoSchema: inmueble | infraestructura | servicio | patrimonio | local | prestador | experiencia | observacion | otro
   titulo          String   @map("titulo")
   descripcion     String?  @map("descripcion")
-  estado          String   @default("propuesto") @map("estado") // propuesto | aprobado | rechazado
+  estado          String   @default("propuesto") @map("estado") // propuesto | aprobado | rechazado | archivado
   nodo_key        String   @map("nodo_key") // capital | caucete | iglesia
-  lat             Float    @map("lat")
-  lng             Float    @map("lng")
+  subnodo_key     String?  @map("subnodo_key") // sj_iglesia_* — contexto de distrito/paraje (VIG-002)
+  lat             Float? // punto propio SOLO con fuente (R15): null = se acredita por subnodo
+  lng             Float?
+  visibilidad     String   @default("public") @map("visibilidad") // ActivoVisibilidadSchema: public | generalized | restricted (ADR-036)
+  procedencia     Json?    @map("procedencia") // ActivoProcedenciaSchema (ADR-035)
+  consentimiento  Json?    @map("consentimiento") // ActivoConsentimientoSchema — granular, Ley 25.326
+  is_synthetic    Boolean  @default(false) @map("is_synthetic")
   created_by_hash String   @map("created_by_hash") // pseudónimo sha256(usuario_id) — sin PII
+  hash            String?  @unique @map("hash") // idempotencia de la ingesta curada (seed-activo-*)
   created_at      DateTime @default(now()) @map("created_at")
   updated_at      DateTime @updatedAt @map("updated_at")
 
-  /// Geometría puntual WGS84: columna + trigger + índice GiST en la migración
-  /// versionada 20261008200000_r5b_activos (Prisma no tipa geometry).
+  clasificaciones activos_clasificaciones[]
+  patrimonio activos_patrimonio?
+  productos      productos[]
+  operativa      activos_operativa?
+
+  /// Geometría puntal WGS84: columna + trigger + índice GiST en la migración
+  /// versionada 20261008200000_r5b_activos (NULL-safe desde VIG-002: sin
+  /// punto verificado, geom es null — no se inventa geometría).
   geom Unsupported("geometry(Point,4326)")?
 
   @@index([estado])
   @@index([nodo_key])
+  @@index([subnodo_key])
   @@map("activos")
+}
+
+// ─── NODO-CAPITAL NCAP-R6 (#158): Bloque 9 — Banco de Potencialidades ───
+
+/// Oportunidades de desarrollo local (Bloque 9 del documento de la DH):
+/// capacidades, recursos, demandas, vacíos y vínculos. Nace 'detected' con
+/// evidencia obligatoria; ciclo de vida detected → under_review → validated
+/// → prioritized → in_development → active → implemented (+ paused/discarded/
+/// archived) — la matriz de transiciones vive en la API. SIN geometría propia:
+/// el contexto territorial se acredita por nodo_key + subnodo_key opcional
+/// (criterio estructural #149/#158 — no duplicar geometría). Autor = pseudónimo
+/// sha256(usuario_id) truncado — sin PII (Ley 25.326, ADR-027). Actores con
+/// consentimiento confirmado si se nombran. hash único → idempotencia del alta.
+model oportunidades {
+  id              String   @id @default(cuid())
+  tipo            String   @map("tipo") // OportunidadTipoSchema (10 tipos)
+  titulo          String   @map("titulo")
+  descripcion     String   @map("descripcion")
+  estado          String   @default("detected") @map("estado") // OportunidadEstadoSchema
+  nodo_key        String   @map("nodo_key") // capital | caucete | iglesia
+  subnodo_key     String?  @map("subnodo_key") // e.g. sj_capital_centro — provisional (NCAP-R2 #154)
+  evidencia       Json     @map("evidencia") // OportunidadEvidenciaSchema validado por Zod
+  actores         Json     @map("actores") // [OportunidadActorSchema] — consentimiento si se nombran
+  tags            Json     @map("tags") // etiquetas libres acotadas
+  created_by_hash String   @map("created_by_hash") // pseudónimo — sin PII
+  hash            String   @unique @map("hash") // idempotencia del alta
+  created_at      DateTime @default(now()) @map("created_at")
+  updated_at      DateTime @updatedAt @map("updated_at")
+
+  @@index([nodo_key])
+  @@index([estado])
+  @@map("oportunidades")
+}
+
+// ─── NODO-VIG VIG-001 (#171, épica #167): subnodos territoriales ───
+
+/// Subnodos territoriales del nodo iglesia (Opción B ratificada, #167):
+/// distritos, parajes, subparajes y localidades INDEC. Jerarquía de 3 niveles
+/// por self-relation parent_key → subnodos.key (distrito → paraje →
+/// subparaje); los parajes de alta cordillera cuelgan del nodo (parent_key
+/// null). lat/lng SOLO con punto público (BAHRA/Georef) — null es honesto,
+/// nunca un punto inventado (R15, ADR-036). external_id = cod_ase BAHRA o id
+/// Georef. SIN columna geom: no se duplica dominio espacial (criterio
+/// estructural #149/#167 — mismo patrón que oportunidades).
+model subnodos {
+  id               String   @id @default(cuid())
+  nodo_key         String   @map("nodo_key") // capital | caucete | iglesia
+  key              String   @unique @map("key") // sj_iglesia_<slug> | sj_iglesia_p_<slug>
+  label            String   @map("label")
+  type             String   @map("type") // SubnodoTipoSchema: district | paraje | subparaje | locality
+  parent_key       String?  @map("parent_key")
+  boundary_status  String   @default("provisional") @map("boundary_status") // SubnodoBoundaryStatusSchema
+  assignment_status String  @map("assignment_status") // SubnodoAssignmentStatusSchema
+  zone             String?  @map("zone") // SubnodoZoneSchema — null = sin clasificación aún
+  lat              Float?
+  lng              Float?
+  external_id      String?  @map("external_id") // BAHRA cod_ase | Georef id
+  external_source  String?  @map("external_source") // bahra | georef
+  created_at       DateTime @default(now()) @map("created_at")
+  updated_at       DateTime @updatedAt @map("updated_at")
+
+  parent   subnodos?  @relation("SubnodoJerarquia", fields: [parent_key], references: [key])
+  children subnodos[] @relation("SubnodoJerarquia")
+
+  @@index([nodo_key])
+  @@index([type])
+  @@index([parent_key])
+  @@map("subnodos")
+}
+
+// ─── NODO-VIG VIG-002 (#169, épica #167): clasificación multimodal ───
+
+/// Clasificaciones de activos (taxonomía 3 niveles del VIG-000): N1 capital
+/// (productivo_rural | turistico | patrimonial | civico_social) → N2 categoría
+/// → N3 subcategoría ('' = sin subcategoría). Un activo tiene exactamente una
+/// clasificación primaria y varias secundarias; toda clasificación declara su
+/// fuente (gobernanza VIG-000). Único por (activo, n1, n2, n3) → seed
+/// idempotente vía ON CONFLICT.
+model activos_clasificaciones {
+  id         String   @id @default(cuid())
+  activo_id  String   @map("activo_id")
+  n1         String   @map("n1") // ActivoCapitalN1Schema
+  n2         String   @map("n2")
+  n3         String   @default("") @map("n3")
+  is_primary Boolean  @default(false) @map("is_primary")
+  source     String   @map("source") // fuente de la clasificación
+  created_at DateTime @default(now()) @map("created_at")
+
+  activo activos @relation(fields: [activo_id], references: [id], onDelete: Cascade)
+
+  @@unique([activo_id, n1, n2, n3])
+  @@index([n1])
+  @@map("activos_clasificaciones")
+}
+
+// ─── NODO-VIG VIG-003 (NVIG-R3 #182, épica #167): KPIs del nodo ───
+
+/// Snapshots materializados de KPIs por nodo (set honesto v1 ratificado por
+/// la DH 2026-10-14): agregados SIN PII (Ley 25.326), visibilidad
+/// restricted excluida del cálculo (ADR-036). PK compuesta (nodo_key,
+/// kpi_key) → el recompute del consumidor vig003-kpi es un upsert
+/// idempotente que re-deriva desde las tablas de dominio, nunca incrementos.
+/// valor null = métrica sin computar (cobertura v1) — null honesto (R15).
+model kpi_snapshots {
+  id          String   @unique @default(cuid())
+  nodo_key    String   @map("nodo_key") // capital | caucete | iglesia
+  kpi_key     String   @map("kpi_key") // KpiKeySchema (9 KPIs v1)
+  valor       Float?   @map("valor") // null honesto (R15): sin métrica computada
+  detalles    Json     @map("detalles") // desglose por clave — solo agregados numéricos
+  computed_at DateTime @map("computed_at")
+  created_at  DateTime @default(now()) @map("created_at")
+  updated_at  DateTime @updatedAt @map("updated_at")
+
+  @@id([nodo_key, kpi_key])
+  @@map("kpi_snapshots")
+}
+
+// ─── NODO-VIG VIG-004 (NVIG-R6 #173, épica #167): patrimonio protegido ───
+
+/// Ficha patrimonial protegida (1:1 con activos — patrón "extender el dominio"
+/// ratificado por la DH 2026-10-14, traza #173 comment 6159546907): la
+/// declaratoria (proteccion_nivel + proteccion_norma), el estado de
+/// conservación, el punto público de acceso y las reglas son registro
+/// publicable; `sensible` (geometría/datos internos de custodia) NUNCA sale
+/// en las lecturas públicas (ADR-036) — de él solo se publica su estado
+/// honesto sensible_status ('sin_relevamiento' = R15: no existe coordenada
+/// precisa en nuestras fuentes). SIN columna geom: el punto de acceso es un
+/// par de floats con fuente (criterio estructural #149/#167, patrón subnodos).
+model activos_patrimonio {
+  id                  String   @id @default(cuid())
+  activo_id           String   @unique @map("activo_id")
+  proteccion_nivel    String   @map("proteccion_nivel") // PatrimonioProteccionNivelSchema
+  proteccion_norma    String   @map("proteccion_norma")
+  conservacion_estado String?  @map("conservacion_estado")
+  acceso_lat          Float?
+  acceso_lng          Float?
+  reglas_acceso       Json     @map("reglas_acceso") // [{regla, fuente}]
+  sensible            Json?    @map("sensible") // custodia — NUNCA en lectura pública
+  sensible_status     String   @default("sin_relevamiento") @map("sensible_status") // PatrimonioSensibleStatusSchema
+  sensible_nota       String?  @map("sensible_nota") // nota honesta del estado de custodia
+  created_at          DateTime @default(now()) @map("created_at")
+  updated_at          DateTime @updatedAt @map("updated_at")
+
+  activo activos @relation(fields: [activo_id], references: [id], onDelete: Cascade)
+
+  @@map("activos_patrimonio")
+}
+
+// ─── NODO-VIG VIG-005 (NVIG-R7 #174, épica #167): producción y turismo ───
+
+/// Catálogo de productos del territorio (1:N con activos — Opción A ratificada
+/// por la DH 2026-10-14, traza #174 comment 6160361362): vinos pateros,
+/// tejidos, servicios de temporada. Alta ciudadana autenticada con moderación:
+/// nace 'propuesto' (la propuesta es registro comunitario, nunca publicada
+/// como verificado); autor = pseudónimo sha256(usuario_id) — sin PII.
+/// temporada_meses es un array JSON de meses 1-12: [] = sin_dato honesto
+/// (R15). La semilla siembra 0 productos: solo se publica lo verificado.
+model productos {
+  id              String   @id @default(cuid())
+  activo_id       String   @map("activo_id")
+  slug            String   @map("slug")
+  nombre          String   @map("nombre")
+  categoria       String?  @map("categoria")
+  temporada_meses Json     @map("temporada_meses") // [1..12] — [] = sin_dato (R15)
+  estado          String   @default("propuesto") @map("estado") // ProductoEstadoSchema
+  procedencia     Json?    @map("procedencia") // ActivoProcedenciaSchema (ADR-035)
+  created_by_hash String   @map("created_by_hash") // pseudónimo — sin PII
+  created_at      DateTime @default(now()) @map("created_at")
+  updated_at      DateTime @updatedAt @map("updated_at")
+
+  activo activos @relation(fields: [activo_id], references: [id], onDelete: Cascade)
+
+  @@unique([activo_id, slug])
+  @@index([estado])
+  @@map("productos")
+}
+
+/// Operativa del activo (1:1): horario, temporada, capacidad y seguridad.
+/// Semilla solo-verificada (decisión DH 2026-10-14): dique Cuesta del Viento
+/// con horario Ley 826-G + temporada de picos + capacity_status 'unknown'
+/// honesto (sin aforos/plazas verificados — R15); cooperativas solo con
+/// habilitación unknown en 4 atributos (padrón Ley 2400-T no encontrado).
+/// SIN columna geom (criterio estructural #149/#167, patrón patrimonio).
+model activos_operativa {
+  activo_id        String   @id @map("activo_id")
+  horario          String?  @map("horario")
+  temporada_meses  Json     @map("temporada_meses") // [1..12] — [] = sin_dato
+  capacity_status  String   @default("unknown") @map("capacity_status") // OperativaCapacityStatusSchema
+  capacidad_plazas Int?     @map("capacidad_plazas")
+  seguridad        Json?    @map("seguridad") // protocolos verificados con fuente
+  habilitacion     Json?    @map("habilitacion") // HabilitacionSchema (4 atributos)
+  procedencia      Json?    @map("procedencia") // ActivoProcedenciaSchema (ADR-035)
+  created_at       DateTime @default(now()) @map("created_at")
+  updated_at       DateTime @updatedAt @map("updated_at")
+
+  activo activos @relation(fields: [activo_id], references: [id], onDelete: Cascade)
+
+  @@map("activos_operativa")
+}
+
+// ─── NODO-VIG VIG-006 (NVIG-R8 #188, épica #167): RAG territorial ético ───
+
+/// Índice RAG del nodo (consulta territorial ética — Bloque 11 del VIG-000):
+/// fragmentos de prosa autorizada SOLO de contenido publicado (subnodos,
+/// activos aprobados no restricted con sus fichas patrimonial/operativa
+/// públicas, KPIs agregados). NUNCA ingiere: visibilidad restricted
+/// (ADR-036), el campo sensible de custodia (VIG-004), consentimiento ni PII
+/// (Ley 25.326). Recompute idempotente por el consumidor vig006-rag-index del
+/// worker (patrón vig003-kpi): upsert por (nodo_key, source_type, source_id)
+/// que re-deriva desde las tablas de dominio; delete lógico del fragmento si
+/// el registro deja de calificar (p. ej. pasó a restricted). La columna
+/// generada search (to_tsvector('spanish', texto) + índice GIN) vive en la
+/// migración versionada — Prisma no tipa tsvector.
+model rag_index {
+  id          String   @unique @default(cuid())
+  nodo_key    String   @map("nodo_key") // capital | caucete | iglesia
+  source_type String   @map("source_type") // RagSourceTypeSchema: subnodo | activo | kpi
+  source_id   String   @map("source_id") // subnodo.key | activo.id | kpi_key
+  subnodo_key String?  @map("subnodo_key") // contexto distrital del fragmento
+  texto       String   @map("texto") // prosa autorizada — nunca sensible ni PII
+  fuentes     Json     @map("fuentes") // [{fuente, fecha?}] — ADR-035
+  computed_at DateTime @map("computed_at")
+  created_at  DateTime @default(now()) @map("created_at")
+  updated_at  DateTime @updatedAt @map("updated_at")
+
+  @@id([nodo_key, source_type, source_id])
+  @@map("rag_index")
 }
 
 // ─── NODO-CAU R4 (#149): ficha de valoración comunitaria del espacio público ───

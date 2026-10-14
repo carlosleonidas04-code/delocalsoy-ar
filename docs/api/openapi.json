@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "DELocalSoy.AR Federated API Contract",
-    "version": "7.12.0",
-    "description": "Reconciliado CORE-004 (regla documental, #87): documenta todas las rutas montadas en apps/api/src/app.ts. R1: 11 rutas v7.7.0. R3 (ADR-031): /api/auth/* + system.* reservado (H-01). EV-031/EV-032. R4a (ADR-032): transporte Redis Streams (stream events:raw) — events_raw única fuente de verdad, publish fail-open. R5a (auditoría #99–#102): rate limiting 429 por IP+hash(email) en /api/auth/{register,login} (header Retry-After); 5xx sanitizados sin mensajes internos. R5b (dominio activos, #87): /api/activos — POST ciudadano autenticado con pseudónimo sha256 sin PII (Ley 25.326), GET público anónimo con recorte espacial bbox (PostGIS), PATCH /api/activos/{id}/estado para moderación moderador|admin; sellos activo.propuesto y activo.estado_cambiado en events_raw con rollback si el sello falla. NODO-CAU R4 (#149): /api/fichas-valoracion — fichas de valoración comunitaria del espacio público (testimonio revisable, ADR-036): POST ciudadano autenticado anclado a features de la capa public_space (pseudónimo sha256 sin PII, anti-PII, idempotencia por hash único), GET público anónimo con recorte espacial bbox por la geometría del espacio ancla y estado derivado validado|testimonio ('descartada' nunca se publica), PATCH /api/fichas-valoracion/{id}/estado moderador|admin (corroborar exige corroboracion individual|taller_comunitario); sellos ficha_valoracion.propuesta y ficha_valoracion.estado_cambiado en events_raw con rollback si fallan."
+    "version": "7.20.0",
+    "description": "Reconciliado CORE-004 (regla documental, #87): documenta todas las rutas montadas en apps/api/src/app.ts. R1: 11 rutas v7.7.0. R3 (ADR-031): /api/auth/* + system.* reservado (H-01). EV-031/EV-032. R4a (ADR-032): transporte Redis Streams (stream events:raw) — events_raw única fuente de verdad, publish fail-open. R5a (auditoría #99–#102): rate limiting 429 por IP+hash(email) en /api/auth/{register,login} (header Retry-After); 5xx sanitizados sin mensajes internos. R5b (dominio activos, #87): /api/activos — POST ciudadano autenticado con pseudónimo sha256 sin PII (Ley 25.326), GET público anónimo con recorte espacial bbox (PostGIS), PATCH /api/activos/{id}/estado para moderación moderador|admin; sellos activo.propuesto y activo.estado_cambiado en events_raw con rollback si el sello falla. NODO-CAPITAL NCAP-R6 (#158, Bloque 9 — Banco de Potencialidades): /api/oportunidades — registro ciudadano autenticado de capacidades, demandas, vacíos y vínculos del desarrollo local (evidencia obligatoria, actores nombrados con consentimiento confirmado, pseudónimo sha256 sin PII, anti-PII server-side, idempotencia por hash único, contexto territorial nodo+subnodo SIN geometría propia), GET público anónimo con filtros ('discarded' nunca se publica), PATCH /api/oportunidades/{id}/estado moderador|admin con matriz de transiciones del ciclo de vida (400 salto inválido, 409 sin transición); sellos oportunidad.propuesta y oportunidad.estado_cambiado en events_raw con rollback si fallan. NODO-VIG VIG-001 (#167/#171): /api/nodos/{key}/subnodos — jerarquía territorial del Valle de Iglesia (distrito → paraje → subparaje + localidad INDEC; primer lote de 34 entidades ratificado por la DH 2026-10-13), lectura pública con filtros ?type= y ?parent= (none = hijos directos del nodo); lat/lng solo con punto público BAHRA/Georef — null honesto (R15). NODO-VIG VIG-002 (NVIG-R2 #169, épica #167): /api/activos multimodal — tipos local|prestador|experiencia|observacion, contexto subnodo validado contra subnodos, clasificaciones N1→N3 de la taxonomía VIG-000 (filtro ?n1=), procedencia ADR-035, consentimiento granular Ley 25.326, visibilidad ADR-036 (restricted excluido de toda lectura pública — custodia VIG-004) y estado archivado (retira del catálogo vivo); semilla verificada de 6 activos del Valle de Iglesia. NODO-VIG VIG-003 (NVIG-R3 #182, épica #167): /api/nodos/{key}/kpis — KPIs materializados del nodo (kpi_snapshots): set honesto v1 de 9 KPIs agregados sin PII (Ley 25.326) re-computados desde el dominio por el consumidor vig003-kpi del worker (upsert idempotente por nodo_key+kpi_key, nunca incrementos); visibilidad restricted excluida del cálculo (ADR-036); cobertura v1 null honesto (R15); lectura pública anónima, 404 nodo inexistente, count 0 honesto. NODO-VIG VIG-004 (NVIG-R6 #173, épica #167): /api/patrimonio/{activoId} — ficha patrimonial pública (declaratoria, conservación, reglas de acceso con fuente, punto público de acceso, sensible_status honesto) NUNCA el campo `sensible` ni `sensible_nota` (ADR-036); custodia PATCH moderador|admin con transición de visibilidad ADR-036 y sello patrimonio.custodiado en events_raw con rollback; la ficha se publica también para restricted (la declaratoria es registro público) sin el punto propio del activo, NODO-VIG VIG-005 (NVIG-R7 #174, épica #167): /api/activos/{id}/productos — catálogo de productos del activo (tabla productos 1:N, slug único por activo): GET público anónimo y alta ciudadana autenticada que nace 'propuesto' (autor = pseudónimo sha256(usuario_id) sin PII, Ley 25.326; anti-PII server-side antes de persistir, ADR-020; sello producto.propuesto en events_raw con rollback si falla); PATCH /api/productos/{productoId}/estado — moderación moderador|admin (aprobado|rechazado|archivado; sello producto.estado_cambiado en events_raw con rollback si falla); GET /api/operativa/{activoId} — operativa pública del activo (horario, temporada de picos, capacidad honesta R15 — capacity_status unknown: distinguido ≠ habilitado; habilitación con verificación); filtros ?producto= y ?mes= en /api/activos (slug de producto aprobado; mes 1-12 por temporada del activo — operativa o producto aprobado); visibilidad restricted excluida de toda lectura y escritura (ADR-036). NODO-VIG VIG-006 (NVIG-R8 #188, épica #167): /api/nodos/{key}/ask — consulta territorial ética SIN LLM (decisión DH ratificada 2026-10-14): recuperación full-text nativa PostgreSQL en español sobre rag_index (índice de prosa autorizada derivada del dominio: subnodos, activos aprobados no restricted con ficha patrimonial y operativa públicas, KPIs — upsert idempotente por nodo_key+source_type+source_id + delete lógico; NUNCA restricted ni sensible ni PII, ADR-036/Ley 25.326); respuesta Dato–Interpretación–Sugerencia con plantillas autorizadas por dominio (patrimonial|productivo_rural|turistico|territorial — nada generado; sin fragmentos → null honesto R15), confidence derivado de la cobertura de fuentes y human_review pending (revisión humana habilitada); lectura pública anónima con filtros subnodo y n1; 404 nodo inexistente, 500 sanitizado. NODO-VIG VIG-007 (NVIG-R9 #193, épica #167): /api/showcase — recorrido federado de la demo final (Caucete → Capital → Valle de Iglesia): lectura pública anónima del estado REAL de cada nodo (counts derivados de las tablas de dominio con exclusión ADR-036 — las fichas patrimoniales cuentan también para restricted: la declaratoria es registro público, decisión DH VIG-004; un nodo sin snapshots → kpis 0 honesto, R15), guion ejecutable referenciado (docs/nodes/valle-de-iglesia/VIG-007-DEMO-FINAL.md: 13 pasos, 4 escenarios, 10 criterios con estado real); 500 sanitizado (AUD-06 #100)"
   },
   "paths": {
     "/api/health": {
@@ -122,7 +122,7 @@
     },
     "/api/activos": {
       "get": {
-        "summary": "CORE-004 R5b (#87): lectura pública y anónima de activos territoriales; ?bbox= recorte espacial PostGIS (SRID=4326, índice GiST); filtros ?estado= y ?nodo=",
+        "summary": "CORE-004 R5b (#87) + VIG-002 (#169): lectura pública y anónima de activos territoriales; ?bbox= recorte espacial PostGIS (SRID=4326, índice GiST); filtros ?estado= ?nodo= ?tipo= ?subnodo= ?n1= (capital N1 de la taxonomía VIG-000, vía clasificaciones) y ?producto= ?mes= (VIG-005, NVIG-R7 #174: slug de producto aprobado; mes 1-12 por temporada del activo — operativa o producto aprobado); visibilidad restricted excluida (ADR-036)",
         "parameters": [
           {
             "name": "bbox",
@@ -144,6 +144,43 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "tipo",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "subnodo",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "n1",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "producto",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "mes",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            }
           }
         ],
         "responses": {
@@ -151,7 +188,7 @@
             "description": "OK — envelope {success, data, count}; con bbox incluye geometry GeoJSON"
           },
           "400": {
-            "description": "bbox/estado/nodo inválidos"
+            "description": "bbox/estado/nodo/tipo/subnodo/n1/producto/mes inválidos"
           },
           "500": {
             "description": "Error interno sanitizado (R5a, #100)"
@@ -159,7 +196,7 @@
         }
       },
       "post": {
-        "summary": "CORE-004 R5b (#87): propuesta ciudadana autenticada (requireJwt) — el activo nace 'propuesto', autor = pseudónimo sha256(usuario_id) sin PII (Ley 25.326); anti-PII server-side antes de persistir (ADR-020); sello activo.propuesto en events_raw con rollback si falla",
+        "summary": "CORE-004 R5b (#87) + VIG-002 (#169): propuesta ciudadana autenticada (requireJwt) — el activo nace 'propuesto', autor = pseudónimo sha256(usuario_id) sin PII (Ley 25.326); anti-PII server-side antes de persistir (ADR-020); sello activo.propuesto en events_raw con rollback si falla; VIG-002: subnodo_key validado contra subnodos del nodo declarado, clasificaciones N1→N3 atómicas (exactamente una primaria, fuente obligatoria), procedencia ADR-035 y consentimiento granular opcionales",
         "responses": {
           "201": {
             "description": "Activo creado (estado: propuesto) + sello en events_raw"
@@ -181,7 +218,7 @@
     },
     "/api/activos/{id}/estado": {
       "patch": {
-        "summary": "CORE-004 R5b (#87): moderación de activos — requireRole moderador|admin; transición propuesto → aprobado|rechazado; sello activo.estado_cambiado en events_raw con rollback si falla",
+        "summary": "CORE-004 R5b (#87) + VIG-002 (#169): moderación de activos — requireRole moderador|admin; transición propuesto → aprobado|rechazado|archivado (archivado retira del catálogo vivo sin borrar historia); sello activo.estado_cambiado en events_raw con rollback si falla",
         "parameters": [
           {
             "name": "id",
@@ -194,7 +231,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Estado actualizado (aprobado | rechazado) + sello en events_raw"
+            "description": "Estado actualizado (aprobado | rechazado | archivado) + sello en events_raw"
           },
           "400": {
             "description": "Datos inválidos o PII en el motivo — sin eco del valor"
@@ -323,6 +360,80 @@
           "503": {
             "description": "Sin JWT_SECRET (identidad cerrada, fail-closed)"
           }
+        }
+      }
+    },
+    "/api/oportunidades": {
+      "get": {
+        "summary": "NODO-CAPITAL NCAP-R6 (#158): lectura pública y anónima de oportunidades de desarrollo local (Banco de Potencialidades, Bloque 9); filtros ?nodo= ?tipo= ?estado= (nunca admite discarded) y ?subnodo=; sin recorte espacial — la oportunidad no tiene geometría propia (contexto territorial por nodo+subnodo)",
+        "parameters": [
+          { "name": "nodo", "in": "query", "schema": { "type": "string" } },
+          { "name": "tipo", "in": "query", "schema": { "type": "string" } },
+          { "name": "estado", "in": "query", "schema": { "type": "string" } },
+          { "name": "subnodo", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "OK — envelope {success, data, count}" },
+          "400": { "description": "nodo/tipo/estado/subnodo inválidos" },
+          "500": { "description": "Error interno sanitizado (R5a, #100)" }
+        }
+      },
+      "post": {
+        "summary": "NODO-CAPITAL NCAP-R6 (#158): registro ciudadano autenticado (requireJwt) — la oportunidad nace detected con evidencia obligatoria; autor = pseudónimo sha256(usuario_id) sin PII (Ley 25.326); actores nombrados exigen consentimiento confirmado; anti-PII server-side antes de persistir (ADR-020); idempotencia por hash único (mismo ciudadano+tipo+título+descripción+territorio → 200 idempotente); sello oportunidad.propuesta en events_raw con rollback si falla",
+        "responses": {
+          "200": { "description": "Oportunidad idéntica ya existente (idempotente: true)" },
+          "201": { "description": "Oportunidad creada (estado: detected) + sello en events_raw" },
+          "400": { "description": "Datos inválidos (contrato Zod: evidencia requerida, consentimiento de actores nombrados) o PII detectada — sin eco del valor" },
+          "401": { "description": "Bearer token ausente o inválido" },
+          "500": { "description": "Error interno sanitizado (R5a, #100)" },
+          "503": { "description": "Sin JWT_SECRET (identidad cerrada, fail-closed)" }
+        }
+      }
+    },
+    "/api/oportunidades/{id}": {
+      "get": {
+        "summary": "NODO-CAPITAL NCAP-R6 (#158): ficha pública de una oportunidad; 404 si no existe o fue descartada (honesto, R15)",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "OK — envelope {success, data}" },
+          "404": { "description": "Oportunidad no encontrada o descartada" },
+          "500": { "description": "Error interno sanitizado (R5a, #100)" }
+        }
+      }
+    },
+    "/api/oportunidades/{id}/estado": {
+      "patch": {
+        "summary": "NODO-CAPITAL NCAP-R6 (#158): moderación del ciclo de vida — requireRole moderador|admin; matriz de transiciones detected→under_review→validated→prioritized→in_development→active→implemented (+paused/discarded/archived; 400 salto inválido); sello oportunidad.estado_cambiado (estado_anterior, estado, motivo, moderador_hash) en events_raw con rollback si falla",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Estado actualizado + sello en events_raw" },
+          "400": { "description": "Transición inválida (matriz del ciclo de vida), contrato Zod o PII en el motivo — sin eco del valor" },
+          "401": { "description": "Bearer token ausente o inválido" },
+          "403": { "description": "Rol insuficiente (requiere moderador|admin)" },
+          "404": { "description": "Oportunidad no encontrada (honesto, R15)" },
+          "409": { "description": "La oportunidad ya está en ese estado (sin transición no hay evento)" },
+          "500": { "description": "Error interno sanitizado (R5a, #100)" },
+          "503": { "description": "Sin JWT_SECRET (identidad cerrada, fail-closed)" }
+        }
+      }
+    },
+    "/api/nodos/{key}/subnodos": {
+      "get": {
+        "summary": "NODO-VIG VIG-001 (#171, épica #167): jerarquía territorial del nodo — distritos, parajes, subparajes y localidades INDEC del primer lote ratificado (34 en iglesia); filtros ?type=district|paraje|subparaje|locality y ?parent=<key>|none (none = hijos directos del nodo)",
+        "parameters": [
+          { "name": "key", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "type", "in": "query", "schema": { "type": "string" } },
+          { "name": "parent", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "OK — envelope {success, data, count}; lat/lng solo con punto público (BAHRA cod_ase | Georef id)" },
+          "400": { "description": "Filtros inválidos (type/parent)" },
+          "404": { "description": "Nodo no encontrado (honesto, R15)" },
+          "500": { "description": "Error interno" }
         }
       }
     },
@@ -483,6 +594,145 @@
           "404": {
             "description": "Nodo no encontrado"
           }
+        }
+      }
+    },
+    "/api/nodos/{key}/kpis": {
+      "get": {
+        "summary": "NODO-VIG VIG-003 (NVIG-R3 #182, épica #167): KPIs materializados del nodo — set honesto v1 de 9 KPIs re-computado desde el dominio por el consumidor vig003-kpi del worker (upsert idempotente por nodo_key+kpi_key en kpi_snapshots); agregados sin PII (Ley 25.326), restricted excluida del cálculo (ADR-036), cobertura v1 null honesto (R15); count 0 = nodo sin snapshots aún",
+        "parameters": [
+          { "name": "key", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "OK — envelope {success, data, count}; filas kpi_snapshots (kpi_key, valor, detalles, computed_at)" },
+          "404": { "description": "Nodo no encontrado (honesto, R15)" },
+          "500": { "description": "Error interno" }
+        }
+      }
+    },
+    "/api/patrimonio/{activoId}": {
+      "get": {
+        "summary": "NODO-VIG VIG-004 (NVIG-R6 #173, épica #167): ficha patrimonial pública del activo — declaratoria (norma + fuente), estado de conservación, reglas de acceso con fuente, punto público de acceso y sensible_status honesto (sin_relevamiento → null, R15); NUNCA expone sensible ni sensible_nota (ADR-036); el activo restricted publica la ficha (la declaratoria es registro público) sin el punto propio del activo",
+        "parameters": [
+          { "name": "activoId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "OK — envelope {success, data}; ficha: declaratoria, conservación, reglas de acceso, punto público de acceso, sensible_status; NUNCA sensible ni sensible_nota (ADR-036); sin punto propio si el activo es restricted" },
+          "404": { "description": "Activo no encontrado o sin ficha patrimonial (honesto, R15)" },
+          "500": { "description": "Error interno" }
+        }
+      },
+      "patch": {
+        "summary": "NODO-VIG VIG-004 (NVIG-R6 #173): custodia patrimonial — requireRole moderador|admin; upsert de la ficha (se crea si no existe); transición de visibilidad del activo (public|generalized|restricted, ADR-036) en la misma escritura; anti-PII sobre todo texto (sin eco del valor); sello patrimonio.custodiado en events_raw (custodio_hash sha32, sin PII) con rollback si falla",
+        "parameters": [
+          { "name": "activoId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Ficha patrimonial actualizada (o creada) + visibilidad del activo sincronizada + sello en events_raw" },
+          "400": { "description": "Datos inválidos (contrato Zod) o PII detectada — sin eco del valor" },
+          "401": { "description": "Bearer token ausente o inválido" },
+          "403": { "description": "Rol insuficiente (requiere moderador|admin)" },
+          "404": { "description": "Activo no encontrado (honesto, R15)" },
+          "500": { "description": "Error interno sanitizado (R5a, #100)" },
+          "503": { "description": "Sin JWT_SECRET (identidad cerrada, fail-closed)" }
+        }
+      }
+    },
+    "/api/activos/{id}/productos": {
+      "get": {
+        "summary": "NODO-VIG VIG-005 (NVIG-R7 #174, épica #167): catálogo público anónimo de productos del activo (estados propuesto|aprobado); activo restricted → 404 sin eco (ADR-036)",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "OK — envelope {success, data, count}" },
+          "404": { "description": "Activo no encontrado o restricted — 404 sin eco (honesto, ADR-036/R15)" },
+          "500": { "description": "Error interno sanitizado (R5a, #100)" }
+        }
+      },
+      "post": {
+        "summary": "NODO-VIG VIG-005 (NVIG-R7 #174): alta ciudadana autenticada (requireJwt) — el producto nace 'propuesto' con slug único por activo; autor = pseudónimo sha256(usuario_id) sin PII (Ley 25.326); anti-PII server-side antes de persistir (ADR-020); sello producto.propuesto en events_raw con rollback si falla",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "201": { "description": "Producto creado (estado: propuesto) + sello en events_raw" },
+          "400": { "description": "Datos inválidos (contrato Zod) o PII detectada — sin eco del valor" },
+          "401": { "description": "Bearer token ausente o inválido" },
+          "404": { "description": "Activo no encontrado o restricted — 404 sin eco (ADR-036/R15)" },
+          "409": { "description": "Slug ya existente para el activo (P2002 → 409)" },
+          "500": { "description": "Error interno sanitizado (R5a, #100)" },
+          "503": { "description": "Sin JWT_SECRET (identidad cerrada, fail-closed)" }
+        }
+      }
+    },
+    "/api/productos/{productoId}/estado": {
+      "patch": {
+        "summary": "NODO-VIG VIG-005 (NVIG-R7 #174): moderación de productos — requireRole moderador|admin; transición propuesto → aprobado|rechazado|archivado (archivado retira del catálogo vivo); sello producto.estado_cambiado en events_raw con rollback si falla",
+        "parameters": [
+          { "name": "productoId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Estado actualizado (aprobado | rechazado | archivado) + sello en events_raw" },
+          "400": { "description": "Datos inválidos o PII en el motivo — sin eco del valor" },
+          "401": { "description": "Bearer token ausente o inválido" },
+          "403": { "description": "Rol insuficiente (requiere moderador|admin)" },
+          "404": { "description": "Producto no encontrado (honesto, R15)" },
+          "409": { "description": "El producto ya está en ese estado (sin transición no hay evento)" },
+          "500": { "description": "Error interno sanitizado (R5a, #100)" },
+          "503": { "description": "Sin JWT_SECRET (identidad cerrada, fail-closed)" }
+        }
+      }
+    },
+    "/api/operativa/{activoId}": {
+      "get": {
+        "summary": "NODO-VIG VIG-005 (NVIG-R7 #174): operativa pública del activo — horario, temporada de picos, capacidad honesta (capacity_status unknown → null, R15: distinguido ≠ habilitado) y habilitación con verificación; activo restricted → 404 sin eco (ADR-036)",
+        "parameters": [
+          { "name": "activoId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "OK — envelope {success, data}; horario, temporada, capacidad y habilitación del activo — honesto, nunca inventado (R15)" },
+          "404": { "description": "Activo no encontrado, sin operativa o restricted — 404 sin eco (honesto, ADR-036/R15)" },
+          "500": { "description": "Error interno sanitizado (R5a, #100)" }
+        }
+      }
+    },
+    "/api/nodos/{key}/ask": {
+      "post": {
+        "summary": "NODO-VIG VIG-006 (NVIG-R8 #188, épica #167): consulta territorial ética — recuperación full-text nativa PostgreSQL (español) sobre rag_index, SIN LLM: interpretación y sugerencia son PLANTILLAS AUTORIZADAS por dominio dominante (patrimonial|productivo_rural|turistico|territorial — nada generado); sin fragmentos → null honesto (R15); confidence derivado de la cobertura de fuentes; toda respuesta nace human_review 'pending' (revisión humana habilitada); filtros opcionales subnodo y n1 (capital N1 primaria de activos aprobados no restricted); restricted y sensible JAMÁS indexados ni recuperados (ADR-036, VIG-004)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["pregunta"],
+                "properties": {
+                  "pregunta": { "type": "string", "minLength": 3, "maxLength": 300 },
+                  "subnodo": { "type": "string" },
+                  "n1": { "type": "string", "enum": ["productivo_rural", "turistico", "patrimonial", "civico_social"] }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          { "name": "key", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "OK — envelope {success, data}; data: {nodo_key, pregunta, dato (fragmentos autorizados con fuentes), dominio, interpretacion, sugerencia (plantillas o null), fuentes deduplicadas, confidence, recovered, human_review: 'pending'}" },
+          "400": { "description": "Pregunta inválida (3-300 caracteres; subnodo slug; n1 de la taxonomía)" },
+          "404": { "description": "Nodo no encontrado (honesto, R15)" },
+          "500": { "description": "Error interno sanitizado (R5a, #100)" }
+        }
+      }
+    },
+    "/api/showcase": {
+      "get": {
+        "summary": "NODO-VIG VIG-007 (NVIG-R9 #193, épica #167): recorrido federado de la demo final (Caucete → Capital → Valle de Iglesia) — lectura pública anónima del estado REAL de los tres nodos: counts derivados del dominio con exclusión ADR-036 (las fichas patrimoniales cuentan también para restricted: la declaratoria es registro público, decisión DH VIG-004); sin snapshots → kpis 0 honesto (R15); guion referenciado (docs/nodes/valle-de-iglesia/VIG-007-DEMO-FINAL.md: 13 pasos, 4 escenarios, 10 criterios con estado real); contrato ShowcaseResponseSchema como fuente única",
+        "responses": {
+          "200": { "description": "OK — envelope {success, data, count}; data: {recorrido [caucete, capital, iglesia], nodos (subnodos, kpis, activos_aprobados, fichas_patrimoniales, operativas, productos_aprobados, rag_fragmentos, kpis_detalle por nodo), guion {doc, pasos}}" },
+          "500": { "description": "Error interno sanitizado (R5a, #100)" }
         }
       }
     }
