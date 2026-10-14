@@ -1,464 +1,97 @@
-import { z } from "zod";
+import { PrismaClient } from '@prisma/client';
 
-// Contrato federado de DELocalSoy.AR — fuente única de validación (riesgo #52:
-// apps/api consume desde acá; se eliminan los schemas Zod locales duplicados).
+let prisma: any;
+try {
+  prisma = new PrismaClient();
+} catch (err) {
+  // R5: el mock existe SOLO en pruebas (NODE_ENV=test). Fuera de pruebas,
+  // sin base de datos se falla ruidosamente (Aterrizaje PR 1 — issue #20).
+  if (process.env.NODE_ENV === 'test') {
+    console.warn('[test] Database not connected — using mock');
+    const noOp = {
+      findMany: async () => [],
+      findFirst: async () => null,
+      findUnique: async () => null,
+      count: async () => 0,
+      create: async (d: any) => d?.data ?? {},
+      update: async (d: any) => d?.data ?? {},
+      delete: async () => ({}),
+      $queryRaw: async () => [],
+    };
+    prisma = new Proxy({}, { get: () => noOp });
+  } else {
+    throw err;
+  }
+}
 
-export const SanJuanNodeSlugSchema = z.enum(["capital", "caucete", "iglesia"]);
+export { prisma };
+export * from '@prisma/client';
+export * from './kpi.js';
 
-export const RuntimeHealthModeSchema = z.enum(["real", "synthetic", "degraded"]);
+// ─── NODO-VIG VIG-006 (NVIG-R8 #188, épica #167): RAG territorial ético ───
 
-// Paridad con routes/territorios.ts: el contrato valida los mismos rangos
-// SRID=4326 y envolvente no vacía que el route, para que no haya deriva.
-export const BboxStringSchema = z
-  .string()
-  .regex(/^-?\d+(\.\d+)?(,-?\d+(\.\d+)?){3}$/, "bbox debe tener el formato minLng,minLat,maxLng,maxLat")
-  .refine((value) => {
-    const [minLng, minLat, maxLng, maxLat] = value.split(",").map(Number);
-    return (
-      minLng >= -180 && maxLng <= 180 &&
-      minLat >= -90 && maxLat <= 90 &&
-      minLng < maxLng && minLat < maxLat
-    );
-  }, "coordenadas fuera de rango o envolvente vacía (SRID=4326)");
+// Origen de los fragmentos del índice rag_index (recompute idempotente por
+// (nodo_key, source_type, source_id) — patrón kpi_snapshots): SOLO contenido
+// autorizado. Nunca ingiere: restricted (ADR-036), el campo `sensible` de
+// custodia (VIG-004), consentimiento, PII ni huérfanas (Ley 25.326, R15).
+export const RagSourceTypeSchema = z.enum(["subnodo", "activo", "kpi"]);
 
-// Payload de territorio (CORE-002 T4, #66): antes duplicado en el route como
-// schema Zod local. Fuente única desde acá.
-export const TerritorioSchema = z.object({
-  nombre: z.string().min(1, "El nombre es obligatorio"),
-  provincia: z.string().min(1, "La provincia es obligatoria"),
-  activo: z.boolean().optional().default(true),
-});
-
-export const EvidenceStatusSchema = z.enum([
-  "Implementado",
-  "Verificado",
-  "Acreditado",
-  "Staging-only",
-  "Pendiente",
-  "Reemplazado",
-]);
-
-// ─── CORE-004 R3 (ADR-031, #87): identidad por etapas ───
-
-// Roles ratificados (ADR-031): ciudadano | moderador | admin.
-export const RolSchema = z.enum(["ciudadano", "moderador", "admin"]);
-
-// Registro: el email es el identificador de login (única PII persistida en
-// 'usuarios'; los sellos system.user_* de events_raw nunca lo contienen — Ley 25.326).
-export const UsuarioRegistroSchema = z.object({
-  email: z.string().trim().toLowerCase().email("Email inválido"),
-  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
-  display_name: z.string().trim().min(1).max(80).optional(),
-});
-
-export const UsuarioLoginSchema = z.object({
-  email: z.string().trim().toLowerCase().email("Email inválido"),
-  password: z.string().min(1, "La contraseña es requerida"),
-});
-
-// ─── CORE-004 R5b (dominio activos, #87) ───
-
-// Tipos de activo territorial: base R5b + kinds multimodales VIG-002 (NVIG-R2
-// #169, épica #167 — ratificado por la DH 2026-10-13: extender el enum español).
-export const ActivoTipoSchema = z.enum([
-  "inmueble",
-  "infraestructura",
-  "servicio",
-  "patrimonio",
-  "local",
-  "prestador",
-  "experiencia",
-  "observacion",
-  "otro",
-]);
-
-// Estados del flujo de moderación: propuesto → aprobado | rechazado;
-// archivado retira del catálogo vivo un activo aprobado/rechazado (VIG-002).
-export const ActivoEstadoSchema = z.enum(["propuesto", "aprobado", "rechazado", "archivado"]);
-
-// ─── NODO-VIG VIG-002 (NVIG-R2 #169, épica #167): activos multimodales ───
-
-// Visibilidad del punto (ADR-036): public = punto público; generalized =
-// precisión reducida; restricted = excluido de la lectura pública — la ficha
-// sensible queda para custodia (VIG-004 profundiza el acceso custodial).
-export const ActivoVisibilidadSchema = z.enum(["public", "generalized", "restricted"]);
-
-// Capitales territoriales N1 ratificados (taxonomía 3 niveles del VIG-000).
-export const ActivoCapitalN1Schema = z.enum([
+// Dominio interpretativo de la respuesta (plantillas autorizadas v1 sin LLM —
+// decisión DH ratificada 2026-10-14: nada generado, sin plantilla → null
+// honesto). territorial = fragmentos de estructura territorial o KPIs.
+export const AskDominioSchema = z.enum([
+  "patrimonial",
   "productivo_rural",
   "turistico",
-  "patrimonial",
-  "civico_social",
+  "territorial",
 ]);
 
-// Clasificación multimodal (N1 capital → N2 categoría → N3 subcategoría):
-// toda clasificación declara su fuente (gobernanza VIG-000: "toda
-// clasificación debe tener source, fecha y estado de revisión").
-export const ActivoClasificacionSchema = z.object({
-  n1: ActivoCapitalN1Schema,
-  n2: z.string().trim().regex(/^[a-z0-9_]+$/, "n2: slug en minúsculas y guiones bajos").min(2).max(40),
-  n3: z.string().trim().regex(/^[a-z0-9_]+$/, "n3: slug en minúsculas y guiones bajos").max(40).optional(),
-  is_primary: z.boolean().optional().default(false),
-  source: z.string().trim().min(3, "La clasificación exige fuente").max(120),
+// Fuente citable de un fragmento (ADR-035): la fecha es opcional cuando la
+// fuente no la publica (p. ej. catálogos de referencia sin corte temporal).
+export const AskFuenteSchema = z.object({
+  fuente: z.string().trim().min(1, "fuente requerida").max(160),
+  fecha: z.string().trim().max(20).optional(),
 });
 
-// Procedencia (ADR-035): un activo 'aprobado' solo es "verificado" si lleva
-// fuente trazable. Ciudadano: opcional; ingesta curada: obligatoria (R15).
-// La fecha admite año suelto (YYYY) cuando la fuente solo publica el año.
-export const ActivoProcedenciaSchema = z.object({
-  source_id: z.string().trim().min(3, "source_id requerido").max(80),
-  fuente: z.string().trim().min(3, "fuente requerida").max(120),
-  fecha: z.string().trim().regex(/^\d{4}(-\d{2}-\d{2})?$/, "fecha: YYYY-MM-DD o YYYY"),
-  licencia: z.string().trim().max(80).optional(),
-  url: z.string().trim().url("URL de referencia inválida").max(500).optional(),
-});
-
-// Consentimiento granular (patrimonio vivo, Ley 25.326/ADR-027): si un activo
-// nombra a una persona, cada uso de su identidad es opt-in explícito.
-export const ActivoConsentimientoSchema = z.object({
-  nombre_publico: z.boolean(),
-  contacto: z.boolean(),
-  ubicacion_precisa: z.boolean(),
-  foto: z.boolean(),
-});
-
-// Alta ciudadana de un activo (R5b): el anti-PII de la API se aplica sobre
-// título/descripción ANTES de persistir (ADR-020 cond. 1, Ley 25.326) — el
-// contrato valida forma; la política de PII es de la API, no del schema.
-// VIG-002 (#169): contexto subnodo + clasificaciones multimodales + procedencia
-// (ADR-035) + consentimiento granular — todos opcionales para el ciudadano.
-export const ActivoAltaSchema = z
-  .object({
-    tipo: ActivoTipoSchema,
-    titulo: z.string().trim().min(3, "El título debe tener al menos 3 caracteres").max(120),
-    descripcion: z.string().trim().max(2000).optional(),
-    nodo_key: SanJuanNodeSlugSchema,
-    subnodo_key: z
-      .string()
-      .trim()
-      .regex(/^[a-z0-9_]+$/, "subnodo_key: slug en minúsculas y guiones bajos")
-      .max(60)
-      .optional(),
-    lat: z.number().min(-90, "lat fuera de rango").max(90, "lat fuera de rango"),
-    lng: z.number().min(-180, "lng fuera de rango").max(180, "lng fuera de rango"),
-    clasificaciones: z.array(ActivoClasificacionSchema).max(5).optional(),
-    procedencia: ActivoProcedenciaSchema.optional(),
-    consentimiento: ActivoConsentimientoSchema.optional(),
-  })
-  .refine(
-    (alta) => {
-      if (!alta.clasificaciones || alta.clasificaciones.length === 0) return true;
-      const primarias = alta.clasificaciones.filter((c) => c.is_primary).length;
-      return primarias === 1;
-    },
-    { message: "las clasificaciones exigen exactamente una primaria", path: ["clasificaciones"] }
-  );
-
-// Cambio de estado por moderación (R5b + VIG-002): aprobado | rechazado | archivado.
-export const ActivoEstadoCambioSchema = z.object({
-  estado: z.enum(["aprobado", "rechazado", "archivado"]),
-  motivo: z.string().trim().max(500).optional(),
-});
-
-// ─── NODO-CAPITAL NCAP-R6 (#158): Bloque 9 — Banco de Potencialidades ───
-
-// Tipos de oportunidad (Bloque 9 del documento de la DH): capacidades,
-// recursos, demandas, vacíos y vínculos del desarrollo local.
-export const OportunidadTipoSchema = z.enum([
-  "human_capacity",
-  "productive_capacity",
-  "physical_asset",
-  "institutional_asset",
-  "cultural_asset",
-  "detected_demand",
-  "market_gap",
-  "partnership_opportunity",
-  "investment_opportunity",
-  "policy_opportunity",
-]);
-
-// Ciclo de vida (Bloque 9): detected → under_review → validated → prioritized
-// → in_development → active → implemented; paused/discarded/archived son
-// estados laterales. La matriz de transiciones vive en la API (route), no aquí.
-export const OportunidadEstadoSchema = z.enum([
-  "detected",
-  "under_review",
-  "validated",
-  "prioritized",
-  "in_development",
-  "active",
-  "implemented",
-  "paused",
-  "discarded",
-  "archived",
-]);
-
-// Filtro de la lectura pública: 'discarded' nunca es filtrable ni publicable.
-export const OportunidadEstadoPublicoFiltroSchema = z.enum([
-  "detected",
-  "under_review",
-  "validated",
-  "prioritized",
-  "in_development",
-  "active",
-  "implemented",
-  "paused",
-  "archived",
-]);
-
-// Evidencia obligatoria (criterio mínimo del Bloque 9: al menos una fuente o
-// evidencia por oportunidad — una búsqueda sin resultados es solo una señal).
-export const OportunidadEvidenciaSchema = z.object({
-  evidence_type: z.enum([
-    "community_input",
-    "survey",
-    "platform_data",
-    "field_observation",
-    "institutional_document",
-    "news_source",
-    "statistical_source",
-  ]),
-  descripcion: z.string().trim().min(3, "La evidencia requiere una descripción").max(1000),
-  reference_url: z.string().trim().url("URL de referencia inválida").max(500).optional(),
-});
-
-// Actor con consentimiento (Ley 25.326): si se nombra a una persona u
-// organización, el consentimiento debe estar confirmado — el anti-PII de la
-// API revisa el nombre ANTES de persistir (ADR-020 cond. 1).
-export const OportunidadActorSchema = z
-  .object({
-    role: z.enum(["proposer", "beneficiary", "provider", "partner", "validator", "supporter"]),
-    name: z.string().trim().max(120).optional(),
-    consent_confirmed: z.boolean(),
-  })
-  .refine((actor) => actor.name === undefined || actor.consent_confirmed === true, {
-    message: "un actor nombrado exige consentimiento confirmado",
-    path: ["consent_confirmed"],
-  });
-
-// Alta de oportunidad (NCAP-R6): contexto territorial por nodo + subnodo —
-// SIN geometría propia (criterio estructural #149/#158: la oportunidad se
-// acredita por territorio declarado, no por un punto inventado). Los campos de
-// texto pasan el anti-PII de la API ANTES de persistir (ADR-027, Ley 25.326).
-export const OportunidadAltaSchema = z.object({
-  tipo: OportunidadTipoSchema,
-  titulo: z.string().trim().min(3, "El título debe tener al menos 3 caracteres").max(120),
-  descripcion: z.string().trim().min(10, "La descripción debe tener al menos 10 caracteres").max(2000),
-  nodo_key: SanJuanNodeSlugSchema,
-  subnodo_key: z
+// Consulta territorial ética (POST /api/nodos/:key/ask, público anónimo —
+// decisión DH ratificada 2026-10-14): longitud acotada como anti-abuso;
+// filtros opcionales por subnodo (distrito/paraje) y capital N1.
+export const AskPreguntaSchema = z.object({
+  pregunta: z.string().trim().min(3, "La pregunta requiere al menos 3 caracteres").max(300),
+  subnodo: z
     .string()
     .trim()
-    .regex(/^[a-z0-9_]+$/, "subnodo_key: slug en minúsculas y guiones bajos")
+    .regex(/^[a-z0-9_]+$/, "subnodo: slug en minúsculas y guiones bajos")
     .max(60)
     .optional(),
-  evidencia: OportunidadEvidenciaSchema,
-  actores: z.array(OportunidadActorSchema).max(10).optional(),
-  tags: z.array(z.string().trim().min(1).max(30)).max(8).optional(),
+  n1: ActivoCapitalN1Schema.optional(),
 });
 
-// Cambio de estado por moderación (NCAP-R6): moderador|admin según la matriz
-// de transiciones del ciclo de vida (ADR-031).
-export const OportunidadEstadoCambioSchema = z.object({
-  estado: OportunidadEstadoSchema,
-  motivo: z.string().trim().max(500).optional(),
+// Fragmento recuperado del índice: prosa autorizada + sus fuentes.
+export const AskFragmentoSchema = z.object({
+  source_type: RagSourceTypeSchema,
+  source_id: z.string(),
+  subnodo_key: z.string().nullable(),
+  texto: z.string(),
+  fuentes: z.array(AskFuenteSchema),
 });
 
-// ─── NODO-VIG VIG-001 (NVIG-R4 #171, épica #167): subnodos territoriales ───
-
-// Jerarquía territorial de 3 niveles del nodo Valle de Iglesia (Opción B
-// ratificada R9 2026-10-13 en #167): distrito → paraje → subparaje, más la
-// localidad INDEC como subnodo de distrito. Los parajes que no dependen de un
-// distrito (alta cordillera) cuelgan directamente del nodo (parent null).
-export const SubnodoTipoSchema = z.enum(["district", "paraje", "subparaje", "locality"]);
-
-// Procedencia de la asignación a distrito (estados honestos del nodo):
-// dh_directive = decisión ratificada por la Dirección Humana;
-// nearest_district_provisional = cercanía computada sobre punto público
-// BAHRA/Georef (segundo lote de travesía: unverified);
-// unverified = pendiente de decisión de la DH.
-export const SubnodoAssignmentStatusSchema = z.enum([
-  "dh_directive",
-  "nearest_district_provisional",
-  "unverified",
-]);
-
-// Zona territorial del subnodo (franja del valle, no una capa del vocabulario).
-export const SubnodoZoneSchema = z.enum(["valle", "travesia", "alta_cordillera"]);
-
-// Geometría honesta: provisional hasta contraste oficial; unverified = sin fuente.
-export const SubnodoBoundaryStatusSchema = z.enum(["provisional", "unverified"]);
-
-// Filtros de la lectura pública GET /api/nodos/:key/subnodos.
-// parent='none' = hijos directos del nodo (parent_key IS NULL) — p.ej. los
-// parajes de alta cordillera que no pertenecen a ningún distrito.
-export const SubnodoFiltroSchema = z.object({
-  type: SubnodoTipoSchema.optional(),
-  parent: z
-    .string()
-    .trim()
-    .regex(/^(none|[a-z0-9_]+)$/, "parent: clave del subnodo padre o 'none'")
-    .max(60)
-    .optional(),
-});
-
-// ─── NODO-VIG VIG-003 (NVIG-R3 #182, épica #167): KPIs del nodo ───
-
-// Set honesto v1 de KPIs por nodo (ratificado por la DH 2026-10-14, traza
-// #182 comment 6158288630): SOLO agregados sin PII (Ley 25.326); la
-// visibilidad `restricted` queda EXCLUIDA de todo cálculo (ADR-036). El
-// consumidor vig003-kpi del worker re-computa desde el dominio (nunca
-// incrementos: cada snapshot es derivable de las tablas fuente en cualquier
-// momento) y lo materializa en kpi_snapshots por (nodo_key, kpi_key).
-export const KpiKeySchema = z.enum([
-  "subnodos_total",
-  "subnodos_por_distrito",
-  "subnodos_con_punto",
-  "activos_por_estado",
-  "activos_por_tipo",
-  "activos_por_capital_n1",
-  "activos_verificados",
-  "eventos_por_tipo",
-  "cobertura_geometrica",
-]);
-
-// Valor honesto: número O null (cobertura_geometrica es null en v1 — sin
-// métrica de cobertura computada; null ≠ 0, R15).
-export const KpiValorSchema = z.union([z.number(), z.null()]);
-
-// Detalles del KPI: desglose por clave (distrito, estado, tipo, N1 o tipo
-// de evento) — siempre agregados numéricos, nunca datos personales.
-export const KpiDetallesSchema = z.record(z.string(), z.number());
-
-// Snapshot materializado de un KPI de un nodo (tabla kpi_snapshots,
-// VIG-003): upsert idempotente por (nodo_key, kpi_key) — el recompute no
-// acumula. computed_at acredita el momento del cálculo.
-export const KpiSnapshotSchema = z.object({
+// Respuesta ética (Dato–Interpretación–Sugerencia, reglas §17 del VIG-000):
+// el dato son hechos recuperados con fuente; la interpretación y la
+// sugerencia son PLANTILLAS AUTORIZADAS del dominio dominante (nada
+// generado) — o null honesto si ninguna aplica. confidence se DERIVA de la
+// cobertura de fuentes (fragmentos con procedencia / total), nunca se
+// declara a mano. Toda respuesta nace human_review: "pending" (revisión
+// humana habilitada — Bloque 11 del VIG-000).
+export const RespuestaAskSchema = z.object({
   nodo_key: SanJuanNodeSlugSchema,
-  kpi_key: KpiKeySchema,
-  valor: KpiValorSchema,
-  detalles: KpiDetallesSchema,
-  computed_at: z.string().datetime(),
-});
-
-// ─── NODO-VIG VIG-004 (NVIG-R6 #173, épica #167): patrimonio protegido ───
-
-// Nivel de protección patrimonial: la norma que ampara el activo — o la
-// ausencia honesta de declaratoria (R15: sin_declaratoria ≠ sin valor).
-export const PatrimonioProteccionNivelSchema = z.enum([
-  "nacional_decreto",
-  "nacional_ley",
-  "provincial_ley",
-  "municipal",
-  "sin_declaratoria",
-]);
-
-// Estado honesto de la geometría interna de custodia: sin_relevamiento =
-// NO existe coordenada precisa en nuestras fuentes (p.ej. el yacimiento de
-// Angualasto solo acredita la coordenada aproximada y pública del decreto);
-// relevado_restringido = existe relevamiento y queda bajo custodia.
-export const PatrimonioSensibleStatusSchema = z.enum(["sin_relevamiento", "relevado_restringido"]);
-
-// Regla de acceso publicable (horario, autorización, temporada) con fuente.
-export const PatrimonioReglaSchema = z.object({
-  regla: z.string().trim().min(3, "La regla requiere texto").max(200),
-  fuente: z.string().trim().min(3, "La regla exige fuente citable").max(120),
-});
-
-// Custodia (PATCH moderador|admin, tabla activos_patrimonio): lo que el
-// custodio administra. `sensible` (geometría/datos internos) NUNCA sale por
-// la lectura pública — solo su estado honesto sensible_status. La transición
-// de visibilidad del activo (ADR-036) es parte de la custodia: restricted lo
-// excluye del mapa público, pero la ficha patrimonial (declaratoria, reglas,
-// punto de acceso) sigue publicándose — la declaratoria es registro público
-// (decisión DH ratificada 2026-10-14, traza #173 comment 6159546907).
-export const PatrimonioCustodiaSchema = z.object({
-  proteccion_nivel: PatrimonioProteccionNivelSchema.optional(),
-  proteccion_norma: z.string().trim().min(3).max(240).optional(),
-  conservacion_estado: z.string().trim().min(3).max(400).optional(),
-  acceso_lat: z.number().min(-90).max(90).optional(),
-  acceso_lng: z.number().min(-180).max(180).optional(),
-  reglas_acceso: z.array(PatrimonioReglaSchema).max(10).optional(),
-  sensible: z.record(z.string(), z.unknown()).optional(),
-  sensible_status: PatrimonioSensibleStatusSchema.optional(),
-  sensible_nota: z.string().trim().max(400).optional(),
-  visibilidad: ActivoVisibilidadSchema.optional(),
-});
-
-// Ficha patrimonial pública (GET /api/patrimonio/:activoId): declaratoria +
-// conservación + punto público de acceso + reglas + estado honesto de
-// custodia. `sensible` ni `sensible_nota` jamás aparecen en la lectura
-// pública (ADR-036: la nota de custodia queda para gestores).
-export const PatrimonioFichaSchema = z.object({
-  activo_id: z.string(),
-  titulo: z.string(),
-  tipo: ActivoTipoSchema,
-  proteccion_nivel: PatrimonioProteccionNivelSchema,
-  proteccion_norma: z.string(),
-  conservacion_estado: z.string().nullable(),
-  acceso_lat: z.number().nullable(),
-  acceso_lng: z.number().nullable(),
-  reglas_acceso: z.array(PatrimonioReglaSchema),
-  sensible_status: PatrimonioSensibleStatusSchema,
-  visibilidad: ActivoVisibilidadSchema,
-});
-
-// ─── NODO-VIG VIG-005 (NVIG-R7 #174, épica #167): producción y turismo ───
-
-// Catálogo de productos del territorio (1:N con activos — Opción A ratificada
-// por la DH 2026-10-14, traza #174 comment 6160361362). Alta ciudadana
-// autenticada con moderación: nace 'propuesto'; 'archivado' retira del
-// catálogo vivo sin borrar la historia (mismo ciclo honesto que activos).
-export const ProductoEstadoSchema = z.enum(["propuesto", "aprobado", "rechazado", "archivado"]);
-
-// Alta de producto (VIG-005): el slug es único por activo; la temporada se
-// declara en meses 1-12 (array vacío = sin_dato honesto, R15); la procedencia
-// es opcional para el ciudadano y obligatoria en la ingesta curada (ADR-035).
-// El anti-PII de la API se aplica sobre el nombre ANTES de persistir.
-export const ProductoAltaSchema = z.object({
-  slug: z
-    .string()
-    .trim()
-    .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "slug: minúsculas, números y guiones")
-    .min(2)
-    .max(60),
-  nombre: z.string().trim().min(3, "El nombre debe tener al menos 3 caracteres").max(120),
-  categoria: z
-    .string()
-    .trim()
-    .regex(/^[a-z0-9_]+$/, "categoria: slug en minúsculas y guiones bajos")
-    .min(2)
-    .max(40)
-    .optional(),
-  temporada_meses: z
-    .array(z.number().int().min(1, "mes: 1-12").max(12, "mes: 1-12"))
-    .max(12)
-    .optional(),
-  procedencia: ActivoProcedenciaSchema.optional(),
-});
-
-// Cambio de estado por moderación (patrón activos R5b): aprobado | rechazado |
-// archivado; el motivo pasa el anti-PII de la API (sin eco del valor).
-export const ProductoEstadoCambioSchema = z.object({
-  estado: z.enum(["aprobado", "rechazado", "archivado"]),
-  motivo: z.string().trim().max(500).optional(),
-});
-
-// Estado honesto de la capacidad (R15): unknown = sin aforo, plazas ni
-// protocolo verificado en nuestras fuentes (Cuesta del Viento, tanda 3).
-export const OperativaCapacityStatusSchema = z.enum(["aforo_verificado", "guia_oficial", "unknown"]);
-
-// Habilitación de prestador (tanda 3 Perplexity): 4 atributos separados —
-// "distinguido" ≠ "habilitado". Todos unknown en las cooperativas sembradas
-// (padrón Ley 2400-T no encontrado); nunca se inventa una habilitación (R15).
-export const HabilitacionEstadoSchema = z.enum(["verificado", "unknown", "no_encontrado"]);
-
-export const HabilitacionSchema = z.object({
-  municipal: HabilitacionEstadoSchema,
-  provincial_2400_t: HabilitacionEstadoSchema,
-  sello: HabilitacionEstadoSchema,
-  verified_at: z
-    .string()
-    .trim()
-    .regex(/^\d{4}(-\d{2}-\d{2})?$/, "verified_at: YYYY-MM-DD o YYYY")
-    .nullable(),
+  pregunta: z.string(),
+  dato: z.array(AskFragmentoSchema),
+  dominio: AskDominioSchema.nullable(),
+  interpretacion: z.string().nullable(),
+  sugerencia: z.string().nullable(),
+  fuentes: z.array(AskFuenteSchema),
+  confidence: z.number().min(0).max(1),
+  recovered: z.number().int().min(0),
+  human_review: z.literal("pending"),
 });
