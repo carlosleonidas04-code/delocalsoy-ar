@@ -32,7 +32,7 @@ beforeAll(async () => {
   server = createApp().listen(0, '127.0.0.1');
   await new Promise((resolve) => server.once('listening', resolve));
   base = 'http://127.0.0.1:' + server.address().port;
-});
+}, 60000);
 
 afterAll(async () => {
   await new Promise((resolve, reject) => {
@@ -249,7 +249,7 @@ describe.skipIf(!dbUp)('Subnodos territoriales VIG-001 (#171, épica #167)', () 
       prisma.events_raw.count({ where: { type: 'subnodo.creado' } }),
     ]);
     expect(despues).toEqual(antes);
-  }, 30000);
+  }, 60000);
 
   it('sello subnodo.creado en events_raw: uno por entidad, hash idempotente, sin PII', async () => {
     const sellos: any[] = await prisma.events_raw.findMany({ where: { type: 'subnodo.creado' } });

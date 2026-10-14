@@ -8,6 +8,7 @@ import healthRouter from './routes/health.js';
 import modeloFederadoRouter from './routes/modeloFederado.js';
 import nodosRouter from './routes/nodos.js';
 import oportunidadesRouter from './routes/oportunidades.js';
+import patrimonioRouter from './routes/patrimonio.js';
 import territoriosRouter from './routes/territorios.js';
 
 export function createApp(): Express {
@@ -46,6 +47,12 @@ export function createApp(): Express {
   // en events_raw, moderación moderador|admin y lectura pública anónima
   // ('discarded' nunca se publica).
   app.use('/api/oportunidades', oportunidadesRouter);
+
+  // Dominio: patrimonio protegido (NODO-VIG VIG-004, NVIG-R6 #173 — épica
+  // #167): ficha patrimonial pública (declaratoria + conservación + reglas +
+  // punto de acceso — NUNCA el campo sensible, ADR-036) y custodia PATCH
+  // moderador|admin con sello patrimonio.custodiado en events_raw + rollback.
+  app.use('/api/patrimonio', patrimonioRouter);
 
   // Compuerta Pre-C5 (handoff [agent: google] → [agent: vibe], Refs #109/#114,
   // ADR-034): validación de integridad referencial del schema Prisma REAL

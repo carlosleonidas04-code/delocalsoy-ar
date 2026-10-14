@@ -339,3 +339,65 @@ export const KpiSnapshotSchema = z.object({
   detalles: KpiDetallesSchema,
   computed_at: z.string().datetime(),
 });
+
+// ─── NODO-VIG VIG-004 (NVIG-R6 #173, épica #167): patrimonio protegido ───
+
+// Nivel de protección patrimonial: la norma que ampara el activo — o la
+// ausencia honesta de declaratoria (R15: sin_declaratoria ≠ sin valor).
+export const PatrimonioProteccionNivelSchema = z.enum([
+  "nacional_decreto",
+  "nacional_ley",
+  "provincial_ley",
+  "municipal",
+  "sin_declaratoria",
+]);
+
+// Estado honesto de la geometría interna de custodia: sin_relevamiento =
+// NO existe coordenada precisa en nuestras fuentes (p.ej. el yacimiento de
+// Angualasto solo acredita la coordenada aproximada y pública del decreto);
+// relevado_restringido = existe relevamiento y queda bajo custodia.
+export const PatrimonioSensibleStatusSchema = z.enum(["sin_relevamiento", "relevado_restringido"]);
+
+// Regla de acceso publicable (horario, autorización, temporada) con fuente.
+export const PatrimonioReglaSchema = z.object({
+  regla: z.string().trim().min(3, "La regla requiere texto").max(200),
+  fuente: z.string().trim().min(3, "La regla exige fuente citable").max(120),
+});
+
+// Custodia (PATCH moderador|admin, tabla activos_patrimonio): lo que el
+// custodio administra. `sensible` (geometría/datos internos) NUNCA sale por
+// la lectura pública — solo su estado honesto sensible_status. La transición
+// de visibilidad del activo (ADR-036) es parte de la custodia: restricted lo
+// excluye del mapa público, pero la ficha patrimonial (declaratoria, reglas,
+// punto de acceso) sigue publicándose — la declaratoria es registro público
+// (decisión DH ratificada 2026-10-14, traza #173 comment 6159546907).
+export const PatrimonioCustodiaSchema = z.object({
+  proteccion_nivel: PatrimonioProteccionNivelSchema.optional(),
+  proteccion_norma: z.string().trim().min(3).max(240).optional(),
+  conservacion_estado: z.string().trim().min(3).max(400).optional(),
+  acceso_lat: z.number().min(-90).max(90).optional(),
+  acceso_lng: z.number().min(-180).max(180).optional(),
+  reglas_acceso: z.array(PatrimonioReglaSchema).max(10).optional(),
+  sensible: z.record(z.string(), z.unknown()).optional(),
+  sensible_status: PatrimonioSensibleStatusSchema.optional(),
+  sensible_nota: z.string().trim().max(400).optional(),
+  visibilidad: ActivoVisibilidadSchema.optional(),
+});
+
+// Ficha patrimonial pública (GET /api/patrimonio/:activoId): declaratoria +
+// conservación + punto público de acceso + reglas + estado honesto de
+// custodia. `sensible` ni `sensible_nota` jamás aparecen en la lectura
+// pública (ADR-036: la nota de custodia queda para gestores).
+export const PatrimonioFichaSchema = z.object({
+  activo_id: z.string(),
+  titulo: z.string(),
+  tipo: ActivoTipoSchema,
+  proteccion_nivel: PatrimonioProteccionNivelSchema,
+  proteccion_norma: z.string(),
+  conservacion_estado: z.string().nullable(),
+  acceso_lat: z.number().nullable(),
+  acceso_lng: z.number().nullable(),
+  reglas_acceso: z.array(PatrimonioReglaSchema),
+  sensible_status: PatrimonioSensibleStatusSchema,
+  visibilidad: ActivoVisibilidadSchema,
+});

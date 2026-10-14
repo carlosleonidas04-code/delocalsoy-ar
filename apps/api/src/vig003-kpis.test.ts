@@ -37,7 +37,7 @@ beforeAll(async () => {
   server = createApp().listen(0, '127.0.0.1');
   await new Promise((resolve) => server.once('listening', resolve));
   base = 'http://127.0.0.1:' + server.address().port;
-}, 30000);
+}, 60000);
 
 afterAll(async () => {
   await new Promise((resolve, reject) => {

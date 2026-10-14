@@ -237,6 +237,7 @@ model activos {
   updated_at      DateTime @updatedAt @map("updated_at")
 
   clasificaciones activos_clasificaciones[]
+  patrimonio activos_patrimonio?
 
   /// Geometría puntal WGS84: columna + trigger + índice GiST en la migración
   /// versionada 20261008200000_r5b_activos (NULL-safe desde VIG-002: sin
@@ -362,4 +363,35 @@ model kpi_snapshots {
 
   @@id([nodo_key, kpi_key])
   @@map("kpi_snapshots")
+}
+
+// ─── NODO-VIG VIG-004 (NVIG-R6 #173, épica #167): patrimonio protegido ───
+
+/// Ficha patrimonial protegida (1:1 con activos — patrón "extender el dominio"
+/// ratificado por la DH 2026-10-14, traza #173 comment 6159546907): la
+/// declaratoria (proteccion_nivel + proteccion_norma), el estado de
+/// conservación, el punto público de acceso y las reglas son registro
+/// publicable; `sensible` (geometría/datos internos de custodia) NUNCA sale
+/// en las lecturas públicas (ADR-036) — de él solo se publica su estado
+/// honesto sensible_status ('sin_relevamiento' = R15: no existe coordenada
+/// precisa en nuestras fuentes). SIN columna geom: el punto de acceso es un
+/// par de floats con fuente (criterio estructural #149/#167, patrón subnodos).
+model activos_patrimonio {
+  id                  String   @id @default(cuid())
+  activo_id           String   @unique @map("activo_id")
+  proteccion_nivel    String   @map("proteccion_nivel") // PatrimonioProteccionNivelSchema
+  proteccion_norma    String   @map("proteccion_norma")
+  conservacion_estado String?  @map("conservacion_estado")
+  acceso_lat          Float?
+  acceso_lng          Float?
+  reglas_acceso       Json     @map("reglas_acceso") // [{regla, fuente}]
+  sensible            Json?    @map("sensible") // custodia — NUNCA en lectura pública
+  sensible_status     String   @default("sin_relevamiento") @map("sensible_status") // PatrimonioSensibleStatusSchema
+  sensible_nota       String?  @map("sensible_nota") // nota honesta del estado de custodia
+  created_at          DateTime @default(now()) @map("created_at")
+  updated_at          DateTime @updatedAt @map("updated_at")
+
+  activo activos @relation(fields: [activo_id], references: [id], onDelete: Cascade)
+
+  @@map("activos_patrimonio")
 }
