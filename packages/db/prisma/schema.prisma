@@ -1,17 +1,17 @@
-// DELocalSoy.AR — núcleo Track A v7.1
+// DELocalSoy.AR â nÃºcleo Track A v7.1
 // Convenciones: ids `cuid`, columnas mapeadas a snake_case con @map(),
-// `events_raw` con hash único para idempotencia.
+// `events_raw` con hash Ãºnico para idempotencia.
 //
-// EXTENSIÓN CORE-002 (vocabulario del demo territorial federado v5.1):
-// - nodos, capas por nodo, categorías de reporte, features sintéticos
-// - reportes con flujo received → evaluating → in_progress → resolved
-// - columna PostGIS `geom` en reportes/features (agregada por migración
+// EXTENSIÃN CORE-002 (vocabulario del demo territorial federado v5.1):
+// - nodos, capas por nodo, categorÃ­as de reporte, features sintÃ©ticos
+// - reportes con flujo received â evaluating â in_progress â resolved
+// - columna PostGIS `geom` en reportes/features (agregada por migraciÃ³n
 //   versionada: Prisma no soporta tipos geometry nativamente)
 //
-// EXTENSIÓN CORE-004 (identidad por etapas, ADR-031):
+// EXTENSIÃN CORE-004 (identidad por etapas, ADR-031):
 // - usuarios con rol ciudadano | moderador | admin
 // - sin PII en events_raw: sellos system.user_* solo con {usuario_id, rol}
-// - R5b: activos territoriales propuestos por ciudadanos (pseudónimo, sin PII)
+// - R5b: activos territoriales propuestos por ciudadanos (pseudÃ³nimo, sin PII)
 
 generator client {
   provider = "prisma-client-js"
@@ -27,7 +27,7 @@ model events_raw {
   id          String   @id @default(cuid())
   type        String   @map("type")
   payload     Json     @map("payload")
-  hash        String   @unique @map("hash") // hash único → idempotencia
+  hash        String   @unique @map("hash") // hash Ãºnico â idempotencia
   occurred_at DateTime @map("occurred_at")
   ingested_at DateTime @default(now()) @map("ingested_at")
 
@@ -46,29 +46,29 @@ model evidencias {
   @@map("evidencias")
 }
 
-/// Entidades territoriales mínimas del núcleo (PostGIS).
+/// Entidades territoriales mÃ­nimas del nÃºcleo (PostGIS).
 model territorios {
   id        String  @id @default(cuid())
   nombre    String  @map("nombre")
   provincia String  @map("provincia")
   activo    Boolean @default(true) @map("activo")
 
-  /// Geometría puntual WGS84 (Aterrizaje PR 2 — issue #21).
-  /// Prisma no tipa geometry: se administra vía SQL (migración + índice GiST).
+  /// GeometrÃ­a puntual WGS84 (Aterrizaje PR 2 â issue #21).
+  /// Prisma no tipa geometry: se administra vÃ­a SQL (migraciÃ³n + Ã­ndice GiST).
   geom Unsupported("geometry(Point,4326)")?
 
   @@map("territorios")
 }
 
-// ─── CORE-002: vocabulario del demo territorial federado ───
+// âââ CORE-002: vocabulario del demo territorial federado âââ
 
 /// Nodos federados del demo (Capital, Caucete, Iglesia).
 model nodos {
   id         String  @id @default(cuid())
   key        String  @unique @map("key") // capital | caucete | iglesia
   nombre     String  @map("nombre")
-  subtitle   String  @map("subtitle") // e.g. "Centro–Cívico–Desamparados"
-  foco       String  @map("foco") // e.g. "Comercio y espacio público"
+  subtitle   String  @map("subtitle") // e.g. "CentroâCÃ­vicoâDesamparados"
+  foco       String  @map("foco") // e.g. "Comercio y espacio pÃºblico"
   centro_lat Float   @map("centro_lat")
   centro_lng Float   @map("centro_lng")
   poblacion  Int     @map("poblacion") // INDEC 2022, redondeado
@@ -82,7 +82,7 @@ model nodos {
   @@map("nodos")
 }
 
-/// Capas por nodo (catálogo explícito, no inferible en frontend).
+/// Capas por nodo (catÃ¡logo explÃ­cito, no inferible en frontend).
 model capas {
   id         String  @id @default(cuid())
   nodo_id    String  @map("nodo_id")
@@ -100,12 +100,12 @@ model capas {
   @@map("capas")
 }
 
-/// Categorías de reporte por nodo (vocabulario local).
+/// CategorÃ­as de reporte por nodo (vocabulario local).
 model categorias {
   id      String  @id @default(cuid())
   nodo_id String  @map("nodo_id")
   code    String  @map("code") // e.g. "insufficient_lighting"
-  label   String  @map("label") // e.g. "Iluminación insuficiente"
+  label   String  @map("label") // e.g. "IluminaciÃ³n insuficiente"
   capa_id String? @map("capa_id")
 
   nodo nodos  @relation(fields: [nodo_id], references: [id], onDelete: Cascade)
@@ -115,8 +115,8 @@ model categorias {
   @@map("categorias")
 }
 
-/// Features territoriales (activos y problemáticas cartografiadas).
-/// Datos sintéticos de diseño: is_synthetic = true hasta que exista relevamiento real.
+/// Features territoriales (activos y problemÃ¡ticas cartografiadas).
+/// Datos sintÃ©ticos de diseÃ±o: is_synthetic = true hasta que exista relevamiento real.
 model features {
   id           String   @id @default(cuid())
   nodo_id      String   @map("nodo_id")
@@ -124,14 +124,14 @@ model features {
   titulo       String   @map("titulo")
   tipo         String   @map("tipo") // asset | problem
   estado       String   @map("estado") // verified | pending | community_validated | synthetic_demo
-  fuente_label String   @map("fuente_label") // siempre "Ilustrativa · <tipo>" en demo
+  fuente_label String   @map("fuente_label") // siempre "Ilustrativa Â· <tipo>" en demo
   observado_at DateTime @map("observado_at")
   lat          Float    @map("lat")
   lng          Float    @map("lng")
   is_synthetic Boolean  @default(true) @map("is_synthetic")
   created_at   DateTime @default(now()) @map("created_at")
 
-  /// Geometría puntal WGS84: columna + trigger + índice GiST en la migración
+  /// GeometrÃ­a puntal WGS84: columna + trigger + Ã­ndice GiST en la migraciÃ³n
   /// versionada 20261007120000_core002_schema (Prisma no tipa geometry).
   geom Unsupported("geometry(Point,4326)")?
 
@@ -141,8 +141,8 @@ model features {
   @@map("features")
 }
 
-/// Reportes territoriales con flujo received → evaluating → in_progress → resolved.
-/// La columna PostGIS `geom` vive en la migración versionada (triggers lat/lng + GiST).
+/// Reportes territoriales con flujo received â evaluating â in_progress â resolved.
+/// La columna PostGIS `geom` vive en la migraciÃ³n versionada (triggers lat/lng + GiST).
 model reportes {
   id           String   @id @default(cuid())
   nodo_id      String   @map("nodo_id")
@@ -156,7 +156,7 @@ model reportes {
   created_at   DateTime @default(now()) @map("created_at")
   updated_at   DateTime @updatedAt @map("updated_at")
 
-  /// Geometría puntual WGS84: columna + trigger + índice GiST en la migración
+  /// GeometrÃ­a puntual WGS84: columna + trigger + Ã­ndice GiST en la migraciÃ³n
   /// versionada 20261007120000_core002_schema (Prisma no tipa geometry).
   geom Unsupported("geometry(Point,4326)")?
 
@@ -165,10 +165,10 @@ model reportes {
   @@map("reportes")
 }
 
-// ─── CORE-004: identidad por etapas (ADR-031, #87) ───
+// âââ CORE-004: identidad por etapas (ADR-031, #87) âââ
 
-/// Usuarios con rol (ciudadano | moderador | admin). La contraseña vive solo
-/// como hash scrypt en password_hash (node:crypto — cero dependencias nuevas).
+/// Usuarios con rol (ciudadano | moderador | admin). La contraseÃ±a vive solo
+/// como hash scrypt en password_hash (node:crypto â cero dependencias nuevas).
 /// events_raw registra sellos system.user_* sin PII (Ley 25.326, ADR-027).
 model usuarios {
   id            String   @id @default(cuid())
@@ -182,10 +182,10 @@ model usuarios {
   @@map("usuarios")
 }
 
-// ─── CORE-004 R4b: proyección del worker (ADR-032, #87) ───
+// âââ CORE-004 R4b: proyecciÃ³n del worker (ADR-032, #87) âââ
 
-/// Proyección derivada del worker — NO es fuente de verdad: events_raw manda.
-/// event_id único → el re-consumo de una referencia es idempotente (P2002).
+/// ProyecciÃ³n derivada del worker â NO es fuente de verdad: events_raw manda.
+/// event_id Ãºnico â el re-consumo de una referencia es idempotente (P2002).
 model event_projections {
   id           String   @id @default(cuid())
   event_id     String   @unique @map("event_id")
@@ -196,27 +196,27 @@ model event_projections {
   @@map("event_projections")
 }
 
-// ─── CORE-004 R5b: dominio activos (#87) ───
+// âââ CORE-004 R5b: dominio activos (#87) âââ
 
-/// Activos territoriales propuestos por la ciudadanía (escritura ciudadana
-/// verificada). El autor queda como pseudónimo created_by_hash = sha256(usuario_id)
-/// truncado — nunca PII en la tabla ni en los sellos (Ley 25.326, ADR-027).
-/// Flujo de moderación: propuesto → aprobado | rechazado (+ archivado, VIG-002).
-/// La columna PostGIS `geom` vive en la migración versionada
-/// 20261008200000_r5b_activos (trigger lat/lng + índice GiST).
+/// Activos territoriales propuestos por la ciudadanÃ­a (escritura ciudadana
+/// verificada). El autor queda como pseudÃ³nimo created_by_hash = sha256(usuario_id)
+/// truncado â nunca PII en la tabla ni en los sellos (Ley 25.326, ADR-027).
+/// Flujo de moderaciÃ³n: propuesto â aprobado | rechazado (+ archivado, VIG-002).
+/// La columna PostGIS `geom` vive en la migraciÃ³n versionada
+/// 20261008200000_r5b_activos (trigger lat/lng + Ã­ndice GiST).
 ///
-/// VIG-002 (NVIG-R2 #169, épica #167 — Opción A ratificada por la DH
+/// VIG-002 (NVIG-R2 #169, Ã©pica #167 â OpciÃ³n A ratificada por la DH
 /// 2026-10-13: extender el dominio, no duplicarlo):
 /// - tipos multimodales: + local | prestador | experiencia | observacion
-/// - subnodo_key: contexto de distrito/paraje (patrón oportunidades)
-/// - lat/lng pasan a opcionales: el punto propio SOLO con fuente (R15) —
+/// - subnodo_key: contexto de distrito/paraje (patrÃ³n oportunidades)
+/// - lat/lng pasan a opcionales: el punto propio SOLO con fuente (R15) â
 ///   el POST ciudadano lo exige por contrato; la ingesta curada no inventa
 /// - visibilidad ADR-036 (public | generalized | restricted): restricted se
-///   excluye de la lectura pública (ficha sensible = custodia, VIG-004)
+///   excluye de la lectura pÃºblica (ficha sensible = custodia, VIG-004)
 /// - procedencia ADR-035: aprobado con fuente trazable = "verificado"
 /// - consentimiento granular (Ley 25.326) si el activo nombra a una persona
 /// - is_synthetic: demo marcada, nunca publicada como real
-/// - hash único opcional: idempotencia de la ingesta curada (seed-activo-*)
+/// - hash Ãºnico opcional: idempotencia de la ingesta curada (seed-activo-*)
 model activos {
   id              String   @id @default(cuid())
   tipo            String   @map("tipo") // ActivoTipoSchema: inmueble | infraestructura | servicio | patrimonio | local | prestador | experiencia | observacion | otro
@@ -224,23 +224,23 @@ model activos {
   descripcion     String?  @map("descripcion")
   estado          String   @default("propuesto") @map("estado") // propuesto | aprobado | rechazado | archivado
   nodo_key        String   @map("nodo_key") // capital | caucete | iglesia
-  subnodo_key     String?  @map("subnodo_key") // sj_iglesia_* — contexto de distrito/paraje (VIG-002)
+  subnodo_key     String?  @map("subnodo_key") // sj_iglesia_* â contexto de distrito/paraje (VIG-002)
   lat             Float? // punto propio SOLO con fuente (R15): null = se acredita por subnodo
   lng             Float?
   visibilidad     String   @default("public") @map("visibilidad") // ActivoVisibilidadSchema: public | generalized | restricted (ADR-036)
   procedencia     Json?    @map("procedencia") // ActivoProcedenciaSchema (ADR-035)
-  consentimiento  Json?    @map("consentimiento") // ActivoConsentimientoSchema — granular, Ley 25.326
+  consentimiento  Json?    @map("consentimiento") // ActivoConsentimientoSchema â granular, Ley 25.326
   is_synthetic    Boolean  @default(false) @map("is_synthetic")
-  created_by_hash String   @map("created_by_hash") // pseudónimo sha256(usuario_id) — sin PII
+  created_by_hash String   @map("created_by_hash") // pseudÃ³nimo sha256(usuario_id) â sin PII
   hash            String?  @unique @map("hash") // idempotencia de la ingesta curada (seed-activo-*)
   created_at      DateTime @default(now()) @map("created_at")
   updated_at      DateTime @updatedAt @map("updated_at")
 
   clasificaciones activos_clasificaciones[]
 
-  /// Geometría puntal WGS84: columna + trigger + índice GiST en la migración
+  /// GeometrÃ­a puntal WGS84: columna + trigger + Ã­ndice GiST en la migraciÃ³n
   /// versionada 20261008200000_r5b_activos (NULL-safe desde VIG-002: sin
-  /// punto verificado, geom es null — no se inventa geometría).
+  /// punto verificado, geom es null â no se inventa geometrÃ­a).
   geom Unsupported("geometry(Point,4326)")?
 
   @@index([estado])
@@ -249,17 +249,17 @@ model activos {
   @@map("activos")
 }
 
-// ─── NODO-CAPITAL NCAP-R6 (#158): Bloque 9 — Banco de Potencialidades ───
+// âââ NODO-CAPITAL NCAP-R6 (#158): Bloque 9 â Banco de Potencialidades âââ
 
 /// Oportunidades de desarrollo local (Bloque 9 del documento de la DH):
-/// capacidades, recursos, demandas, vacíos y vínculos. Nace 'detected' con
-/// evidencia obligatoria; ciclo de vida detected → under_review → validated
-/// → prioritized → in_development → active → implemented (+ paused/discarded/
-/// archived) — la matriz de transiciones vive en la API. SIN geometría propia:
+/// capacidades, recursos, demandas, vacÃ­os y vÃ­nculos. Nace 'detected' con
+/// evidencia obligatoria; ciclo de vida detected â under_review â validated
+/// â prioritized â in_development â active â implemented (+ paused/discarded/
+/// archived) â la matriz de transiciones vive en la API. SIN geometrÃ­a propia:
 /// el contexto territorial se acredita por nodo_key + subnodo_key opcional
-/// (criterio estructural #149/#158 — no duplicar geometría). Autor = pseudónimo
-/// sha256(usuario_id) truncado — sin PII (Ley 25.326, ADR-027). Actores con
-/// consentimiento confirmado si se nombran. hash único → idempotencia del alta.
+/// (criterio estructural #149/#158 â no duplicar geometrÃ­a). Autor = pseudÃ³nimo
+/// sha256(usuario_id) truncado â sin PII (Ley 25.326, ADR-027). Actores con
+/// consentimiento confirmado si se nombran. hash Ãºnico â idempotencia del alta.
 model oportunidades {
   id              String   @id @default(cuid())
   tipo            String   @map("tipo") // OportunidadTipoSchema (10 tipos)
@@ -267,11 +267,11 @@ model oportunidades {
   descripcion     String   @map("descripcion")
   estado          String   @default("detected") @map("estado") // OportunidadEstadoSchema
   nodo_key        String   @map("nodo_key") // capital | caucete | iglesia
-  subnodo_key     String?  @map("subnodo_key") // e.g. sj_capital_centro — provisional (NCAP-R2 #154)
+  subnodo_key     String?  @map("subnodo_key") // e.g. sj_capital_centro â provisional (NCAP-R2 #154)
   evidencia       Json     @map("evidencia") // OportunidadEvidenciaSchema validado por Zod
-  actores         Json     @map("actores") // [OportunidadActorSchema] — consentimiento si se nombran
+  actores         Json     @map("actores") // [OportunidadActorSchema] â consentimiento si se nombran
   tags            Json     @map("tags") // etiquetas libres acotadas
-  created_by_hash String   @map("created_by_hash") // pseudónimo — sin PII
+  created_by_hash String   @map("created_by_hash") // pseudÃ³nimo â sin PII
   hash            String   @unique @map("hash") // idempotencia del alta
   created_at      DateTime @default(now()) @map("created_at")
   updated_at      DateTime @updatedAt @map("updated_at")
@@ -281,16 +281,16 @@ model oportunidades {
   @@map("oportunidades")
 }
 
-// ─── NODO-VIG VIG-001 (#171, épica #167): subnodos territoriales ───
+// âââ NODO-VIG VIG-001 (#171, Ã©pica #167): subnodos territoriales âââ
 
-/// Subnodos territoriales del nodo iglesia (Opción B ratificada, #167):
-/// distritos, parajes, subparajes y localidades INDEC. Jerarquía de 3 niveles
-/// por self-relation parent_key → subnodos.key (distrito → paraje →
+/// Subnodos territoriales del nodo iglesia (OpciÃ³n B ratificada, #167):
+/// distritos, parajes, subparajes y localidades INDEC. JerarquÃ­a de 3 niveles
+/// por self-relation parent_key â subnodos.key (distrito â paraje â
 /// subparaje); los parajes de alta cordillera cuelgan del nodo (parent_key
-/// null). lat/lng SOLO con punto público (BAHRA/Georef) — null es honesto,
+/// null). lat/lng SOLO con punto pÃºblico (BAHRA/Georef) â null es honesto,
 /// nunca un punto inventado (R15, ADR-036). external_id = cod_ase BAHRA o id
 /// Georef. SIN columna geom: no se duplica dominio espacial (criterio
-/// estructural #149/#167 — mismo patrón que oportunidades).
+/// estructural #149/#167 â mismo patrÃ³n que oportunidades).
 model subnodos {
   id               String   @id @default(cuid())
   nodo_key         String   @map("nodo_key") // capital | caucete | iglesia
@@ -300,7 +300,7 @@ model subnodos {
   parent_key       String?  @map("parent_key")
   boundary_status  String   @default("provisional") @map("boundary_status") // SubnodoBoundaryStatusSchema
   assignment_status String  @map("assignment_status") // SubnodoAssignmentStatusSchema
-  zone             String?  @map("zone") // SubnodoZoneSchema — null = sin clasificación aún
+  zone             String?  @map("zone") // SubnodoZoneSchema â null = sin clasificaciÃ³n aÃºn
   lat              Float?
   lng              Float?
   external_id      String?  @map("external_id") // BAHRA cod_ase | Georef id
@@ -317,14 +317,14 @@ model subnodos {
   @@map("subnodos")
 }
 
-// ─── NODO-VIG VIG-002 (#169, épica #167): clasificación multimodal ───
+// âââ NODO-VIG VIG-002 (#169, Ã©pica #167): clasificaciÃ³n multimodal âââ
 
-/// Clasificaciones de activos (taxonomía 3 niveles del VIG-000): N1 capital
-/// (productivo_rural | turistico | patrimonial | civico_social) → N2 categoría
-/// → N3 subcategoría ('' = sin subcategoría). Un activo tiene exactamente una
-/// clasificación primaria y varias secundarias; toda clasificación declara su
-/// fuente (gobernanza VIG-000). Único por (activo, n1, n2, n3) → seed
-/// idempotente vía ON CONFLICT.
+/// Clasificaciones de activos (taxonomÃ­a 3 niveles del VIG-000): N1 capital
+/// (productivo_rural | turistico | patrimonial | civico_social) â N2 categorÃ­a
+/// â N3 subcategorÃ­a ('' = sin subcategorÃ­a). Un activo tiene exactamente una
+/// clasificaciÃ³n primaria y varias secundarias; toda clasificaciÃ³n declara su
+/// fuente (gobernanza VIG-000). Ãnico por (activo, n1, n2, n3) â seed
+/// idempotente vÃ­a ON CONFLICT.
 model activos_clasificaciones {
   id         String   @id @default(cuid())
   activo_id  String   @map("activo_id")
@@ -332,7 +332,7 @@ model activos_clasificaciones {
   n2         String   @map("n2")
   n3         String   @default("") @map("n3")
   is_primary Boolean  @default(false) @map("is_primary")
-  source     String   @map("source") // fuente de la clasificación
+  source     String   @map("source") // fuente de la clasificaciÃ³n
   created_at DateTime @default(now()) @map("created_at")
 
   activo activos @relation(fields: [activo_id], references: [id], onDelete: Cascade)
@@ -340,4 +340,26 @@ model activos_clasificaciones {
   @@unique([activo_id, n1, n2, n3])
   @@index([n1])
   @@map("activos_clasificaciones")
+}
+
+// ─── NODO-VIG VIG-003 (NVIG-R3 #182, épica #167): KPIs del nodo ───
+
+/// Snapshots materializados de KPIs por nodo (set honesto v1 ratificado por
+/// la DH 2026-10-14): agregados SIN PII (Ley 25.326), visibilidad
+/// restricted excluida del cálculo (ADR-036). PK compuesta (nodo_key,
+/// kpi_key) → el recompute del consumidor vig003-kpi es un upsert
+/// idempotente que re-deriva desde las tablas de dominio, nunca incrementos.
+/// valor null = métrica sin computar (cobertura v1) — null honesto (R15).
+model kpi_snapshots {
+  id          String   @unique @default(cuid())
+  nodo_key    String   @map("nodo_key") // capital | caucete | iglesia
+  kpi_key     String   @map("kpi_key") // KpiKeySchema (9 KPIs v1)
+  valor       Float?   @map("valor") // null honesto (R15): sin métrica computada
+  detalles    Json     @map("detalles") // desglose por clave — solo agregados numéricos
+  computed_at DateTime @map("computed_at")
+  created_at  DateTime @default(now()) @map("created_at")
+  updated_at  DateTime @updatedAt @map("updated_at")
+
+  @@id([nodo_key, kpi_key])
+  @@map("kpi_snapshots")
 }
