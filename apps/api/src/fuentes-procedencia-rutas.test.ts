@@ -204,7 +204,7 @@ describe.skipIf(!dbUp)('fuentes espaciales + procedencia (NODO-CAU R2 — regist
     const res = await fetch(base + '/api/ingestas', {
       method: 'POST',
       headers: { ...jsonHeaders, authorization: 'Bearer ' + tokenAdmin },
-      body: JSON.stringify({ ...payloadIngesta, fuente_key: 'fuente-inventada' }),
+      body: JSON.stringify({ ...payloadIngesta, fuente_key: 'fuente_inventada' }),
     });
     expect(res.status).toBe(404);
     await res.arrayBuffer();
