@@ -3,9 +3,9 @@ import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { prisma, Prisma } from '@delocalsoy/db';
 import { xaddEventReference } from '@delocalsoy/redis';
-import { ReporteAltaSchema } from '@delocalsoy/contracts';
+import { ReporteAltaSchema, ReporteEstadoCambioSchema, REPORTE_TRANSICIONES } from '@delocalsoy/contracts';
 import { detectaPII } from '../lib/anti-pii.js';
-import { requireJwt } from '../lib/auth.js';
+import { requireJwt, requireRole } from '../lib/auth.js';
 
 /**
  * Dominio reportes — CORE-005 R2 (#206): escritura ciudadana de reportes.
@@ -156,6 +156,101 @@ router.post('/', requireJwt, async (req: Request, res: Response) => {
     // AUD-06 (#100): el detalle queda en stdout del servidor, nunca en la respuesta.
     console.error('[reportes] crear:', err instanceof Error ? err.message : String(err));
     res.status(500).json({ success: false, error: 'fallo al crear el reporte' });
+  }
+});
+
+// PATCH /api/reportes/:id/estado — moderación transparente (R3, #206 —
+// ADR-038): moderador|admin transita el ciclo con justificación pública
+// OBLIGATORIA por transición (el contrato R1 la exige >=10 chars → 400 sin
+// ella). La validez del salto la decide la matriz compartida
+// REPORTE_TRANSICIONES: la moderación no inventa caminos (400 salto fuera
+// de la matriz; 409 si no hay transición — mismo estado). La justificación
+// pasa el anti-PII ANTES de sellarla (sin eco del valor). Sello
+// 'reporte.estado_cambiado' con el ciclo completo {estado_anterior,
+// estado_nuevo, justificacion, moderador_hash} — sin sello no hay
+// transición acreditada: rollback del estado si falla (R4/R15).
+router.patch('/:id/estado', requireJwt, requireRole('moderador', 'admin'), async (req: Request, res: Response) => {
+  const reporteId = req.params.id;
+
+  let parsed: z.infer<typeof ReporteEstadoCambioSchema>;
+  try {
+    parsed = ReporteEstadoCambioSchema.parse(req.body);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ success: false, error: 'datos inválidos', details: error.errors });
+      return;
+    }
+    throw error;
+  }
+
+  // Anti-PII (ADR-020 cond. 1, Ley 25.326): sobre la justificación pública
+  // ANTES de sellarla — rechazo genérico, sin eco del valor.
+  const pii = detectaPII(parsed.justificacion);
+  if (pii) {
+    res.status(400).json({
+      error: 'payload rechazado: contiene datos personales identificables (' + pii + ') — ADR-020 cond. 1, Ley 25.326',
+    });
+    return;
+  }
+
+  try {
+    const reporte = await prisma.reportes.findUnique({ where: { id: reporteId } });
+    if (reporte === null) {
+      res.status(404).json({ success: false, error: 'reporte no encontrado' });
+      return;
+    }
+
+    // Sin transición no hay evento (patrón activos/productos): repetir el
+    // mismo estado → 409.
+    if (reporte.estado === parsed.estado) {
+      res.status(409).json({ success: false, error: "el reporte ya está en estado '" + parsed.estado + "'" });
+      return;
+    }
+
+    // Matriz del ciclo (ADR-038): la ruta decide contra REPORTE_TRANSICIONES
+    // — un salto fuera de la matriz es inválido (400), la moderación no
+    // inventa caminos. resolved y descartado son terminales en v1.
+    const permitidas = REPORTE_TRANSICIONES[reporte.estado as keyof typeof REPORTE_TRANSICIONES] ?? [];
+    if (!permitidas.includes(parsed.estado)) {
+      res.status(400).json({
+        success: false,
+        error: "transición inválida: '" + reporte.estado + "' → '" + parsed.estado + "' no está en la matriz del ciclo (ADR-038)",
+      });
+      return;
+    }
+
+    const nodo = await prisma.nodos.findUnique({ where: { id: reporte.nodo_id } });
+    const actualizado = await prisma.reportes.update({
+      where: { id: reporteId },
+      data: { estado: parsed.estado },
+    });
+
+    const moderadorHash = seudonimo((res.locals.usuario as { id: string }).id);
+    try {
+      // Sello del sistema: el ciclo completo queda acreditado en la fuente
+      // de verdad — de aquí derivará el historial público (R4, ADR-038).
+      await sellarEvento('reporte.estado_cambiado', {
+        reporte_id: reporteId,
+        nodo_key: nodo?.key ?? null,
+        categoria: reporte.categoria,
+        estado_anterior: reporte.estado,
+        estado_nuevo: parsed.estado,
+        justificacion: parsed.justificacion,
+        moderador_hash: moderadorHash,
+      });
+    } catch (err) {
+      // Rollback (R4/R15): sin evento no hay transición acreditada.
+      await prisma.reportes.update({ where: { id: reporteId }, data: { estado: reporte.estado } }).catch(() => undefined);
+      console.error('[reportes] sellar cambio de estado:', err instanceof Error ? err.message : String(err));
+      res.status(500).json({ success: false, error: 'fallo al sellar el cambio de estado' });
+      return;
+    }
+
+    res.json({ success: true, data: actualizado });
+  } catch (err) {
+    // AUD-06 (#100): el detalle queda en stdout del servidor, nunca en la respuesta.
+    console.error('[reportes] cambiar estado:', err instanceof Error ? err.message : String(err));
+    res.status(500).json({ success: false, error: 'fallo al cambiar el estado' });
   }
 });
 
