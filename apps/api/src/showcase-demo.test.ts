@@ -10,9 +10,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 // (R15). Los counts del resumen se comparan con el dominio leído por
 // Prisma con el MISMO predicado (aserciones dinámicas contra el dominio
 // vivo, patrón vig003-kpis — otras suites del job test escriben en el
-// mismo nodo). Capital/caucete honestos: sin subnodos ni productos → 0,
-// nunca fabricado (decisión DH, traza #193). Requiere Postgres/PostGIS
-// real; sin base → skip honesto.
+// mismo nodo). Capital activó su base territorial (NCAP-R2 #154: 2 distritos
+// provisionales) y caucete sigue sin subnodos → 0 honesto; productos 0 en
+// ambos, nunca fabricado (R15, decisión DH traza #193). Requiere
+// Postgres/PostGIS real; sin base → skip honesto.
 
 process.env.DATABASE_URL =
   process.env.TEST_DATABASE_URL ?? 'postgresql://delocalsoy:delocalsoy@localhost:5432/delocalsoy?schema=public';
@@ -123,18 +124,27 @@ describe.skipIf(!dbUp)('Demo final del showcase VIG-007 (#193, épica #167)', ()
     expect(iglesia.rag_fragmentos).toBeGreaterThanOrEqual(1); // índice VIG-006
   });
 
-  it('pasos 1-2: capital y caucete honestos — 0 subnodos y 0 productos, nada fabricado (R15)', async () => {
+  it('pasos 1-2: capital con su base territorial NCAP-R2 y caucete honesto — nada fabricado (R15)', async () => {
     const res = await getJson('/api/showcase');
     const capital: any = res.body.data.nodos.find((n: any) => n.key === 'capital');
     const caucete: any = res.body.data.nodos.find((n: any) => n.key === 'caucete');
     expect(capital).toBeDefined();
     expect(caucete).toBeDefined();
-    for (const nodo of [capital, caucete]) {
-      expect(nodo.subnodos).toBe(0);
-      expect(nodo.productos_aprobados).toBe(0);
-      expect(nodo.kpis).toBe(nodo.kpis_detalle.length); // consistente siempre
-      expect(nodo.rag_fragmentos).toBe(0); // sin prosa indexada del nodo
-    }
+    // capital activó su base territorial (NCAP-R2 #154, épica #152): 2
+    // distritos provisionales — count comparado con el dominio vivo con el
+    // MISMO predicado, nunca hardcodeado sin fuente.
+    const subnodosCapital = await prisma.subnodos.count({ where: { nodo_key: 'capital' } });
+    expect(capital.subnodos).toBe(subnodosCapital);
+    expect(capital.subnodos).toBe(2);
+    expect(capital.productos_aprobados).toBe(0);
+    expect(capital.kpis).toBe(0); // sin snapshots aún → 0 honesto
+    expect(capital.kpis).toBe(capital.kpis_detalle.length); // consistente siempre
+    expect(capital.rag_fragmentos).toBe(0); // sin prosa indexada del nodo
+    // caucete sigue sin subnodos ni snapshots → counts 0 honestos (R15)
+    expect(caucete.subnodos).toBe(0);
+    expect(caucete.productos_aprobados).toBe(0);
+    expect(caucete.kpis).toBe(caucete.kpis_detalle.length);
+    expect(caucete.rag_fragmentos).toBe(0);
   });
 
   it('pasos 5-6: escenario productivo — N1 sin restricted y operativa del dique honesta', async () => {
