@@ -5,6 +5,7 @@ import authRouter from './routes/auth.js';
 import evidenciasRouter from './routes/evidencias.js';
 import eventsRouter from './routes/events.js';
 import fichasValoracionRouter from './routes/fichasValoracion.js';
+import fuentesRouter from './routes/fuentes.js';
 import healthRouter from './routes/health.js';
 import modeloFederadoRouter from './routes/modeloFederado.js';
 import nodosRouter from './routes/nodos.js';
@@ -74,6 +75,19 @@ export function createApp(): Express {
   // seguridad y habilitación honesta). ADR-036: restricted queda excluido de
   // toda lectura pública, sin excepción ratificada (traza #174).
   app.use('/api', productosRouter);
+
+  // Dominio: catálogo de fuentes espaciales + procedencia (NODO-CAU R2,
+  // #138/#147 — ADR-035): GET /api/fuentes — catálogo público y anónimo de
+  // fuentes (organismo, tipo de acceso, estado honesto de disponibilidad y
+  // cautela central); POST /api/ingestas — ingesta curada por admin que
+  // declara procedencia completa por conjunto (fuente del catálogo, fechas
+  // de acceso/corte, licencia, CRS, precisión, transformaciones — NC-EV-09);
+  // PATCH /api/ingentas/:id/estado — pipeline recibido → validado_tecnicamente
+  // → validado_territorialmente → publicado (solo admin, decisión DH
+  // 2026-10-15); GET /api/ingentas — lectura pública SOLO de lo publicado
+  // (R15); sellos ingenta.creada e ingenta.estado_cambiado en events_raw con
+  // rollback si fallan.
+  app.use('/api', fuentesRouter);
 
   // Demo final (NODO-VIG VIG-007, NVIG-R9 #193 — épica #167): recorrido
   // federado del showcase — lectura pública del estado REAL de los tres
