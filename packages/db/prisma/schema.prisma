@@ -506,3 +506,62 @@ model fichas_valoracion {
   @@index([feature_id])
   @@map("fichas_valoracion")
 }
+
+// ─── NODO-CAU R2 (#138/#147): catálogo de fuentes espaciales + procedencia ───
+
+/// Catálogo de fuentes espaciales (#147): registro público de las fuentes de
+/// datos del sistema — organismo, URL, tipo de acceso, licencia, estado honesto
+/// de disponibilidad y CAUTELA central. No es un catálogo de datos: es el
+/// registro de procedencia que toda ingesta real debe citar (ADR-035, R15).
+/// Multinodo: una fuente puede servir a varios nodos (IGN, INDEC, BAHRA).
+model fuentes {
+  id         String   @id @default(cuid())
+  key        String   @unique @map("key") // p.ej. ign, refes, catastro_sj
+  organismo  String   @map("organismo")
+  nombre     String   @map("nombre")
+  url        String?  @map("url") // URL estable de la fuente — null si no existe
+  tipo       String   @map("tipo") // FuenteEspacialTipoSchema: wms|wfs|descarga|documento|api
+  licencia   String?  @map("licencia") // null = sin licencia declarada aún
+  estado     String   @map("estado") // FuenteEspacialEstadoSchema (verificación 2026-10-11)
+  cautela    String   @map("cautela") // cautela central honesta (#147)
+  created_at DateTime @default(now()) @map("created_at")
+  updated_at DateTime @updatedAt @map("updated_at")
+
+  @@index([organismo])
+  @@index([tipo])
+  @@map("fuentes")
+}
+
+/// Procedencia por conjunto (#147, contrato de procedencia): cada ingesta de
+/// datos externos declara fuente del catálogo, capa/servicio, fechas de acceso
+/// y corte, licencia, CRS origen/normalizado, escala/precisión, id externo y
+/// transformaciones. Pipeline recibido → validado_tecnicamente →
+/// validado_territorialmente → publicado; `publicado` solo admin (decisión DH
+/// 2026-10-15 — ingesta curada de datos reales, R15). SIN geometría: la ingesta
+/// acredita procedencia; los datos viven en sus tablas de dominio (criterio
+/// estructural #149). Autor = pseudónimo sha256(usuario_id) — sin PII.
+model ingestas {
+  id               String   @id @default(cuid())
+  source_id        String   @map("source_id") // id del conjunto en la fuente
+  fuente_key       String   @map("fuente_key") // → fuentes.key (validado en la ruta)
+  nodo_key         String   @map("nodo_key")
+  capa_servicio    String   @map("capa_servicio") // capa WMS/WFS o dataset descargado
+  fecha_acceso     String   @map("fecha_acceso") // YYYY-MM-DD
+  fecha_corte      String   @map("fecha_corte") // YYYY-MM-DD o YYYY (año suelto)
+  licencia         String?  @map("licencia")
+  crs_origen       String   @map("crs_origen")
+  crs_normalizado  String   @map("crs_normalizado")
+  escala_precision String   @map("escala_precision")
+  external_id      String?  @map("external_id") // id externo original del conjunto
+  transformaciones String?  @map("transformaciones")
+  estado           String   @default("recibido") @map("estado") // IngestaEstadoSchema
+  created_by_hash  String   @map("created_by_hash") // pseudónimo — sin PII
+  hash            String   @unique @map("hash") // idempotencia del alta
+  created_at       DateTime @default(now()) @map("created_at")
+  updated_at       DateTime @updatedAt @map("updated_at")
+
+  @@unique([fuente_key, source_id])
+  @@index([nodo_key])
+  @@index([estado])
+  @@map("ingestas")
+}

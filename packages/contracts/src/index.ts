@@ -658,3 +658,91 @@ export const ShowcaseResponseSchema = z.object({
   nodos: z.array(ShowcaseNodoResumenSchema),
   guion: ShowcaseGuionSchema,
 });
+
+// ─── NODO-CAU R2 (#138/#147): catálogo de fuentes espaciales + procedencia ───
+
+// Tipo de acceso de la fuente espacial (catálogo #147): cómo se consume.
+export const FuenteEspacialTipoSchema = z.enum(["wms", "wfs", "descarga", "documento", "api"]);
+
+// Estado honesto de disponibilidad, verificado en vivo (trazas #147, 2026-10-11):
+// disponible = verificado y consumible anónimo; requiere_credenciales = WFS/auth;
+// requiere_solicitud = la vía correcta es una solicitud formal; no_disponible =
+// servicio muerto o dataset retirado; deprecado = reemplazado por otra fuente.
+export const FuenteEspacialEstadoSchema = z.enum([
+  "disponible",
+  "requiere_credenciales",
+  "requiere_solicitud",
+  "no_disponible",
+  "deprecado",
+]);
+
+// Ficha del catálogo de fuentes espaciales (#147): cada fuente pública con su
+// cautela central — el catálogo es registro de PROCEDENCIA, no de datos (R15:
+// nunca un feature real sin fuente; la cautela declara los límites de uso).
+export const FuenteEspacialSchema = z.object({
+  key: z.string().trim().regex(/^[a-z0-9_]+$/, "key: slug en minúsculas y guiones bajos").max(60),
+  organismo: z.string().trim().min(3, "organismo requerido").max(120),
+  nombre: z.string().trim().min(3, "nombre requerido").max(160),
+  url: z.string().trim().url("URL inválida").max(500).optional(),
+  tipo: FuenteEspacialTipoSchema,
+  licencia: z.string().trim().max(120).optional(),
+  estado: FuenteEspacialEstadoSchema,
+  cautela: z.string().trim().min(3, "la fuente exige cautela honesta").max(500),
+});
+
+// Pipeline de procedencia por conjunto (#147): recibido → validado_tecnicamente
+// → validado_territorialmente → publicado. `publicado` solo por admin
+// (decisión DH 2026-10-15: ingesta curada de datos reales — R15 estricta).
+export const IngestaEstadoSchema = z.enum([
+  "recibido",
+  "validado_tecnicamente",
+  "validado_territorialmente",
+  "publicado",
+]);
+
+// Alta de una ingesta (contrato de procedencia por conjunto, #147): TODO dato
+// externo entra por aquí declarando fuente del catálogo, capa/servicio, fechas
+// de acceso y corte, licencia, CRS origen/normalizado, escala/precisión, id
+// externo y transformaciones — el contrato rechaza la ingesta incompleta
+// (NC-EV-09: sin fuente/fecha de corte/precisión no hay ingesta).
+export const IngestaAltaSchema = z.object({
+  source_id: z.string().trim().min(3, "source_id requerido").max(80),
+  fuente_key: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9_]+$/, "fuente_key: slug del catálogo de fuentes")
+    .max(60),
+  nodo_key: SanJuanNodeSlugSchema,
+  capa_servicio: z.string().trim().min(3, "capa/servicio requerido (WMS/WFS/descarga)").max(120),
+  fecha_acceso: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, "fecha_acceso: YYYY-MM-DD"),
+  fecha_corte: z.string().trim().regex(/^\d{4}(-\d{2}-\d{2})?$/, "fecha_corte: YYYY-MM-DD o YYYY"),
+  licencia: z.string().trim().max(80).optional(),
+  crs_origen: z.string().trim().min(4, "crs_origen requerido (p. ej. EPSG:4326)").max(40),
+  crs_normalizado: z.string().trim().min(4, "crs_normalizado requerido (SRID=4326)").max(40),
+  escala_precision: z.string().trim().min(3, "escala/precisión requerida (NC-EV-09)").max(120),
+  external_id: z.string().trim().max(80).optional(),
+  transformaciones: z.string().trim().max(1000).optional(),
+});
+
+// Avance del pipeline por admin (decisión DH 2026-10-15): solo hacia adelante en
+// la cadena; el motivo pasa el anti-PII de la API (sin eco del valor).
+export const IngestaEstadoCambioSchema = z.object({
+  estado: IngestaEstadoSchema,
+  motivo: z.string().trim().max(500).optional(),
+});
+
+// ADR-035 regla 1 (EV-NC-03): todo feature con is_synthetic = false declara fuente
+// pública nombrada y verificable en fuente_label con el formato de atribución
+// `Organismo · referencia` — `Ilustrativa · …` queda reservado a los datos
+// sintéticos del demo. Este refine es la compuerta ejecutable del contrato.
+export const FuenteLabelRealSchema = z
+  .string()
+  .trim()
+  .min(3, "fuente_label requerido")
+  .max(160)
+  .refine((label) => !label.startsWith("Ilustrativa"), {
+    message: "un feature real (is_synthetic = false) no puede declarar fuente ilustrativa (ADR-035)",
+  })
+  .refine((label) => label.includes(" · "), {
+    message: "la atribución exige el formato `Organismo · referencia` (ADR-035)",
+  });
