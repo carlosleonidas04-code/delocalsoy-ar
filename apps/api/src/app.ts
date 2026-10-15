@@ -12,6 +12,7 @@ import nodosRouter from './routes/nodos.js';
 import oportunidadesRouter from './routes/oportunidades.js';
 import patrimonioRouter from './routes/patrimonio.js';
 import productosRouter from './routes/productos.js';
+import reportesRouter from './routes/reportes.js';
 import showcaseRouter from './routes/showcase.js';
 import territoriosRouter from './routes/territorios.js';
 
@@ -88,6 +89,16 @@ export function createApp(): Express {
   // (R15); sellos ingesta.creada e ingesta.estado_cambiado en events_raw con
   // rollback si fallan.
   app.use('/api', fuentesRouter);
+
+  // Dominio: reportes ciudadanos (CORE-005 R2, #206 — épica CORE-005):
+  // alta ciudadana autenticada de reportes territoriales — POST /api/reportes
+  // crea el reporte en estado 'received' (ReporteEstadoSchema R1) con
+  // created_by_hash = sha256(usuario_id) truncado sin PII (Ley 25.326,
+  // ADR-027), categoría validada contra el vocabulario real del nodo
+  // (404 nodo inexistente, 400 categoría ajena), anti-PII antes de
+  // persistir (ADR-020 cond. 1), idempotencia por hash único y sello
+  // reporte.recibido en events_raw con rollback si el sello falla.
+  app.use('/api/reportes', reportesRouter);
 
   // Demo final (NODO-VIG VIG-007, NVIG-R9 #193 — épica #167): recorrido
   // federado del showcase — lectura pública del estado REAL de los tres

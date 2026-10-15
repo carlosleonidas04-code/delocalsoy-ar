@@ -2,6 +2,8 @@
 // Convenciones: ids `cuid`, columnas mapeadas a snake_case con @map(),
 // `events_raw` con hash único para idempotencia.
 //
+// CORE-005 R2 (#206): autoría pseudonimizada del reporte ciudadano —
+// created_by_hash = sha256(usuario_id) truncado (Ley 25.326, ADR-027).
 // EXTENSIÓN CORE-002 (vocabulario del demo territorial federado v5.1):
 // - nodos, capas por nodo, categorías de reporte, features sintéticos
 // - reportes con flujo received → evaluating → in_progress → resolved
@@ -148,10 +150,11 @@ model reportes {
   nodo_id      String   @map("nodo_id")
   categoria    String   @map("categoria") // code de categorias
   descripcion  String?  @map("descripcion")
-  estado       String   @default("received") @map("estado") // received | evaluating | in_progress | resolved
+  estado       String   @default("received") @map("estado") // ReporteEstadoSchema (CORE-005 R1, #206): received | evaluating | in_progress | resolved | descartado
   lat          Float    @map("lat")
   lng          Float    @map("lng")
   is_synthetic Boolean  @default(true) @map("is_synthetic")
+  created_by_hash String?  @map("created_by_hash") // CORE-005 R2 (#206): sha256(usuario_id) truncado — Ley 25.326, ADR-027
   hash         String   @unique @map("hash") // idempotencia del reporte
   created_at   DateTime @default(now()) @map("created_at")
   updated_at   DateTime @updatedAt @map("updated_at")
