@@ -11,6 +11,12 @@
  */
 
 import { ApiDataSource, type ApiDataSourceOptions } from './ApiDataSource';
+import type {
+  CapaInformativa,
+  FeatureInformativa,
+  FuenteInformativa,
+  IngestaPublicada,
+} from './servicioInformativo';
 
 export type SanJuanFocalNodeKey = 'capital' | 'caucete' | 'iglesia';
 export type Core004Role = 'ciudadano' | 'moderador' | 'admin';
@@ -298,6 +304,11 @@ export interface DataSource<TContext = unknown> {
   emitEvent(input: EventInput): Promise<EventResult>;
   listActivos?(input?: ActivosQuery): Promise<ActivoItem[]>;
   createActivo?(input: ActivoCreatePayload): Promise<ActivoItem>;
+  // NC-R5 (#142, NODO-CAU): servicio informativo — acople por contrato (ADR-029).
+  listFuentes?(): Promise<FuenteInformativa[]>;
+  listIngestas?(nodoKey: SanJuanFocalNodeKey): Promise<IngestaPublicada[]>;
+  listNodeCapas?(nodoKey: SanJuanFocalNodeKey): Promise<CapaInformativa[]>;
+  listNodeFeatures?(nodoKey: SanJuanFocalNodeKey): Promise<FeatureInformativa[]>;
 }
 
 export { ApiDataSource, type ApiDataSourceOptions };
@@ -702,6 +713,120 @@ export class SyntheticDataSource implements DataSource {
 
     this.syntheticActivos.unshift(created);
     return created;
+  }
+
+  // ─── NC-R5 (#142): servicio informativo sintético en paridad (VITE_MOCK_API=1).
+  // R15: declara SIEMPRE origen sintético — jamás se mezcla con datos reales,
+  // y ningún organismo demo nombra una organización real. ───
+
+  private readonly syntheticFuentes: FuenteInformativa[] = [
+    {
+      id: 'syn-fte-cau-01',
+      key: 'syn_wms_demo',
+      organismo: '[SINTÉTICO] Organismo cartográfico demo',
+      nombre: '[SINTÉTICO] Cobertura vectorial demo',
+      url: null,
+      tipo: 'wms',
+      licencia: null,
+      estado: 'requiere_credenciales',
+      cautela: 'Fuente demo sintética — no existe; en la vida real requiere credenciales.',
+      is_synthetic: true,
+    },
+    {
+      id: 'syn-fte-cau-02',
+      key: 'syn_descarga_demo',
+      organismo: '[SINTÉTICO] Organismo estadístico demo',
+      nombre: '[SINTÉTICO] Localidades censales demo',
+      url: null,
+      tipo: 'descarga',
+      licencia: 'Datos abiertos (demo)',
+      estado: 'disponible',
+      cautela: 'Fuente demo sintética — corte ficticio para paridad de la UI.',
+      is_synthetic: true,
+    },
+    {
+      id: 'syn-fte-cau-03',
+      key: 'syn_documento_demo',
+      organismo: '[SINTÉTICO] Organismo hidráulico demo',
+      nombre: '[SINTÉTICO] Inventario de canales demo',
+      url: null,
+      tipo: 'documento',
+      licencia: null,
+      estado: 'requiere_solicitud',
+      cautela: 'Fuente demo sintética — requiere solicitud formal en la vida real.',
+      is_synthetic: true,
+    },
+  ];
+
+  private readonly syntheticIngestasPublicadas: IngestaPublicada[] = [
+    {
+      id: 'syn-ing-cau-01',
+      fuente_key: 'syn_wms_demo',
+      nodo_key: 'caucete',
+      capa_servicio: 'hydrology',
+      fecha_acceso: '2026-10-08',
+      fecha_corte: '2026-10-01',
+      licencia: null,
+      crs_origen: 'EPSG:4326',
+      crs_normalizado: 'EPSG:4326',
+      escala_precision: '1:25000 (demo sintética)',
+      estado: 'publicado',
+      is_synthetic: true,
+    },
+    {
+      id: 'syn-ing-cau-02',
+      fuente_key: 'syn_documento_demo',
+      nodo_key: 'caucete',
+      capa_servicio: 'sustainability',
+      fecha_acceso: '2026-10-08',
+      fecha_corte: '2026-10-01',
+      licencia: null,
+      crs_origen: 'EPSG:4326',
+      crs_normalizado: 'EPSG:4326',
+      escala_precision: null,
+      estado: 'publicado',
+      is_synthetic: true,
+    },
+  ];
+
+  private readonly syntheticCapasCaucete: CapaInformativa[] = [
+    { id: 'syn-capa-cau-01', key: 'health_facilities', nombre: 'Salud', dominio: 'health', geometria: 'Point', default_on: true },
+    { id: 'syn-capa-cau-02', key: 'education', nombre: 'Educación', dominio: 'community', geometria: 'Point', default_on: true },
+    { id: 'syn-capa-cau-03', key: 'community_spaces', nombre: 'Espacios y recursos comunitarios', dominio: 'community', geometria: 'Point', default_on: true },
+    { id: 'syn-capa-cau-04', key: 'resilience_points', nombre: 'Puntos de resiliencia', dominio: 'health', geometria: 'Point', default_on: false },
+    { id: 'syn-capa-cau-05', key: 'community_resources', nombre: 'Agua y recursos básicos', dominio: 'community', geometria: 'Point', default_on: false },
+    { id: 'syn-capa-cau-06', key: 'hydrology', nombre: 'Hidrología: canales, acequias y drenaje', dominio: 'assets', geometria: 'LineString', default_on: true },
+    { id: 'syn-capa-cau-07', key: 'seismic_risk', nombre: 'Riesgo sísmico y puntos de encuentro', dominio: 'health', geometria: 'Point', default_on: true },
+    { id: 'syn-capa-cau-08', key: 'public_space', nombre: 'Espacio público y mejora del común', dominio: 'public_space', geometria: 'Point', default_on: true },
+    { id: 'syn-capa-cau-09', key: 'accessibility', nombre: 'Accesibilidad: veredas, rampas y transporte', dominio: 'problems', geometria: 'Point', default_on: false },
+    { id: 'syn-capa-cau-10', key: 'sustainability', nombre: 'Sustentabilidad: agua, arbolado, energía y residuos', dominio: 'community', geometria: 'Point', default_on: false },
+  ];
+
+  private readonly syntheticFeaturesCaucete: FeatureInformativa[] = [
+    { id: 'syn-feat-cau-201', layer: 'hydrology', domain: 'assets', titulo: '[SINTÉTICO] Acequia obstruida — tramo crítico (demo)', tipo: 'problem', estado: 'community_validated', fuente_label: 'Ilustrativa · relevamiento comunitario', observado_at: '2026-10-05T12:00:00Z', lat: -31.383, lng: -68.291, is_synthetic: true },
+    { id: 'syn-feat-cau-202', layer: 'hydrology', domain: 'assets', titulo: '[SINTÉTICO] Desagüe insuficiente — punto de riesgo hídrico (demo)', tipo: 'problem', estado: 'pending', fuente_label: 'Ilustrativa · reporte vecinal', observado_at: '2026-10-06T12:00:00Z', lat: -31.371, lng: -68.274, is_synthetic: true },
+    { id: 'syn-feat-cau-203', layer: 'seismic_risk', domain: 'health', titulo: '[SINTÉTICO] Punto de encuentro comunitario señalado (demo)', tipo: 'asset', estado: 'verified', fuente_label: 'Ilustrativa · inventario institucional', observado_at: '2026-10-04T12:00:00Z', lat: -31.386, lng: -68.279, is_synthetic: true },
+    { id: 'syn-feat-cau-204', layer: 'public_space', domain: 'public_space', titulo: '[SINTÉTICO] Plaza con mobiliario a mejorar (demo)', tipo: 'problem', estado: 'community_validated', fuente_label: 'Ilustrativa · relevamiento comunitario', observado_at: '2026-10-05T12:00:00Z', lat: -31.379, lng: -68.283, is_synthetic: true },
+    { id: 'syn-feat-cau-205', layer: 'sustainability', domain: 'community', titulo: '[SINTÉTICO] Arbolado faltante en corredor cívico (demo)', tipo: 'problem', estado: 'pending', fuente_label: 'Ilustrativa · reporte vecinal', observado_at: '2026-10-06T12:00:00Z', lat: -31.388, lng: -68.276, is_synthetic: true },
+  ];
+
+  public async listFuentes(): Promise<FuenteInformativa[]> {
+    return this.syntheticFuentes.map((f) => ({ ...f }));
+  }
+
+  public async listIngestas(nodoKey: SanJuanFocalNodeKey): Promise<IngestaPublicada[]> {
+    if (nodoKey !== 'caucete') return [];
+    return this.syntheticIngestasPublicadas.map((i) => ({ ...i }));
+  }
+
+  public async listNodeCapas(nodoKey: SanJuanFocalNodeKey): Promise<CapaInformativa[]> {
+    if (nodoKey !== 'caucete') return [];
+    return this.syntheticCapasCaucete.map((c) => ({ ...c }));
+  }
+
+  public async listNodeFeatures(nodoKey: SanJuanFocalNodeKey): Promise<FeatureInformativa[]> {
+    if (nodoKey !== 'caucete') return [];
+    return this.syntheticFeaturesCaucete.map((f) => ({ ...f }));
   }
 }
 
