@@ -19,6 +19,13 @@ Decisiones ratificadas por la DH (2026-10-14, traza #193):
    lo verde se acredita y lo pendiente se declara como pendiente.
 4. **EV-047 ratificada**: CI verde con el E2E del recorrido + merge del PR.
 
+> **Actualización (2026-10-15, activación territorial NCAP-R2 #154, épica
+> #152):** el nodo capital ya expone 2 distritos provisionales (Centro y
+> Desamparados) en `GET /api/nodos/capital/subnodos`; el recorrido sigue
+> derivando sus counts en vivo. Caucete sigue sin subnodos ni snapshots →
+> counts 0 honestos. La decisión 2 se lee con el estado al cierre de
+> VIG-007 (2026-10-14).
+
 ## Superficie federada
 
 `GET /api/showcase` (público anónimo) — contrato `ShowcaseResponseSchema`
@@ -81,7 +88,9 @@ Pasos 1-2, 8-10, 13. Los moderadores acreditan cada transición con sello en
 `events_raw` (rollback si el sello falla — sin escritura sin evento), los KPIs
 del set honesto v1 (9, agregados sin PII, restricted excluido) son re-derivables
 en cualquier momento y la auditoría lee el recorrido federado completo: los
-nodos sin materializar (capital/caucete) aparecen con sus counts 0 honestos.
+nodos sin materializar aparecen con sus counts 0 honestos (caucete; capital
+activó su base territorial después — NCAP-R2 #154: 2 distritos provisionales
+— y el recorrido lo muestra en vivo).
 
 ## Criterios de aceptación (10) y estado real
 

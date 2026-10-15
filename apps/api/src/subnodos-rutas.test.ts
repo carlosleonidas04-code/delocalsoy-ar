@@ -228,8 +228,10 @@ describe.skipIf(!dbUp)('Subnodos territoriales VIG-001 (#171, épica #167)', () 
     expect(badParent.status).toBe(400);
   });
 
-  it('otros nodos sin subnodos sembrados: lectura honesta (200 + count 0), no error', async () => {
-    for (const key of ['capital', 'caucete']) {
+  it('caucete sin subnodos sembrados: lectura honesta (200 + count 0), no error', async () => {
+    // capital tiene su propia semilla desde la activación territorial NCAP-R2
+    // (#154, épica #152): suite subnodos-capital-rutas.test.ts
+    for (const key of ['caucete']) {
       const res = await fetch(base + '/api/nodos/' + key + '/subnodos');
       expect(res.status).toBe(200);
       const body: any = await res.json();
@@ -252,7 +254,11 @@ describe.skipIf(!dbUp)('Subnodos territoriales VIG-001 (#171, épica #167)', () 
   }, 60000);
 
   it('sello subnodo.creado en events_raw: uno por entidad, hash idempotente, sin PII', async () => {
-    const sellos: any[] = await prisma.events_raw.findMany({ where: { type: 'subnodo.creado' } });
+    // NCAP-R2 (#154) sumó 2 sellos del nodo capital (seed-subnodos-capital.sql):
+    // este suite valida SOLO los del valle, por prefijo de hash de la semilla.
+    const sellos: any[] = await prisma.events_raw.findMany({
+      where: { type: 'subnodo.creado', hash: { startsWith: 'seed-subnodo-sj_iglesia_' } },
+    });
     expect(sellos.length).toBe(52);
     const rodeo: any = sellos.find((e: any) => e.hash === 'seed-subnodo-sj_iglesia_rodeo');
     expect(rodeo, 'falta el sello del distrito rodeo').toBeDefined();
