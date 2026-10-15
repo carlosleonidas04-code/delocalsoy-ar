@@ -18,7 +18,6 @@ import {
   normalizarFuentes,
   normalizarIngestas,
   notaIngestas,
-  type CapaInformativa,
   type FeatureInformativa,
 } from './servicioInformativo';
 
