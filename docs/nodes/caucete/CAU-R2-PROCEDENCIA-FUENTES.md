@@ -34,16 +34,16 @@ Estados honestos verificados en vivo 2026-10-11 (trazas en #147): ninguna fuente
 
 ## Pipeline de ingestas (#147)
 
-`recibido → validado_tecnicamente → validado_territorialmente → publicado` — solo hacia adelante, solo admin (decisión DH 2026-10-15). Salto inválido → 400; mismo estado → 409. Cada transición sella `ingenta.estado_cambiado` en `events_raw` con rollback si el sello falla; el alta sella `ingenta.creada`. La lectura pública `GET /api/ingestas` solo expone lo publicado (el pipeline en curso queda para custodia, R15/ADR-036); `?nodo=` filtra por nodo. Anti-PII (ADR-020 cond. 1, Ley 25.326) sobre todo texto de autoría antes de persistir; autor = pseudónimo sha256(usuario_id) truncado; idempotencia por hash único del conjunto.
+`recibido → validado_tecnicamente → validado_territorialmente → publicado` — solo hacia adelante, solo admin (decisión DH 2026-10-15). Salto inválido → 400; mismo estado → 409. Cada transición sella `ingesta.estado_cambiado` en `events_raw` con rollback si el sello falla; el alta sella `ingesta.creada`. La lectura pública `GET /api/ingestas` solo expone lo publicado (el pipeline en curso queda para custodia, R15/ADR-036); `?nodo=` filtra por nodo. Anti-PII (ADR-020 cond. 1, Ley 25.326) sobre todo texto de autoría antes de persistir; autor = pseudónimo sha256(usuario_id) truncado; idempotencia por hash único del conjunto.
 
 ## Rutas
 
 - `GET /api/fuentes` — catálogo público anónimo (15 fuentes con organismo, tipo, estado honesto y cautela).
 - `GET /api/fuentes/:key` — ficha pública de una fuente (404 honesto).
-- `POST /api/ingentas` — alta curada admin (NC-EV-09 + anti-PII + idempotencia + sello `ingenta.creada`).
-- `GET /api/ingentas` — lectura pública de las publicadas (filtro `?nodo=`).
-- `GET /api/ingentas/:id` — ficha pública de una publicada (en curso → 404 sin eco).
-- `PATCH /api/ingentas/:id/estado` — avance del pipeline (admin; matriz de transiciones sellada).
+- `POST /api/ingestas` — alta curada admin (NC-EV-09 + anti-PII + idempotencia + sello `ingesta.creada`).
+- `GET /api/ingestas` — lectura pública de las publicadas (filtro `?nodo=`).
+- `GET /api/ingestas/:id` — ficha pública de una publicada (en curso → 404 sin eco).
+- `PATCH /api/ingestas/:id/estado` — avance del pipeline (admin; matriz de transiciones sellada).
 
 ## Criterio de cierre
 

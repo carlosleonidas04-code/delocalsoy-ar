@@ -30,7 +30,7 @@ import { requireJwt, requireRole } from '../lib/auth.js';
  * validado_tecnicamente → validado_territorialmente → publicado (solo hacia
  * adelante; salto inválido → 400; sin transición → 409).
  *
- * GET /api/ingentas — lectura pública: SOLO las ingestas publicadas; el
+ * GET /api/ingestas — lectura pública: SOLO las ingestas publicadas; el
  * pipeline en curso queda para custodia (R15/ADR-036).
  *
  * Sellos en events_raw con rollback (R4/R15): ingesta.creada e
@@ -221,11 +221,11 @@ router.post('/ingestas', requireJwt, requireRole('admin'), async (req: Request, 
       },
     });
 
-    // Sello del sistema: 'ingenta.creada' sin PII — el payload lleva claves
+    // Sello del sistema: 'ingesta.creada' sin PII — el payload lleva claves
     // de procedencia y estado; el detalle vive solo en la tabla ingestas.
     try {
-      await sellarEvento('ingenta.creada', {
-        ingenta_id: ingesta.id,
+      await sellarEvento('ingesta.creada', {
+        ingesta_id: ingesta.id,
         source_id: ingesta.source_id,
         fuente_key: ingesta.fuente_key,
         nodo_key: ingesta.nodo_key,
@@ -234,7 +234,7 @@ router.post('/ingestas', requireJwt, requireRole('admin'), async (req: Request, 
       });
     } catch (err) {
       // Rollback (R4/R15): sin evento no hay escritura acreditada.
-      await prisma.ingentas.delete({ where: { id: ingesta.id } }).catch(() => undefined);
+      await prisma.ingestas.delete({ where: { id: ingesta.id } }).catch(() => undefined);
       console.error('[fuentes] sellar ingesta:', err instanceof Error ? err.message : String(err));
       res.status(500).json({ success: false, error: 'fallo al sellar la ingesta' });
       return;
@@ -245,7 +245,7 @@ router.post('/ingestas', requireJwt, requireRole('admin'), async (req: Request, 
     // Carrera de idempotencia (P2002 en hash o en fuente_key+source_id).
     const code = (err as { code?: string } | null)?.code;
     if (code === 'P2002') {
-      const existente = await prisma.ingentas.findUnique({ where: { hash } });
+      const existente = await prisma.ingestas.findUnique({ where: { hash } });
       if (existente) {
         res.status(200).json({ success: true, data: existente, idempotente: true });
         return;
@@ -274,7 +274,7 @@ router.get('/ingestas', async (req: Request, res: Response) => {
       nodo = parsedNodo.data;
     }
 
-    const ingestas = (await prisma.ingentas.findMany({
+    const ingestas = (await prisma.ingestas.findMany({
       where: { estado: 'publicado', ...(nodo !== undefined ? { nodo_key: nodo } : {}) },
       orderBy: { created_at: 'desc' },
       take: 100,
@@ -290,7 +290,7 @@ router.get('/ingestas', async (req: Request, res: Response) => {
 // pipeline en curso no se publica (404 sin eco, honesto — R15).
 router.get('/ingestas/:id', async (req: Request, res: Response) => {
   try {
-    const ingesta = (await prisma.ingentas.findUnique({
+    const ingesta = (await prisma.ingestas.findUnique({
       where: { id: req.params.id },
     })) as IngestaRow | null;
     if (!ingesta || ingesta.estado !== 'publicado') {
@@ -304,11 +304,11 @@ router.get('/ingestas/:id', async (req: Request, res: Response) => {
   }
 });
 
-// PATCH /api/ingentas/:id/estado — avance del pipeline (solo admin, decisión
+// PATCH /api/ingestas/:id/estado — avance del pipeline (solo admin, decisión
 // DH 2026-10-15): recibido → validado_tecnicamente → validado_territorialmente
 // → publicado. Salto inválido → 400; sin transición → 409; sello
-// ingenta.estado_cambiado en events_raw con rollback si falla.
-router.patch('/ingentas/:id/estado', requireJwt, requireRole('admin'), async (req: Request, res: Response) => {
+// ingesta.estado_cambiado en events_raw con rollback si falla.
+router.patch('/ingestas/:id/estado', requireJwt, requireRole('admin'), async (req: Request, res: Response) => {
   const id = req.params.id;
 
   let parsed: z.infer<typeof IngestaEstadoCambioSchema>;
@@ -334,9 +334,9 @@ router.patch('/ingentas/:id/estado', requireJwt, requireRole('admin'), async (re
   }
 
   try {
-    const existente = (await prisma.ingentas.findUnique({ where: { id } })) as IngestaRow | null;
+    const existente = (await prisma.ingestas.findUnique({ where: { id } })) as IngestaRow | null;
     if (!existente) {
-      res.status(404).json({ success: false, error: 'ingenta no encontrada' });
+      res.status(404).json({ success: false, error: 'ingesta no encontrada' });
       return;
     }
     if (existente.estado === parsed.estado) {
@@ -351,15 +351,15 @@ router.patch('/ingentas/:id/estado', requireJwt, requireRole('admin'), async (re
       return;
     }
 
-    const actualizada = await prisma.ingentas.update({
+    const actualizada = await prisma.ingestas.update({
       where: { id },
       data: { estado: parsed.estado },
     });
 
     const adminHash = seudonimo((res.locals.usuario as { id: string }).id);
     try {
-      await sellarEvento('ingenta.estado_cambiado', {
-        ingenta_id: id,
+      await sellarEvento('ingesta.estado_cambiado', {
+        ingesta_id: id,
         estado_anterior: existente.estado,
         estado: parsed.estado,
         motivo: parsed.motivo ?? null,
@@ -367,7 +367,7 @@ router.patch('/ingentas/:id/estado', requireJwt, requireRole('admin'), async (re
       });
     } catch (err) {
       // Rollback (R4/R15): sin sello no hay transición acreditada.
-      await prisma.ingentas.update({ where: { id }, data: { estado: existente.estado } }).catch(() => undefined);
+      await prisma.ingestas.update({ where: { id }, data: { estado: existente.estado } }).catch(() => undefined);
       console.error('[fuentes] sellar cambio de estado:', err instanceof Error ? err.message : String(err));
       res.status(500).json({ success: false, error: 'fallo al sellar el cambio de estado' });
       return;

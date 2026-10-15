@@ -82,10 +82,10 @@ export function createApp(): Express {
   // cautela central); POST /api/ingestas — ingesta curada por admin que
   // declara procedencia completa por conjunto (fuente del catálogo, fechas
   // de acceso/corte, licencia, CRS, precisión, transformaciones — NC-EV-09);
-  // PATCH /api/ingentas/:id/estado — pipeline recibido → validado_tecnicamente
+  // PATCH /api/ingestas/:id/estado — pipeline recibido → validado_tecnicamente
   // → validado_territorialmente → publicado (solo admin, decisión DH
-  // 2026-10-15); GET /api/ingentas — lectura pública SOLO de lo publicado
-  // (R15); sellos ingenta.creada e ingenta.estado_cambiado en events_raw con
+  // 2026-10-15); GET /api/ingestas — lectura pública SOLO de lo publicado
+  // (R15); sellos ingesta.creada e ingesta.estado_cambiado en events_raw con
   // rollback si fallan.
   app.use('/api', fuentesRouter);
 

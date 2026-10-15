@@ -10,8 +10,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 // - POST /api/ingestas: alta curada por admin (decisión DH 2026-10-15);
 //   NC-EV-09: la ingesta sin fecha de corte/precisión/CRS se rechaza;
 //   anti-PII antes de persistir; solo cita fuentes del catálogo (404);
-//   pseudónimo sha256 sin PII; sello ingenta.creada; idempotencia por hash
-// - PATCH /api/ingentas/:id/estado: pipeline recibido →
+//   pseudónimo sha256 sin PII; sello ingesta.creada; idempotencia por hash
+// - PATCH /api/ingestas/:id/estado: pipeline recibido →
 //   validado_tecnicamente → validado_territorialmente → publicado
 //   (salto inválido 400, mismo estado 409, moderador 403, solo admin)
 // - GET /api/ingestas: lectura pública SOLO de lo publicado (R15);
@@ -84,7 +84,7 @@ describe.skipIf(!dbUp)('fuentes espaciales + procedencia (NODO-CAU R2 — regist
   };
 
   let tokenAdmin = '';
-  let ingentaId = '';
+  let ingestaId = '';
 
   async function registrarYLoguear(email: string): Promise<string> {
     const reg = await fetch(base + '/api/auth/register', {
@@ -152,8 +152,8 @@ describe.skipIf(!dbUp)('fuentes espaciales + procedencia (NODO-CAU R2 — regist
     expect(por('ign').estado).toBe('disponible');
   });
 
-  it('POST /api/ingentas sin sesión 401 y ciudadano 403 (curaduría admin)', async () => {
-    const anon = await fetch(base + '/api/ingentas', {
+  it('POST /api/ingestas sin sesión 401 y ciudadano 403 (curaduría admin)', async () => {
+    const anon = await fetch(base + '/api/ingestas', {
       method: 'POST',
       headers: jsonHeaders,
       body: JSON.stringify(payloadIngesta),
@@ -162,7 +162,7 @@ describe.skipIf(!dbUp)('fuentes espaciales + procedencia (NODO-CAU R2 — regist
     await anon.arrayBuffer();
 
     const tokenCiudadano = await registrarYLoguear('nc-r2-' + ts + '-ciu@example.test');
-    const ciudadano = await fetch(base + '/api/ingentas', {
+    const ciudadano = await fetch(base + '/api/ingestas', {
       method: 'POST',
       headers: { ...jsonHeaders, authorization: 'Bearer ' + tokenCiudadano },
       body: JSON.stringify(payloadIngesta),
@@ -175,7 +175,7 @@ describe.skipIf(!dbUp)('fuentes espaciales + procedencia (NODO-CAU R2 — regist
     tokenAdmin = await rolYLoguear('nc-r2-' + ts + '-adm@example.test', 'admin');
     const authHeaders = { ...jsonHeaders, authorization: 'Bearer ' + tokenAdmin };
 
-    const sinCorte = await fetch(base + '/api/ingentas', {
+    const sinCorte = await fetch(base + '/api/ingestas', {
       method: 'POST',
       headers: authHeaders,
       body: JSON.stringify({ ...payloadIngesta, fecha_corte: undefined }),
@@ -183,7 +183,7 @@ describe.skipIf(!dbUp)('fuentes espaciales + procedencia (NODO-CAU R2 — regist
     expect(sinCorte.status).toBe(400);
     await sinCorte.arrayBuffer();
 
-    const sinPrecision = await fetch(base + '/api/ingentas', {
+    const sinPrecision = await fetch(base + '/api/ingestas', {
       method: 'POST',
       headers: authHeaders,
       body: JSON.stringify({ ...payloadIngesta, escala_precision: undefined }),
@@ -191,7 +191,7 @@ describe.skipIf(!dbUp)('fuentes espaciales + procedencia (NODO-CAU R2 — regist
     expect(sinPrecision.status).toBe(400);
     await sinPrecision.arrayBuffer();
 
-    const sinCrs = await fetch(base + '/api/ingentas', {
+    const sinCrs = await fetch(base + '/api/ingestas', {
       method: 'POST',
       headers: authHeaders,
       body: JSON.stringify({ ...payloadIngesta, crs_origen: undefined }),
@@ -201,7 +201,7 @@ describe.skipIf(!dbUp)('fuentes espaciales + procedencia (NODO-CAU R2 — regist
   });
 
   it('la ingesta solo cita fuentes del catálogo: clave inventada 404', async () => {
-    const res = await fetch(base + '/api/ingentas', {
+    const res = await fetch(base + '/api/ingestas', {
       method: 'POST',
       headers: { ...jsonHeaders, authorization: 'Bearer ' + tokenAdmin },
       body: JSON.stringify({ ...payloadIngesta, fuente_key: 'fuente-inventada' }),
@@ -210,26 +210,26 @@ describe.skipIf(!dbUp)('fuentes espaciales + procedencia (NODO-CAU R2 — regist
     await res.arrayBuffer();
   });
 
-  it('ingesta válida: 201 recibido, pseudónimo sin PII, sello ingenta.creada e idempotencia', async () => {
-    const antes = await prisma.ingentas.count();
+  it('ingesta válida: 201 recibido, pseudónimo sin PII, sello ingesta.creada e idempotencia', async () => {
+    const antes = await prisma.ingestas.count();
 
-    const res = await fetch(base + '/api/ingentas', {
+    const res = await fetch(base + '/api/ingestas', {
       method: 'POST',
       headers: { ...jsonHeaders, authorization: 'Bearer ' + tokenAdmin },
       body: JSON.stringify(payloadIngesta),
     });
     expect(res.status).toBe(201);
     const body: any = await res.json();
-    const ingenta = body.data;
-    ingentaId = ingenta.id;
-    expect(ingenta.estado).toBe('recibido');
-    expect(ingenta.fecha_corte).toBe('2026');
-    expect(ingenta.fuente_key).toBe('refes');
-    expect(ingenta.created_by_hash).toMatch(/^[0-9a-f]{32}$/);
+    const ingesta = body.data;
+    ingestaId = ingesta.id;
+    expect(ingesta.estado).toBe('recibido');
+    expect(ingesta.fecha_corte).toBe('2026');
+    expect(ingesta.fuente_key).toBe('refes');
+    expect(ingesta.created_by_hash).toMatch(/^[0-9a-f]{32}$/);
 
-    // Sello en la fuente de verdad: ingenta.creada con el id, sin PII.
+    // Sello en la fuente de verdad: ingesta.creada con el id, sin PII.
     const sello = await prisma.events_raw.findFirst({
-      where: { type: 'ingenta.creada', payload: { path: ['ingenta_id'], equals: ingenta.id } },
+      where: { type: 'ingesta.creada', payload: { path: ['ingesta_id'], equals: ingesta.id } },
     });
     expect(sello).not.toBeNull();
     const selloTexto = JSON.stringify(sello?.payload);
@@ -237,7 +237,7 @@ describe.skipIf(!dbUp)('fuentes espaciales + procedencia (NODO-CAU R2 — regist
     expect(selloTexto).not.toContain('example.test');
 
     // Idempotencia: el mismo conjunto no duplica la ingesta.
-    const repetido = await fetch(base + '/api/ingentas', {
+    const repetido = await fetch(base + '/api/ingestas', {
       method: 'POST',
       headers: { ...jsonHeaders, authorization: 'Bearer ' + tokenAdmin },
       body: JSON.stringify(payloadIngesta),
@@ -245,16 +245,16 @@ describe.skipIf(!dbUp)('fuentes espaciales + procedencia (NODO-CAU R2 — regist
     expect(repetido.status).toBe(200);
     const bodyRepetido: any = await repetido.json();
     expect(bodyRepetido.idempotente).toBe(true);
-    expect(bodyRepetido.data.id).toBe(ingentaId);
+    expect(bodyRepetido.data.id).toBe(ingestaId);
 
-    expect(await prisma.ingentas.count()).toBe(antes + 1);
+    expect(await prisma.ingestas.count()).toBe(antes + 1);
   });
 
   it('pipeline de procedencia: salto 400, moderador 403, admin paso a paso, repetido 409', async () => {
     const authHeaders = { ...jsonHeaders, authorization: 'Bearer ' + tokenAdmin };
 
     // Salto directo: recibido → publicado no existe (solo hacia adelante).
-    const salto = await fetch(base + '/api/ingentas/' + ingentaId + '/estado', {
+    const salto = await fetch(base + '/api/ingestas/' + ingestaId + '/estado', {
       method: 'PATCH',
       headers: authHeaders,
       body: JSON.stringify({ estado: 'publicado' }),
@@ -264,7 +264,7 @@ describe.skipIf(!dbUp)('fuentes espaciales + procedencia (NODO-CAU R2 — regist
 
     // Solo admin mueve el pipeline (decisión DH 2026-10-15).
     const tokenModerador = await rolYLoguear('nc-r2-' + ts + '-mod@example.test', 'moderador');
-    const intentoModerador = await fetch(base + '/api/ingentas/' + ingentaId + '/estado', {
+    const intentoModerador = await fetch(base + '/api/ingestas/' + ingestaId + '/estado', {
       method: 'PATCH',
       headers: { ...jsonHeaders, authorization: 'Bearer ' + tokenModerador },
       body: JSON.stringify({ estado: 'validado_tecnicamente' }),
@@ -275,7 +275,7 @@ describe.skipIf(!dbUp)('fuentes espaciales + procedencia (NODO-CAU R2 — regist
     // Paso a paso: recibido → validado_tecnicamente → validado_territorialmente → publicado.
     const pasos = ['validado_tecnicamente', 'validado_territorialmente', 'publicado'];
     for (const estado of pasos) {
-      const paso = await fetch(base + '/api/ingentas/' + ingentaId + '/estado', {
+      const paso = await fetch(base + '/api/ingestas/' + ingestaId + '/estado', {
         method: 'PATCH',
         headers: authHeaders,
         body: JSON.stringify({ estado }),
@@ -288,9 +288,9 @@ describe.skipIf(!dbUp)('fuentes espaciales + procedencia (NODO-CAU R2 — regist
     // Sello de la publicación en la fuente de verdad.
     const sello = await prisma.events_raw.findFirst({
       where: {
-        type: 'ingenta.estado_cambiado',
+        type: 'ingesta.estado_cambiado',
         AND: [
-          { payload: { path: ['ingenta_id'], equals: ingentaId } },
+          { payload: { path: ['ingesta_id'], equals: ingestaId } },
           { payload: { path: ['estado'], equals: 'publicado' } },
         ],
       },
@@ -300,7 +300,7 @@ describe.skipIf(!dbUp)('fuentes espaciales + procedencia (NODO-CAU R2 — regist
     expect(JSON.stringify(sello?.payload)).not.toContain('@');
 
     // 'publicado' es terminal: repetir el mismo estado → 409.
-    const repetido = await fetch(base + '/api/ingentas/' + ingentaId + '/estado', {
+    const repetido = await fetch(base + '/api/ingestas/' + ingestaId + '/estado', {
       method: 'PATCH',
       headers: authHeaders,
       body: JSON.stringify({ estado: 'publicado' }),
@@ -310,26 +310,26 @@ describe.skipIf(!dbUp)('fuentes espaciales + procedencia (NODO-CAU R2 — regist
   });
 
   it('lectura pública: solo lo publicado, filtrada por nodo, con CRS normalizado', async () => {
-    const cerca = await fetch(base + '/api/ingentas?nodo=caucete');
+    const cerca = await fetch(base + '/api/ingestas?nodo=caucete');
     expect(cerca.status).toBe(200);
     const bodyCerca: any = await cerca.json();
-    const publicada = bodyCerca.data.find((i: any) => i.id === ingentaId);
+    const publicada = bodyCerca.data.find((i: any) => i.id === ingestaId);
     expect(publicada, 'la ingesta publicada no aparece en caucete').toBeDefined();
     expect(publicada.estado).toBe('publicado');
     expect(publicada.fuente_key).toBe('refes');
 
-    const capital = await fetch(base + '/api/ingentas?nodo=capital');
+    const capital = await fetch(base + '/api/ingestas?nodo=capital');
     expect(capital.status).toBe(200);
     const bodyCapital: any = await capital.json();
-    expect(bodyCapital.data.some((i: any) => i.id === ingentaId)).toBe(false);
+    expect(bodyCapital.data.some((i: any) => i.id === ingestaId)).toBe(false);
 
-    const ficha = await fetch(base + '/api/ingentas/' + ingentaId);
+    const ficha = await fetch(base + '/api/ingestas/' + ingestaId);
     expect(ficha.status).toBe(200);
     const bodyFicha: any = await ficha.json();
     expect(bodyFicha.data.crs_normalizado).toBe('EPSG:4326');
 
     // En curso no se publica: la segunda ingesta queda en custodia (404, R15).
-    const segunda = await fetch(base + '/api/ingentas', {
+    const segunda = await fetch(base + '/api/ingestas', {
       method: 'POST',
       headers: { ...jsonHeaders, authorization: 'Bearer ' + tokenAdmin },
       body: JSON.stringify({
@@ -345,7 +345,7 @@ describe.skipIf(!dbUp)('fuentes espaciales + procedencia (NODO-CAU R2 — regist
     });
     expect(segunda.status).toBe(201);
     const bodySegunda: any = await segunda.json();
-    const noPublicada = await fetch(base + '/api/ingentas/' + bodySegunda.data.id);
+    const noPublicada = await fetch(base + '/api/ingestas/' + bodySegunda.data.id);
     expect(noPublicada.status).toBe(404);
     await noPublicada.arrayBuffer();
   });
