@@ -746,3 +746,93 @@ export const FuenteLabelRealSchema = z
   .refine((label) => label.includes(" · "), {
     message: "la atribución exige el formato `Organismo · referencia` (ADR-035)",
   });
+
+// ─── CORE-005 R1 (#206): reportes ciudadanos — transparencia del ciclo de vida ───
+
+// Ciclo de vida público del reporte ciudadano (patrón FixMyStreet, #87/#206):
+// received → evaluating → in_progress → resolved; descartado es lateral
+// terminal (nunca publicable). ADR-038 (ratificado en #206): CADA transición
+// lleva justificación pública obligatoria — el estado es contrato de
+// transparencia, no un label interno.
+export const ReporteEstadoSchema = z.enum([
+  "received",
+  "evaluating",
+  "in_progress",
+  "resolved",
+  "descartado",
+]);
+
+export type ReporteEstado = z.infer<typeof ReporteEstadoSchema>;
+
+// Filtro de la lectura pública: descartado nunca es filtrable ni publicable
+// (mismo criterio que OportunidadEstadoPublicoFiltroSchema).
+export const ReporteEstadoPublicoFiltroSchema = z.enum([
+  "received",
+  "evaluating",
+  "in_progress",
+  "resolved",
+]);
+
+// Matriz de transiciones (ADR-038): compartida por API y web para que el
+// ciclo acordado no derive entre extremos. resolved y descartado son
+// terminales en v1 (sin reapertura); la validez del salto la decide la ruta
+// contra esta matriz — la moderación no inventa caminos.
+export const REPORTE_TRANSICIONES: Record<ReporteEstado, ReporteEstado[]> = {
+  received: ["evaluating", "descartado"],
+  evaluating: ["in_progress", "descartado"],
+  in_progress: ["resolved", "descartado"],
+  resolved: [],
+  descartado: [],
+};
+
+// Alta ciudadana de un reporte (R2, #206): la categoría es un slug del
+// vocabulario del nodo (tabla categorias — se valida contra el catálogo en
+// la ruta, no aquí); la descripción es OBLIGATORIA porque el reporte ES su
+// descripción, y pasa el anti-PII de la API ANTES de persistir (ADR-020
+// cond. 1, Ley 25.326) — el contrato valida forma; la política de PII es de
+// la API. lat/lng EXIGIDOS en el alta ciudadana: un reporte sin punto
+// propio no es cartografiable (a diferencia de la ingesta curada de
+// activos VIG-002, aquí no existe ficha sin punto).
+export const ReporteAltaSchema = z.object({
+  nodo_key: SanJuanNodeSlugSchema,
+  categoria: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9_]+$/, "categoria: slug del vocabulario del nodo, en minúsculas y guiones bajos")
+    .min(2)
+    .max(60),
+  descripcion: z.string().trim().min(10, "La descripción debe tener al menos 10 caracteres").max(2000),
+  lat: z.number().min(-90, "lat fuera de rango").max(90, "lat fuera de rango"),
+  lng: z.number().min(-180, "lng fuera de rango").max(180, "lng fuera de rango"),
+});
+
+// Cambio de estado por moderación (R3, #206 — ADR-038): la justificación es
+// OBLIGATORIA en cada transición (≥10 caracteres) — la ciudadanía ve POR QUÉ
+// cambió el estado; la justificación pasa el anti-PII de la API ANTES de
+// sellarse (sin eco del valor en el error).
+export const ReporteEstadoCambioSchema = z.object({
+  estado: ReporteEstadoSchema,
+  justificacion: z
+    .string()
+    .trim()
+    .min(10, "ADR-038: la transición exige justificación pública (mínimo 10 caracteres)")
+    .max(500),
+});
+
+// Historial público del reporte (R4, #206): derivado de los sellos
+// reporte.estado_cambiado de events_raw (única fuente de verdad, ADR-032) —
+// nunca de una tabla mutable (ADR-038: el historial es inmutable porque
+// deriva del registro append-only). moderador_hash = pseudónimo sha256
+// truncado, sin PII (Ley 25.326/ADR-027).
+export const ReporteHistorialEntrySchema = z.object({
+  estado_anterior: ReporteEstadoSchema,
+  estado_nuevo: ReporteEstadoSchema,
+  justificacion: z.string(),
+  moderador_hash: z.string(),
+  occurred_at: z.string().datetime(),
+});
+
+export const ReporteHistorialSchema = z.object({
+  reporte_id: z.string(),
+  transiciones: z.array(ReporteHistorialEntrySchema),
+});
