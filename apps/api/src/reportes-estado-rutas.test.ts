@@ -155,21 +155,29 @@ describe.skipIf(!dbUp)('moderación de reportes (CORE-005 R3 — transparencia d
     expect(selloTexto).not.toContain('example.test');
   });
 
-  it('sin justificación (ausente o <10 chars) → 400 con el detalle ADR-038 y sin sello', async () => {
+  it('sin justificación (ausente, vacía o <10 chars) → 400 y sin sello (ADR-038)', async () => {
     const email = 'c005r3-' + ts + '-c@example.test';
     await registrarYLoguear(email);
     const token = await tokenModerador(email);
     const id = await crearReporte(token);
 
+    // Ausente: el contrato la exige → 400 (Zod responde "Required" — el
+    // detalle ADR-038 es del mínimo de la justificación, no del campo faltante).
     const sinJust = await fetch(base + '/api/reportes/' + id + '/estado', {
       method: 'PATCH',
       headers: { ...jsonHeaders, authorization: 'Bearer ' + token },
       body: JSON.stringify({ estado: 'evaluating' }),
     });
     expect(sinJust.status).toBe(400);
-    const texto = JSON.stringify(await sinJust.json());
-    expect(texto).toContain('ADR-038');
+    await sinJust.arrayBuffer();
 
+    // Vacía: el mínimo de 10 caracteres dispara el detalle público ADR-038.
+    const vacia = await transitar(token, id, 'evaluating', '');
+    expect(vacia.status).toBe(400);
+    const textoVacia = JSON.stringify(await vacia.json());
+    expect(textoVacia).toContain('ADR-038');
+
+    // Corta (<10): mismo detalle público del contrato (ADR-038).
     const corta = await transitar(token, id, 'evaluating', 'corta');
     expect(corta.status).toBe(400);
     const textoCorta = JSON.stringify(await corta.json());
