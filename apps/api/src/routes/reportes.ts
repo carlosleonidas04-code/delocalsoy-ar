@@ -254,4 +254,101 @@ router.patch('/:id/estado', requireJwt, requireRole('moderador', 'admin'), async
   }
 });
 
+// GET /mios — suscripción del reportero (R4, #206): los reportes del
+// ciudadano por pseudónimo (created_by_hash — nunca PII, Ley 25.326),
+// con estado y las justificaciones de cada transición (ADR-038). El
+// reportero ve el ciclo completo, incluido el reporte descartado (que
+// nunca es publicable): la transparencia del propio reclamo es suya.
+router.get('/mios', requireJwt, async (req: Request, res: Response) => {
+  const usuario = res.locals.usuario as { id: string };
+  const autor = seudonimo(usuario.id);
+  try {
+    const rows = await prisma.reportes.findMany({
+      where: { created_by_hash: autor },
+      orderBy: { created_at: 'desc' },
+    });
+
+    // Historial derivado de events_raw (única fuente de verdad, ADR-032/
+    // ADR-038): cada reporte lleva sus transiciones selladas con
+    // justificación — nunca una tabla mutable de historial.
+    const nodoIds = [...new Set(rows.map((r) => r.nodo_id))];
+    const nodosRows = await prisma.nodos.findMany({ where: { id: { in: nodoIds } } });
+    const nodoPorId = new Map(nodosRows.map((n) => [n.id, n.key]));
+
+    const data = [];
+    for (const r of rows) {
+      const sellos = await prisma.events_raw.findMany({
+        where: { type: 'reporte.estado_cambiado', payload: { path: ['reporte_id'], equals: r.id } },
+        orderBy: { occurred_at: 'asc' },
+      });
+      data.push({
+        id: r.id,
+        nodo_key: nodoPorId.get(r.nodo_id) ?? null,
+        categoria: r.categoria,
+        descripcion: r.descripcion,
+        estado: r.estado,
+        lat: r.lat,
+        lng: r.lng,
+        created_at: r.created_at,
+        transiciones: sellos.map((s) => {
+          const p = s.payload as Record<string, unknown>;
+          return {
+            estado_anterior: p.estado_anterior,
+            estado_nuevo: p.estado_nuevo,
+            justificacion: p.justificacion,
+            moderador_hash: p.moderador_hash,
+            occurred_at: s.occurred_at.toISOString(),
+          };
+        }),
+      });
+    }
+
+    res.json({ success: true, data, count: data.length });
+  } catch (err) {
+    // AUD-06 (#100): el detalle queda en stdout del servidor, nunca en la respuesta.
+    console.error('[reportes] mios:', err instanceof Error ? err.message : String(err));
+    res.status(500).json({ success: false, error: 'fallo al listar los reportes del ciudadano' });
+  }
+});
+
+// GET /:id/historial — historial público del reporte (R4, #206 — ADR-038):
+// transparencia del ciclo de vida derivada de los sellos reporte.estado_cambiado
+// en events_raw (única fuente de verdad — el historial es inmutable porque el
+// registro es append-only; NUNCA una tabla mutable). 'descartado' nunca es
+// publicable (ReporteEstadoPublicoFiltroSchema): su historial queda para el
+// reportero en /mios. Reporte sin transiciones aún → transiciones vacías,
+// honesto (R15).
+router.get('/:id/historial', async (req: Request, res: Response) => {
+  const reporteId = req.params.id;
+  try {
+    const reporte = await prisma.reportes.findUnique({ where: { id: reporteId } });
+    if (reporte === null || reporte.estado === 'descartado') {
+      res.status(404).json({ success: false, error: 'reporte no encontrado' });
+      return;
+    }
+
+    // 1:1 con los sellos: una transición, un evento (EV-054).
+    const sellos = await prisma.events_raw.findMany({
+      where: { type: 'reporte.estado_cambiado', payload: { path: ['reporte_id'], equals: reporteId } },
+      orderBy: { occurred_at: 'asc' },
+    });
+    const transiciones = sellos.map((s) => {
+      const p = s.payload as Record<string, unknown>;
+      return {
+        estado_anterior: p.estado_anterior,
+        estado_nuevo: p.estado_nuevo,
+        justificacion: p.justificacion,
+        moderador_hash: p.moderador_hash,
+        occurred_at: s.occurred_at.toISOString(),
+      };
+    });
+
+    res.json({ success: true, data: { reporte_id: reporteId, transiciones } });
+  } catch (err) {
+    // AUD-06 (#100): el detalle queda en stdout del servidor, nunca en la respuesta.
+    console.error('[reportes] historial:', err instanceof Error ? err.message : String(err));
+    res.status(500).json({ success: false, error: 'fallo al obtener el historial' });
+  }
+});
+
 export default router;
