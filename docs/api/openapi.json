@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "DELocalSoy.AR Federated API Contract",
-    "version": "7.20.0",
-    "description": "Reconciliado CORE-004 (regla documental, #87): documenta todas las rutas montadas en apps/api/src/app.ts. R1: 11 rutas v7.7.0. R3 (ADR-031): /api/auth/* + system.* reservado (H-01). EV-031/EV-032. R4a (ADR-032): transporte Redis Streams (stream events:raw) — events_raw única fuente de verdad, publish fail-open. R5a (auditoría #99–#102): rate limiting 429 por IP+hash(email) en /api/auth/{register,login} (header Retry-After); 5xx sanitizados sin mensajes internos. R5b (dominio activos, #87): /api/activos — POST ciudadano autenticado con pseudónimo sha256 sin PII (Ley 25.326), GET público anónimo con recorte espacial bbox (PostGIS), PATCH /api/activos/{id}/estado para moderación moderador|admin; sellos activo.propuesto y activo.estado_cambiado en events_raw con rollback si el sello falla. NODO-CAPITAL NCAP-R6 (#158, Bloque 9 — Banco de Potencialidades): /api/oportunidades — registro ciudadano autenticado de capacidades, demandas, vacíos y vínculos del desarrollo local (evidencia obligatoria, actores nombrados con consentimiento confirmado, pseudónimo sha256 sin PII, anti-PII server-side, idempotencia por hash único, contexto territorial nodo+subnodo SIN geometría propia), GET público anónimo con filtros ('discarded' nunca se publica), PATCH /api/oportunidades/{id}/estado moderador|admin con matriz de transiciones del ciclo de vida (400 salto inválido, 409 sin transición); sellos oportunidad.propuesta y oportunidad.estado_cambiado en events_raw con rollback si fallan. NODO-VIG VIG-001 (#167/#171): /api/nodos/{key}/subnodos — jerarquía territorial del Valle de Iglesia (distrito → paraje → subparaje + localidad INDEC; primer lote de 34 entidades ratificado por la DH 2026-10-13), lectura pública con filtros ?type= y ?parent= (none = hijos directos del nodo); lat/lng solo con punto público BAHRA/Georef — null honesto (R15). NODO-VIG VIG-002 (NVIG-R2 #169, épica #167): /api/activos multimodal — tipos local|prestador|experiencia|observacion, contexto subnodo validado contra subnodos, clasificaciones N1→N3 de la taxonomía VIG-000 (filtro ?n1=), procedencia ADR-035, consentimiento granular Ley 25.326, visibilidad ADR-036 (restricted excluido de toda lectura pública — custodia VIG-004) y estado archivado (retira del catálogo vivo); semilla verificada de 6 activos del Valle de Iglesia. NODO-VIG VIG-003 (NVIG-R3 #182, épica #167): /api/nodos/{key}/kpis — KPIs materializados del nodo (kpi_snapshots): set honesto v1 de 9 KPIs agregados sin PII (Ley 25.326) re-computados desde el dominio por el consumidor vig003-kpi del worker (upsert idempotente por nodo_key+kpi_key, nunca incrementos); visibilidad restricted excluida del cálculo (ADR-036); cobertura v1 null honesto (R15); lectura pública anónima, 404 nodo inexistente, count 0 honesto. NODO-VIG VIG-004 (NVIG-R6 #173, épica #167): /api/patrimonio/{activoId} — ficha patrimonial pública (declaratoria, conservación, reglas de acceso con fuente, punto público de acceso, sensible_status honesto) NUNCA el campo `sensible` ni `sensible_nota` (ADR-036); custodia PATCH moderador|admin con transición de visibilidad ADR-036 y sello patrimonio.custodiado en events_raw con rollback; la ficha se publica también para restricted (la declaratoria es registro público) sin el punto propio del activo, NODO-VIG VIG-005 (NVIG-R7 #174, épica #167): /api/activos/{id}/productos — catálogo de productos del activo (tabla productos 1:N, slug único por activo): GET público anónimo y alta ciudadana autenticada que nace 'propuesto' (autor = pseudónimo sha256(usuario_id) sin PII, Ley 25.326; anti-PII server-side antes de persistir, ADR-020; sello producto.propuesto en events_raw con rollback si falla); PATCH /api/productos/{productoId}/estado — moderación moderador|admin (aprobado|rechazado|archivado; sello producto.estado_cambiado en events_raw con rollback si falla); GET /api/operativa/{activoId} — operativa pública del activo (horario, temporada de picos, capacidad honesta R15 — capacity_status unknown: distinguido ≠ habilitado; habilitación con verificación); filtros ?producto= y ?mes= en /api/activos (slug de producto aprobado; mes 1-12 por temporada del activo — operativa o producto aprobado); visibilidad restricted excluida de toda lectura y escritura (ADR-036). NODO-VIG VIG-006 (NVIG-R8 #188, épica #167): /api/nodos/{key}/ask — consulta territorial ética SIN LLM (decisión DH ratificada 2026-10-14): recuperación full-text nativa PostgreSQL en español sobre rag_index (índice de prosa autorizada derivada del dominio: subnodos, activos aprobados no restricted con ficha patrimonial y operativa públicas, KPIs — upsert idempotente por nodo_key+source_type+source_id + delete lógico; NUNCA restricted ni sensible ni PII, ADR-036/Ley 25.326); respuesta Dato–Interpretación–Sugerencia con plantillas autorizadas por dominio (patrimonial|productivo_rural|turistico|territorial — nada generado; sin fragmentos → null honesto R15), confidence derivado de la cobertura de fuentes y human_review pending (revisión humana habilitada); lectura pública anónima con filtros subnodo y n1; 404 nodo inexistente, 500 sanitizado. NODO-VIG VIG-007 (NVIG-R9 #193, épica #167): /api/showcase — recorrido federado de la demo final (Caucete → Capital → Valle de Iglesia): lectura pública anónima del estado REAL de cada nodo (counts derivados de las tablas de dominio con exclusión ADR-036 — las fichas patrimoniales cuentan también para restricted: la declaratoria es registro público, decisión DH VIG-004; un nodo sin snapshots → kpis 0 honesto, R15), guion ejecutable referenciado (docs/nodes/valle-de-iglesia/VIG-007-DEMO-FINAL.md: 13 pasos, 4 escenarios, 10 criterios con estado real); 500 sanitizado (AUD-06 #100)"
+    "version": "7.21.0",
+    "description": "Reconciliado CORE-004 (regla documental, #87): documenta todas las rutas montadas en apps/api/src/app.ts. R1: 11 rutas v7.7.0. R3 (ADR-031): /api/auth/* + system.* reservado (H-01). EV-031/EV-032. R4a (ADR-032): transporte Redis Streams (stream events:raw) — events_raw única fuente de verdad, publish fail-open. R5a (auditoría #99–#102): rate limiting 429 por IP+hash(email) en /api/auth/{register,login} (header Retry-After); 5xx sanitizados sin mensajes internos. R5b (dominio activos, #87): /api/activos — POST ciudadano autenticado con pseudónimo sha256 sin PII (Ley 25.326), GET público anónimo con recorte espacial bbox (PostGIS), PATCH /api/activos/{id}/estado para moderación moderador|admin; sellos activo.propuesto y activo.estado_cambiado en events_raw con rollback si el sello falla. NODO-CAPITAL NCAP-R6 (#158, Bloque 9 — Banco de Potencialidades): /api/oportunidades — registro ciudadano autenticado de capacidades, demandas, vacíos y vínculos del desarrollo local (evidencia obligatoria, actores nombrados con consentimiento confirmado, pseudónimo sha256 sin PII, anti-PII server-side, idempotencia por hash único, contexto territorial nodo+subnodo SIN geometría propia), GET público anónimo con filtros ('discarded' nunca se publica), PATCH /api/oportunidades/{id}/estado moderador|admin con matriz de transiciones del ciclo de vida (400 salto inválido, 409 sin transición); sellos oportunidad.propuesta y oportunidad.estado_cambiado en events_raw con rollback si fallan. NODO-VIG VIG-001 (#167/#171): /api/nodos/{key}/subnodos — jerarquía territorial del Valle de Iglesia (distrito → paraje → subparaje + localidad INDEC; primer lote de 34 entidades ratificado por la DH 2026-10-13), lectura pública con filtros ?type= y ?parent= (none = hijos directos del nodo); lat/lng solo con punto público BAHRA/Georef — null honesto (R15). NODO-VIG VIG-002 (NVIG-R2 #169, épica #167): /api/activos multimodal — tipos local|prestador|experiencia|observacion, contexto subnodo validado contra subnodos, clasificaciones N1→N3 de la taxonomía VIG-000 (filtro ?n1=), procedencia ADR-035, consentimiento granular Ley 25.326, visibilidad ADR-036 (restricted excluido de toda lectura pública — custodia VIG-004) y estado archivado (retira del catálogo vivo); semilla verificada de 6 activos del Valle de Iglesia. NODO-VIG VIG-003 (NVIG-R3 #182, épica #167): /api/nodos/{key}/kpis — KPIs materializados del nodo (kpi_snapshots): set honesto v1 de 9 KPIs agregados sin PII (Ley 25.326) re-computados desde el dominio por el consumidor vig003-kpi del worker (upsert idempotente por nodo_key+kpi_key, nunca incrementos); visibilidad restricted excluida del cálculo (ADR-036); cobertura v1 null honesto (R15); lectura pública anónima, 404 nodo inexistente, count 0 honesto. NODO-VIG VIG-004 (NVIG-R6 #173, épica #167): /api/patrimonio/{activoId} — ficha patrimonial pública (declaratoria, conservación, reglas de acceso con fuente, punto público de acceso, sensible_status honesto) NUNCA el campo `sensible` ni `sensible_nota` (ADR-036); custodia PATCH moderador|admin con transición de visibilidad ADR-036 y sello patrimonio.custodiado en events_raw con rollback; la ficha se publica también para restricted (la declaratoria es registro público) sin el punto propio del activo, NODO-VIG VIG-005 (NVIG-R7 #174, épica #167): /api/activos/{id}/productos — catálogo de productos del activo (tabla productos 1:N, slug único por activo): GET público anónimo y alta ciudadana autenticada que nace 'propuesto' (autor = pseudónimo sha256(usuario_id) sin PII, Ley 25.326; anti-PII server-side antes de persistir, ADR-020; sello producto.propuesto en events_raw con rollback si falla); PATCH /api/productos/{productoId}/estado — moderación moderador|admin (aprobado|rechazado|archivado; sello producto.estado_cambiado en events_raw con rollback si falla); GET /api/operativa/{activoId} — operativa pública del activo (horario, temporada de picos, capacidad honesta R15 — capacity_status unknown: distinguido ≠ habilitado; habilitación con verificación); filtros ?producto= y ?mes= en /api/activos (slug de producto aprobado; mes 1-12 por temporada del activo — operativa o producto aprobado); visibilidad restricted excluida de toda lectura y escritura (ADR-036). NODO-VIG VIG-006 (NVIG-R8 #188, épica #167): /api/nodos/{key}/ask — consulta territorial ética SIN LLM (decisión DH ratificada 2026-10-14): recuperación full-text nativa PostgreSQL en español sobre rag_index (índice de prosa autorizada derivada del dominio: subnodos, activos aprobados no restricted con ficha patrimonial y operativa públicas, KPIs — upsert idempotente por nodo_key+source_type+source_id + delete lógico; NUNCA restricted ni sensible ni PII, ADR-036/Ley 25.326); respuesta Dato–Interpretación–Sugerencia con plantillas autorizadas por dominio (patrimonial|productivo_rural|turistico|territorial — nada generado; sin fragmentos → null honesto R15), confidence derivado de la cobertura de fuentes y human_review pending (revisión humana habilitada); lectura pública anónima con filtros subnodo y n1; 404 nodo inexistente, 500 sanitizado. NODO-VIG VIG-007 (NVIG-R9 #193, épica #167): /api/showcase — recorrido federado de la demo final (Caucete → Capital → Valle de Iglesia): lectura pública anónima del estado REAL de cada nodo (counts derivados de las tablas de dominio con exclusión ADR-036 — las fichas patrimoniales cuentan también para restricted: la declaratoria es registro público, decisión DH VIG-004; un nodo sin snapshots → kpis 0 honesto, R15), guion ejecutable referenciado (docs/nodes/valle-de-iglesia/VIG-007-DEMO-FINAL.md: 13 pasos, 4 escenarios, 10 criterios con estado real); 500 sanitizado (AUD-06 #100). NODO-CAU R2 (#138/#147, ADR-035): /api/fuentes — catálogo público y anónimo de fuentes espaciales de procedencia (15 fuentes seed: organismo, URL estable cuando existe, tipo de acceso, licencia declarada, estado honesto de disponibilidad — verificación 2026-10-11, trazas en #147 — y cautela central; el catálogo es registro de procedencia, no de datos — R15) y /api/fuentes/{key} ficha pública; /api/ingestas — alta curada por admin (decisión DH 2026-10-15) con NC-EV-09: procedencia completa obligatoria (fuente del catálogo, capa/servicio, fecha de acceso y de corte, CRS origen/normalizado, escala/precisión, id externo y transformaciones opcionales; anti-PII server-side antes de persistir, idempotencia por hash único, sello ingenta.creada en events_raw con rollback) + lectura pública SOLO de lo publicado (?nodo= filtro); /api/ingestas/{id} — ficha pública de una ingesta publicada (en curso → 404 sin eco, R15); PATCH /api/ingentas/{id}/estado — pipeline admin solo hacia adelante: recibido → validado_tecnicamente → validado_territorialmente → publicado (salto inválido 400, mismo estado 409, sello ingenta.estado_cambiado en events_raw con rollback); FuenteLabelRealSchema (ADR-035 regla 1): nada real con label ilustrativo o sin Organismo · referencia"
   },
   "paths": {
     "/api/health": {
@@ -733,6 +733,85 @@
         "responses": {
           "200": { "description": "OK — envelope {success, data, count}; data: {recorrido [caucete, capital, iglesia], nodos (subnodos, kpis, activos_aprobados, fichas_patrimoniales, operativas, productos_aprobados, rag_fragmentos, kpis_detalle por nodo), guion {doc, pasos}}" },
           "500": { "description": "Error interno sanitizado (R5a, #100)" }
+        }
+      }
+    },
+    "/api/fuentes": {
+      "get": {
+        "summary": "NODO-CAU R2 (#138/#147, ADR-035): catálogo público y anónimo de fuentes espaciales de procedencia (15 fuentes seed: organismo, URL estable cuando existe, tipo de acceso, licencia declarada, estado honesto de disponibilidad — verificación 2026-10-11, trazas en #147 — y cautela central); el catálogo es registro de procedencia, no de datos (R15)",
+        "responses": {
+          "200": { "description": "OK — envelope {success, data, count}" },
+          "500": { "description": "Error interno sanitizado (R5a, #100)" }
+        }
+      }
+    },
+    "/api/fuentes/{key}": {
+      "get": {
+        "summary": "NODO-CAU R2 (#138/#147): ficha pública de una fuente del catálogo (estado honesto + cautela)",
+        "parameters": [
+          { "name": "key", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "OK — envelope {success, data}" },
+          "404": { "description": "Fuente no encontrada en el catálogo (honesto, R15)" },
+          "500": { "description": "Error interno sanitizado (R5a, #100)" }
+        }
+      }
+    },
+    "/api/ingestas": {
+      "get": {
+        "summary": "NODO-CAU R2 (#138/#147): lectura pública y anónima de ingestas publicadas — el pipeline en curso queda para custodia (R15/ADR-036); ?nodo= filtra por nodo",
+        "parameters": [
+          { "name": "nodo", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "OK — envelope {success, data, count}; solo estado publicado" },
+          "400": { "description": "nodo inválido" },
+          "500": { "description": "Error interno sanitizado (R5a, #100)" }
+        }
+      },
+      "post": {
+        "summary": "NODO-CAU R2 (#138/#147): alta de ingesta curada — requireRole admin (decisión DH 2026-10-15); NC-EV-09: procedencia completa obligatoria (fuente del catálogo, capa/servicio, fecha de acceso y de corte, CRS origen/normalizado, escala/precisión; id externo y transformaciones opcionales); anti-PII server-side antes de persistir (ADR-020); autor = pseudónimo sha256(usuario_id) sin PII (Ley 25.326); idempotencia por hash único; sello ingenta.creada en events_raw con rollback si falla",
+        "responses": {
+          "200": { "description": "Ingesta idéntica ya existente (idempotente: true)" },
+          "201": { "description": "Ingesta creada (estado: recibido) + sello en events_raw" },
+          "400": { "description": "Datos inválidos (contrato Zod, NC-EV-09) o PII detectada — sin eco del valor" },
+          "401": { "description": "Bearer token ausente o inválido" },
+          "403": { "description": "Rol insuficiente (requiere admin)" },
+          "404": { "description": "Fuente no encontrada en el catálogo de procedencia (honesto, R15)" },
+          "500": { "description": "Error interno sanitizado (R5a, #100)" },
+          "503": { "description": "Sin JWT_SECRET (identidad cerrada, fail-closed)" }
+        }
+      }
+    },
+    "/api/ingentas/{id}": {
+      "get": {
+        "summary": "NODO-CAU R2 (#138/#147): ficha pública de una ingesta publicada; el pipeline en curso no se publica (404 sin eco — honesto, R15)",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "OK — envelope {success, data}; procedencia completa (fuente, fechas, CRS, escala/precisión, transformaciones)" },
+          "404": { "description": "Ingesta no encontrada o no publicada (honesto, R15)" },
+          "500": { "description": "Error interno sanitizado (R5a, #100)" }
+        }
+      }
+    },
+    "/api/ingentas/{id}/estado": {
+      "patch": {
+        "summary": "NODO-CAU R2 (#138/#147): avance del pipeline de procedencia — requireRole admin (decisión DH 2026-10-15); solo hacia adelante: recibido → validado_tecnicamente → validado_territorialmente → publicado; salto inválido 400, mismo estado 409; sello ingenta.estado_cambiado en events_raw con rollback si falla",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Estado actualizado + sello en events_raw" },
+          "400": { "description": "Transición inválida, contrato Zod o PII en el motivo — sin eco del valor" },
+          "401": { "description": "Bearer token ausente o inválido" },
+          "403": { "description": "Rol insuficiente (requiere admin)" },
+          "404": { "description": "Ingenta no encontrada (honesto, R15)" },
+          "409": { "description": "La ingesta ya está en ese estado (sin transición no hay evento)" },
+          "500": { "description": "Error interno sanitizado (R5a, #100)" },
+          "503": { "description": "Sin JWT_SECRET (identidad cerrada, fail-closed)" }
         }
       }
     }
