@@ -121,6 +121,9 @@ router.get('/:key/features', async (req: Request, res: Response) => {
 });
 
 // GET /nodos/:key/reportes - reportes del nodo (flujo received → resolved)
+// 'descartado' nunca es publicable (CORE-005 R4, ADR-038): el listado
+// publico del nodo lo excluye; el reportero lo sigue viendo en su
+// suscripcion GET /api/reportes/mios.
 router.get('/:key/reportes', async (req: Request, res: Response) => {
   try {
     const nodo = await nodoPorKey(req.params.key);
@@ -128,7 +131,9 @@ router.get('/:key/reportes', async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, error: 'Nodo no encontrado' });
     }
     const rows = await prisma.reportes.findMany({
-      where: { nodo_id: nodo.id },
+      // 'descartado' nunca es publicable (CORE-005 R4, ADR-038): el listado
+      // publico lo excluye; el reportero lo ve en GET /api/reportes/mios.
+      where: { nodo_id: nodo.id, estado: { not: 'descartado' } },
       orderBy: { created_at: 'desc' },
     });
     res.json({ success: true, data: rows, count: rows.length });

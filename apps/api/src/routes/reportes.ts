@@ -30,6 +30,23 @@ import { requireJwt, requireRole } from '../lib/auth.js';
  */
 const router: Router = Router();
 
+// Filas tipadas de las lecturas: el cliente prisma se exporta `any` (patron
+// mock de pruebas en lib/prisma), asi que la forma de las filas se declara
+// explicita para que los callbacks de map queden contextualmente tipados
+// (mismo patron que fuentes.ts - fix TS7006 del PR #151).
+type ReporteRow = {
+  id: string;
+  nodo_id: string;
+  categoria: string;
+  descripcion: string;
+  estado: string;
+  lat: number | null;
+  lng: number | null;
+  created_at: Date;
+};
+type NodoRow = { id: string; key: string };
+type SelloRow = { payload: unknown; occurred_at: Date };
+
 // Pseudónimo del autor: sha256(usuario_id) truncado — irreversible, sin PII.
 function seudonimo(usuarioId: string): string {
   return createHash('sha256').update(usuarioId).digest('hex').slice(0, 32);
@@ -263,24 +280,24 @@ router.get('/mios', requireJwt, async (req: Request, res: Response) => {
   const usuario = res.locals.usuario as { id: string };
   const autor = seudonimo(usuario.id);
   try {
-    const rows = await prisma.reportes.findMany({
+    const rows = (await prisma.reportes.findMany({
       where: { created_by_hash: autor },
       orderBy: { created_at: 'desc' },
-    });
+    })) as ReporteRow[];
 
     // Historial derivado de events_raw (única fuente de verdad, ADR-032/
     // ADR-038): cada reporte lleva sus transiciones selladas con
     // justificación — nunca una tabla mutable de historial.
     const nodoIds = [...new Set(rows.map((r) => r.nodo_id))];
-    const nodosRows = await prisma.nodos.findMany({ where: { id: { in: nodoIds } } });
+    const nodosRows = (await prisma.nodos.findMany({ where: { id: { in: nodoIds } } })) as NodoRow[];
     const nodoPorId = new Map(nodosRows.map((n) => [n.id, n.key]));
 
     const data = [];
     for (const r of rows) {
-      const sellos = await prisma.events_raw.findMany({
+      const sellos = (await prisma.events_raw.findMany({
         where: { type: 'reporte.estado_cambiado', payload: { path: ['reporte_id'], equals: r.id } },
         orderBy: { occurred_at: 'asc' },
-      });
+      })) as SelloRow[];
       data.push({
         id: r.id,
         nodo_key: nodoPorId.get(r.nodo_id) ?? null,
@@ -328,10 +345,10 @@ router.get('/:id/historial', async (req: Request, res: Response) => {
     }
 
     // 1:1 con los sellos: una transición, un evento (EV-054).
-    const sellos = await prisma.events_raw.findMany({
+    const sellos = (await prisma.events_raw.findMany({
       where: { type: 'reporte.estado_cambiado', payload: { path: ['reporte_id'], equals: reporteId } },
       orderBy: { occurred_at: 'asc' },
-    });
+    })) as SelloRow[];
     const transiciones = sellos.map((s) => {
       const p = s.payload as Record<string, unknown>;
       return {

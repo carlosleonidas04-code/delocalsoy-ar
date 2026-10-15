@@ -213,6 +213,13 @@ describe.skipIf(!dbUp)('historial y suscripción del reportero (CORE-005 R4 — 
     expect(hist.status).toBe(404);
     await hist.arrayBuffer();
 
+    // Tampoco en el listado publico del nodo (CORE-005 R4, ADR-038):
+    // 'descartado' nunca es publicable en ninguna lectura ciudadana.
+    const lista = await fetch(base + '/api/nodos/capital/reportes');
+    expect(lista.status).toBe(200);
+    const listaBody: any = await lista.json();
+    expect(listaBody.data.some((r: any) => r.id === id)).toBe(false);
+
     // La suscripción del reportero: el ciclo completo con la justificación
     // pública de la moderación (ADR-038 — el POR QUÉ es del reportero).
     const mios = await fetch(base + '/api/reportes/mios', {
