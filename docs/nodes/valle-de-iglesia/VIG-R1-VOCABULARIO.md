@@ -8,8 +8,10 @@
 > por la Dirección Humana (lotes 1+2 del 2026-10-13, trazas de ratificación en
 > #168 y #168 comment 6151285249) y acreditado en main por VIG-001. Este
 > documento no agrega ni muta entidades: es la vista canónica que faltaba.
-> Los puntos marcados **[PENDIENTE-DH]** requieren ratificación explícita
-> antes de aplicarse.
+> **Ratificación (DH, 2026-10-16):** las decisiones abiertas quedaron resueltas —
+> Opción B confirmada, nombre visible canónico **Villa Iglesia** (sin cambio de
+> seed) y tipos reservados ratificados como extensión futura del enum `type`.
+> Traza: "RATIFICADO" en #228 + confirmación directa de la DH.
 
 ## 1. Decisión de diseño central: Opción A vs Opción B
 
@@ -44,7 +46,7 @@ cuando no hay punto público — no se inventa), `external_id`/`external_source`
 (BAHRA / Georef).
 
 **Tipos reservados de la fuente** (`settlement`, `corridor`, `asset_area`):
-propuesta de extensión futura del enum `type` — **[PENDIENTE-DH]**. Mapeo
+extensión futura del enum `type` — **RATIFICADO por la DH (2026-10-16)**. Mapeo
 sugerido si se ratifica: `settlement` ≈ `locality` (ya cubierto),
 `corridor` ≈ zona `travesia` (función RN 150 / pasos), `asset_area` =
 nuevo (áreas productivas/patrimoniales con geometría, requiere ADR-035 por
@@ -85,15 +87,16 @@ Listado exhaustivo con coordenadas y `external_id`: `seed-subnodos.sql`
 | :-- | :-- | :-- | :-- |
 | Key del nodo padre | `valle-de-iglesia` (`region`) | `iglesia` (ADR-021, federado) | Recomendación: mantener `iglesia` |
 | Jerarquía | `TerritorialEntity` (Opción A) | `subnodos` (Opción B, VIG-001) | Recomendación: Opción B |
-| Nombre visible de `sj_iglesia_villa_iglesia` | **Iglesia** | **Villa Iglesia** | **[PENDIENTE-DH]** — la fuente reserva "Iglesia" como visible; el seed ratificado usa "Villa Iglesia". Decidir cuál es el canónico (implica UPDATE del seed + sellos). |
-| Tipos reservados | `settlement`, `corridor`, `asset_area` | `district`/`locality`/`paraje`/`subparaje` | **[PENDIENTE-DH]** — extensión futura del enum `type` |
+| Nombre visible de `sj_iglesia_villa_iglesia` | **Iglesia** | **Villa Iglesia** | **RATIFICADO (DH, 2026-10-16): "Villa Iglesia" canónico** — el seed queda como está, sin UPDATE ni sellos nuevos. |
+| Tipos reservados | `settlement`, `corridor`, `asset_area` | `district`/`locality`/`paraje`/`subparaje` | **RATIFICADO (DH, 2026-10-16)** — extensión futura del enum `type` |
 | Nomenclaturas corregidas | Tudcum, Angualasto (no "Tutcún"/"Anguslasto") | Ortografías ya correctas en seed (además: Zonda, Maipirinqui, Colola ≠ Colo Colo) | Convergencia total ✔ |
 
 ## 6. Reglas vigentes (R9/R15/ADR)
 
 - **R9:** el vocabulario operativo fue ratificado por la DH (trazas en #168);
   este documento lo consolida para consulta canónica. Las 2 decisiones
-  abiertas requieren ratificación DH explícita en este issue.
+  abiertas fueron RATIFICADAS por la DH el 2026-10-16 (traza en este issue
+  y en el PR #230).
 - **R15:** sin punto publicado no se inventa coordenada; sin límite geometrado
   el `boundary_status` es `provisional` y se muestra como tal.
 - **ADR-035:** toda fuente espacial con `source_id`, fecha, licencia, CRS y
@@ -103,9 +106,9 @@ Listado exhaustivo con coordenadas y `external_id`: `seed-subnodos.sql`
 
 ## 7. Próximos pasos
 
-1. **[PENDIENTE-DH]** Ratificar (o rechazar) la Opción B y el nombre visible
-   canónico de Villa Iglesia → si cambia el label, PR de UPDATE del seed con
-   sellos `subnodo.creado` idempotentes.
+1. **RATIFICADO (DH, 2026-10-16):** Opción B confirmada y "Villa Iglesia"
+   canónico — sin UPDATE del seed. Los tipos reservados quedan documentados
+   como extensión futura del enum `type`.
 2. NVIG-R3 (#170): `VIG-000-ALCANCE.md` — este documento es su insumo de
    jerarquía (sección "Distritos y jerarquía").
 3. NVIG-R5 (#172): catálogo de fuentes y procedencia (ADR-035, patrón Caucete #147).
