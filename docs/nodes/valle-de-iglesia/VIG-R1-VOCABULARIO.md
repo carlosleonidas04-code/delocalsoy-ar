@@ -25,7 +25,7 @@ implementa exactamente la Opción B con 52 entidades acreditadas, y la DH
 ratificó ambos lotes con trazas en este mismo issue (#168). Un modelo
 `TerritorialEntity` paralelo duplicaría dominio — la misma tensión ya
 resuelta en #160 vs `oportunidades.ts`. Lo que la Opción A aporta de valor
-(tipos reservados, seección 4) se incorpora como extensión futura del enum
+(tipos reservados, sección 4) se incorpora como extensión futura del enum
 `type` de `subnodos`, sin árbol nuevo.
 
 ## 2. Tipos y jerarquía operativos (VIG-001)
