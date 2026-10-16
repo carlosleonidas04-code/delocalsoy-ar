@@ -32,7 +32,7 @@ function refrescar(): void {
 
 /**
  * API publica para el futuro formulario de alta (fuera de alcance UX-003):
- * encola un relevamiento aunque no haya sesion - se enviara cuando alla
+ * encola un relevamiento aunque no haya sesion - se enviara cuando haya
  * sesion activa y red.
  */
 export function encolarRelevamiento(payload: ActivoAltaInput): void {
@@ -94,8 +94,7 @@ export function iniciarOffline(): void {
 
 async function sincronizarAhora(): Promise<void> {
   if (!cola) return;
-  // La sesion JWT vive en memoria (activosApi): sin sesion activa no alla
-  // envio posible - la cola queda pendiente, sin exito simulado.
+  // La sesion JWT vive en memoria (activosApi): sin sesion activa no hay - la cola queda pendiente, sin exito simulado.
   if (!sesionActiva()) {
     refrescar();
     return;
