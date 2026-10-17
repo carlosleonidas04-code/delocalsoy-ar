@@ -43,7 +43,7 @@ jobs:
       - name: Install dependencies
         run: |
           set -o pipefail
-          pnpm install --no-frozen-lockfile 2>&1 | tee install.log
+          pnpm install --frozen-lockfile 2>&1 | tee install.log
       - name: Prisma generate (EV-003)
         run: |
           set -o pipefail
@@ -94,7 +94,7 @@ jobs:
       - name: Install dependencies
         run: |
           set -o pipefail
-          pnpm install --no-frozen-lockfile 2>&1 | tee install.log
+          pnpm install --frozen-lockfile 2>&1 | tee install.log
       - name: Prisma generate (EV-003)
         run: |
           set -o pipefail
