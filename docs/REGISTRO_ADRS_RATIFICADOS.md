@@ -81,6 +81,13 @@
 - **Nota R15:** revisión de privacidad y daño **antes** de producción, con la DH y autoridad competente cuando aplique. Gobernanza de diseño, no dictamen legal.
 - **Conformidad técnica R12:** pendiente — pruebas de aceptación NC-EV-10 con la implementación de NC-R4 (#139).
 
+## ADR-037 — Google Maps como capa visual, nunca registro ✅ RATIFICADO
+- **Estado:** RATIFICADO por Dirección Humana (2026-10-17, decisión de gobernanza — pedido formal trazado en #163)
+- **Origen:** asignación del slot ADR-037 en la sesión de gobernanza del 2026-10-17 (desbloqueo recursivo de pendientes).
+- **Contenido:** Google Maps Platform como capa EXCLUSIVA de visualización/UX, NUNCA fuente de registro. Los ToS de Google no permiten extraer ni persistir contenido cartográfico; el dato territorial canónico vive en PostGIS (events_raw) con procedencia IGN/BAHRA/INDEC/Georef. Nada de lo mostrado por Google acredita `verified` (ADR-035: acreditación solo por moderador|admin con fuente verificable). API keys server-side + degradación offline a mapa propio si el servicio no está disponible.
+- **Precedente negativo:** RedTulum — la dependencia total de Google Maps destruye la soberanía de datos del proyecto (ADR-002: PostGIS exclusivo).
+- **Conformidad técnica R12:** pendiente — se materializa con la integración de la capa visual (sin PR aún; deuda declarada).
+
 ## ADR-038 — Transparencia del ciclo de vida de los reportes ciudadanos ✅ RATIFICADO
 - **Estado:** RATIFICADO por Dirección Humana (2026-10-15, [#206](https://github.com/carlosleonidas04-code/delocalsoy-ar/issues/206#issuecomment-6197008439))
 - **Origen:** propuesta CORE-005 (#206, patrón FixMyStreet sobre la columna vertebral CORE-004 #87).
