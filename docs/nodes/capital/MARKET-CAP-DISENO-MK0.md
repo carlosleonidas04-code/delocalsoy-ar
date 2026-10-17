@@ -204,7 +204,7 @@ Nota de vocabulario: `estado_epistemico` mapea la ficha a los 4 estados honestos
 - `ApiDataSource` extiende `listComercios(filtros)` / `getComercio(id)` contra `/api/comercios`; `SyntheticDataSource` con paridad SIEMPRE etiquetada sintética (R15).
 - Vista `ComerciosPanel`: fichas con `HonestBadge`/`SourceChip`/`TerritorialCard` (inventario mínimo F0), facetas F-1, mapa F-2, alta F-4.
 - Convergencia stage #215/#237: los componentes Lente B (`stageCapital215Data.ts`, `StageCapital215Dashboard.tsx` — rama #238) migran a consumir estos contratos cuando integren.
-- Formularios con `react-hook-form` + `zodResolver` sobre `ComercioAltaSchema` (FE-3 — decisión de dependencia DH pendiente).
+- Formularios con `react-hook-form` + `zodResolver` sobre `ComercioAltaSchema` (FE-3 — ratificado 2026-10-17).
 
 ---
 
@@ -218,7 +218,7 @@ Ley 104-A + SIIC (verificación individual) · ley ventanilla única 02-07-2026 
 
 1. **Rubros canon — RATIFICADO: 11 categorías del fixture lote 3A como canon**. `directoryTaxonomy.ts` (rama #233, 4 categorías) queda como subconjunto a armonizar: la serie contracts extiende `TAXONOMIA_CANONICA` con las 11 categorías del fixture `capitalTerritoryData.ts` (mismo repo, contenido acreditado — nada se deriva nuevo, R1). El join por código extensible se mantiene; código desconocido degrada a `unknown` honesto (R15).
 2. **Multinodo — RATIFICADO desde el día 1** (`nodo_key`-scoped: capital primero, caucete/iglesia reutilizan sin cambios).
-3. **Dependencias FE** (react-hook-form + zodResolver; mapa FE-1; facetas FE-2) — **ABIERTA**, encadenada a las 8 decisiones de #163.
+3. **Dependencias FE — RATIFICADO (2026-10-17, pregunta directa)**: FE-3 = react-hook-form + @hookform/resolvers (Zod); FE-2 = TanStack Query + TanStack Table (Orval diferido, se evalúa tras la cascada); FE-1 = MapLibre GL JS + react-maplibre + OpenFreeMap (PMTiles self-host documentado como degradación futura), estilo del mapa por agent.google (ADR-034). Paquete diferido ratificado: Workbox tras el primer ciclo de uso real (FE-4), Web Push VAPID al roadmap del Bloque 10 (FE-5, consentimiento — la suscripción es dato personal, Ley 25.326), Recharts (FE-6, validar peso contra lockfile al volver CI), React 19 diferido hasta después de la cascada, Kobo/ODK self-host (FE-8, ingesta por pipeline). Con esto quedan cerradas las 8 decisiones abiertas de #163 (traza: comentario de ratificación en #163).
 4. **Nombre público — RATIFICADO: «Mercado de Proximidad»** (vocabulario UI con agent.google sobre tokens `--honest-*`).
 5. **Seed — RATIFICADO: 0 comercios sembrados** (patrón VIG-005 "solo se publica lo verificado"); la demo sintética solo en `SyntheticDataSource`.
 
@@ -235,4 +235,4 @@ Rama `feat/market-cap-mk1-directorio` (base = main post-cascada, con #233 mergea
 
 ---
 
-*[agent: vibe] — 2026-10-17 — diseño técnico MK-0. Ratificado en sus 4 decisiones centrales (traza #243). Sin merge sin CI verde (R15).*
+*[agent: vibe] — 2026-10-17 — diseño técnico MK-0. Ratificado en sus 5 decisiones: 4 centrales + dependencias FE (traza #243). Sin merge sin CI verde (R15).*
