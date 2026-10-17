@@ -74,11 +74,11 @@ La red federada DELocalSoy.AR se asienta sobre 3 nodos soberanos interconectados
 
 ---
 
-<!-- Secciones 5-8 añadidas [agent: vibe] 2026-10-17 — PROPUESTA para ratificación DH (R9).
+<!-- Secciones 5-8 añadidas [agent: vibe] 2026-10-17 — RATIFICADAS por la DH (R9) el 2026-10-17.
      Las secciones 1-4 son verbatim del agente google (lotes turnos 9-10). Nada de lo que
      sigue está acreditado por CI; el estado de cada ítem es el estado real del repositorio. -->
 
-## 5. Erratas y Armonizaciones Canónicas [agent: vibe — propuesta]
+## 5. Erratas y Armonizaciones Canónicas [agent: vibe — ratificado DH 2026-10-17]
 
 Correcciones canónicas ratificadas por la DH que PREVALECEN sobre valores citados en las
 secciones 1-4:
@@ -100,8 +100,9 @@ secciones 1-4:
    `validado` sin fuente verificable (ADR-035).
 4. **Subnodos del Capital:** conteo canónico ratificado = 6 (traza #154, comment
    6235922878): `sj_capital_centro` + `sj_capital_desamparados` (main, Fase C #198) +
-   `capital-{centro-historico,desamparados,concepcion,trinidad}` (serie NCAP-R2). El mapeo
-   entre ambas nomenclaturas es deuda declarada del PR #233.
+   `capital-{centro-historico,desamparados,concepcion,trinidad}` (serie NCAP-R2). El mapeo entre ambas
+   nomenclaturas quedó RESUELTO (2026-10-17): `SUBNODOS_CAPITAL_REGISTRO` en nodoCapital.ts — 6
+   entidades distintas (2 distritos PEC 2025 + 4 áreas funcionales del lote 4).
 
 ## 6. Google Maps Platform — Capa Exclusiva de Visualización (ADR-037)
 
@@ -124,7 +125,7 @@ acreditación). Los productos candidatos (Maps JavaScript API 2D re-estilizada, 
 Photorealistic Tiles, Places API (New), Routes API, Street View, Aerial View) quedan como
 PROPUESTA sujeta a este ADR y a su propio PR cuando se diseñen.
 
-## 7. Roadmap Federado (P / C / K / V) — propuesta de 30 ítems [agent: vibe]
+## 7. Roadmap Federado (P / C / K / V) — 30 ítems [agent: vibe — ratificado DH 2026-10-17]
 
 Ítems trazados a issues reales; estado de cada uno = estado del repositorio al 2026-10-17
 (nada fabricado, R15):
@@ -170,7 +171,7 @@ PROPUESTA sujeta a este ADR y a su propio PR cuando se diseñen.
   conectividad, participación, eventos) — backend COMPLETO (VIG-001..VIG-007, EV-040..EV-047);
   stage front: dashboard VIG aterrizado en PR #238; componentes restantes según §2.
 
-## 8. Backlog & Gobernanza — estado real (R15) [agent: vibe]
+## 8. Backlog & Gobernanza — estado real (R15) [agent: vibe — ratificado DH 2026-10-17]
 
 - **Scope-Guard #134:** PRs `agent-google/*` solo-estética (`apps/web/src/design/`,
   `styles.css`, `index.html`); lógica o docs = `mixto-r9`. El stage del Canvas Maestro
@@ -190,5 +191,5 @@ PROPUESTA sujeta a este ADR y a su propio PR cuando se diseñen.
   035 (fuentes verificables), 036 (resiliencia/geo sensible), 037 (Google Maps capa visual),
   038 (transparencia de reportes), 039 (duplicados como sugerencia).
 - **Deuda declarada:** lockfile pnpm desincronizado (lucide-react en #238, requiere
-  `pnpm install` antes del merge); imports rotos del stage (#238); mapeo de nomenclaturas
-  de subnodos del Capital (#233); evidencia materializada de Centro Histórico (#215).
+  `pnpm install` antes del merge; decisión DH 2026-10-17: regenerarlo al volver CI ~2026-11-01);
+  imports rotos del stage (#238); evidencia materializada de Centro Histórico (#215).
