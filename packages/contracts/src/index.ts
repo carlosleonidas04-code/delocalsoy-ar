@@ -836,3 +836,10 @@ export const ReporteHistorialSchema = z.object({
   reporte_id: z.string(),
   transiciones: z.array(ReporteHistorialEntrySchema),
 });
+
+// ─── MARKET-CAP MK-1 (#243, sub-épica #152): Mercado de Proximidad ───
+// Deuda documentada: #233 (contratos territoriales) y #246 (MK-1 contracts)
+// también extienden este índice al final — posible conflicto menor de merge
+// en esta sección; resolución: concatenar las exportaciones de ambas.
+export * from './comercios.js';
+export * from './directoryTaxonomy.js';

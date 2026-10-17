@@ -243,6 +243,7 @@ model activos {
   patrimonio activos_patrimonio?
   productos      productos[]
   operativa      activos_operativa?
+  comercio_ficha  comercio_ficha?
 
   /// Geometría puntal WGS84: columna + trigger + índice GiST en la migración
   /// versionada 20261008200000_r5b_activos (NULL-safe desde VIG-002: sin
@@ -567,4 +568,30 @@ model ingestas {
   @@index([nodo_key])
   @@index([estado])
   @@map("ingestas")
+}
+
+// ─── MARKET-CAP MK-1 (#243, sub-épica #152): Mercado de Proximidad ───
+
+/// Ficha de mercado 1:1 con activos (patrón activos_patrimonio/activos_operativa,
+/// Opción A ratificada por la DH 2026-10-17): SOLO el dominio específico del
+/// mercado. Estado, visibilidad, consentimiento, procedencia, pseudónimo y
+/// geometría viven en `activos` (no se duplican — lección #161). SIN PII de
+/// contacto en v1 (decisión DH: relay por plataforma, Ley 25.326 minimización).
+/// Frontera de dominio: la habilitación COMERCIAL vive aquí; la habilitación
+/// del prestador turístico (Ley 2400-T) vive en activos_operativa.habilitacion.
+/// Multinodo desde día 1: el scope de nodo vive en activos.nodo_key (#243).
+model comercio_ficha {
+  activo_id    String   @id @map("activo_id")
+  rubro_id     String   @map("rubro_id") // join por código → directoryTaxonomy.idCategoria (ADR-035)
+  rubro_rama   String?  @map("rubro_rama") // RamaTaxonomica — desnormalización de facetas
+  atributos    Json     @map("atributos") // ComercioAtributosSchema (delivery, pagos, accesibilidad, venta_directa)
+  habilitacion Json     @map("habilitacion") // ComercioHabilitacionSchema (estados epistémicos)
+  titularidad  Json     @map("titularidad") // ComercioTitularidadSchema (reclamo/verificación — sin PII)
+  created_at   DateTime @default(now()) @map("created_at")
+  updated_at   DateTime @updatedAt @map("updated_at")
+
+  activo activos @relation(fields: [activo_id], references: [id], onDelete: Cascade)
+
+  @@index([rubro_id])
+  @@map("comercio_ficha")
 }
