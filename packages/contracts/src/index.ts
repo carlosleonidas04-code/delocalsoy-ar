@@ -923,7 +923,7 @@ export const HONEST_EPISTEMIC_STATES_PALETTE = {
  * subnodosCount con procedencia (armonización de divergencias #233, decisión DH
  * 2026-10-17): capital = 6 (vocabulario ratificado R9 2026-10-17, traza #154 comment
  * 6235922878: sj_capital_centro + sj_capital_desamparados en main + los 4 subnodos del
- * lote 4; mapeo entre nomenclaturas = deuda declarada del PR); iglesia = 52 (VIG-001
+ * lote 4; mapeo de nomenclaturas RESUELTO: SUBNODOS_CAPITAL_REGISTRO en nodoCapital.ts, 6 entidades distintas, decisión DH 2026-10-17); iglesia = 52 (VIG-001
  * lotes 1+2 acreditados en main, EV-040/EV-041); caucete = 0 (R15 honesto: sin
  * subnodos sembrados en main).
  */
