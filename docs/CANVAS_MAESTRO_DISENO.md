@@ -71,3 +71,124 @@ La red federada DELocalSoy.AR se asienta sobre 3 nodos soberanos interconectados
 - **`nodo-caucete-este`:** Oasis irrigado este, vitivinicultura patrimonial y corredor bioceánico.
 
 *Cualquier módulo o vista que declare 5 nodos provinciales queda depreciado en favor de esta especificación canónica.*
+
+---
+
+<!-- Secciones 5-8 añadidas [agent: vibe] 2026-10-17 — PROPUESTA para ratificación DH (R9).
+     Las secciones 1-4 son verbatim del agente google (lotes turnos 9-10). Nada de lo que
+     sigue está acreditado por CI; el estado de cada ítem es el estado real del repositorio. -->
+
+## 5. Erratas y Armonizaciones Canónicas [agent: vibe — propuesta]
+
+Correcciones canónicas ratificadas por la DH que PREVALECEN sobre valores citados en las
+secciones 1-4:
+
+1. **Paleta epistémica (decisión DH 2026-10-17, traza PR #233):** los colores del §2 quedan
+   reemplazados por el canon ADR-034/tokens.css:
+   - `● Validado` → `#4ADE80` (original del agente: `#00A86B`)
+   - `◈ Comunitario` → `#75AADB` celeste (original: `#E06D53`)
+   - `◐ Pendiente` → `#F2A71B` ámbar (original: `#94A3B8`)
+   - `✦ Sintético` → `#FFC72C` (sin cambio)
+   Los valores originales quedan documentados en los comentarios del contrato
+   (`HONEST_EPISTEMIC_STATES_PALETTE`, packages/contracts/src/index.ts, PR #233).
+2. **Cuenta de tokens:** el §1 declara 43 tokens `--honest-*`; el archivo aterrizado
+   `design/tokens-epistemicos.css` declara 54 (auditoría #163, comment 6238460615). La
+   cuenta canónica se fija al armonizar ese archivo con `design/tokens.css` (ADR-034).
+3. **Vocabulario de estados:** el repo opera con `verified | community_validated | pending |
+   synthetic_demo` (servicio informativo, ADR-035) y la serie NCAP-R2 con `validado |
+   comunitario | pendiente | sintetico` (equivalencia 1:1). La microcopia NUNCA declara
+   `validado` sin fuente verificable (ADR-035).
+4. **Subnodos del Capital:** conteo canónico ratificado = 6 (traza #154, comment
+   6235922878): `sj_capital_centro` + `sj_capital_desamparados` (main, Fase C #198) +
+   `capital-{centro-historico,desamparados,concepcion,trinidad}` (serie NCAP-R2). El mapeo
+   entre ambas nomenclaturas es deuda declarada del PR #233.
+
+## 6. Google Maps Platform — Capa Exclusiva de Visualización (ADR-037)
+
+**ADR-037 ratificado por la DH (2026-10-17):** Google Maps Platform es capa EXCLUSIVA de
+visualización/UX, NUNCA fuente de registro.
+
+Reglas innegociables del ADR:
+- Los ToS de Google no permiten extraer ni persistir contenido cartográfico; el dato
+  territorial canónico vive en PostGIS (`events_raw`) con procedencia IGN/BAHRA/INDEC/Georef.
+- Nada de lo mostrado por Google acredita `verified` (ADR-035).
+- API keys server-side + degradación offline a mapa propio si el servicio no está disponible.
+- Precedente negativo: RedTulum (la dependencia total de Google Maps destruye la soberanía
+  de datos).
+
+Estado honesto (R15): NINGUNA vista de Google Maps está implementada en el stage actual
+(`canvas-maestro/` aterriza 6 tabs, ninguna de mapas externos). El reporte original del
+agente declaraba una pestaña "Google Maps Platform & Innovación" con conmutador capa UX vs
+registro soberano y simulador de degradación offline — NO aterrizó (declaración, no
+acreditación). Los productos candidatos (Maps JavaScript API 2D re-estilizada, 3D Maps +
+Photorealistic Tiles, Places API (New), Routes API, Street View, Aerial View) quedan como
+PROPUESTA sujeta a este ADR y a su propio PR cuando se diseñen.
+
+## 7. Roadmap Federado (P / C / K / V) — propuesta de 30 ítems [agent: vibe]
+
+Ítems trazados a issues reales; estado de cada uno = estado del repositorio al 2026-10-17
+(nada fabricado, R15):
+
+**Plataforma (P)**
+- P-1 UI CORE-005: reportes con historial público (ADR-038) y duplicados como sugerencia
+  (ADR-039) — contratos y rutas en main (PRs #207-#214); UI pendiente.
+- P-2 live-ws #123: gate Origin + Bearer + rate limits — PR #236 en cola de merge.
+- P-3 ciclo R5-UI #109 (plazo vencido) — absorbido por este Canvas Maestro.
+- P-4 Mapa federado v2 (3 nodos, corredores) — pendiente.
+- P-5 Bloques 10-12 (participación, asistente territorial, federación) — especificación
+  v0.1 en main (#161); implementación pendiente.
+- P-6 Tokens v2 (fusión canónica de los 4 BaseConsolidadaPrototype) — condicionada al canal
+  agent.google (#163).
+- P-7 WCAG AA + reduced-motion como criterio de plataforma — UX-002 en cola (#224).
+- P-8 PWA de relevamiento in-situ — UX-003 en cola (#227).
+- P-9 Landing pública — pendiente (sin despliegue público; toda la acreditación es CI).
+- P-10 Buscador federado sobre RAG VIG-006 — backend acreditado (EV-046); UI pendiente.
+
+**Capital (C)**
+- C-1 Vista del nodo Capital (subnodos, hitos, corredores provisionales) — #163 abierto;
+  stage parcial en PR #238.
+- C-2 UI Bloque 9 Banco de Potencialidades — backend en main (PR #160, EV-039); panel
+  React en la rama NCAP-R2 (lote 2).
+- C-3 Corredores `cor_*` vs ejes `axis_*` — divergencia registrada, decisión DH pendiente.
+- C-4 Accesibilidad peatonal + dashboard (#157) — pendiente.
+- C-5 Bloques 10/12 del Capital — pendiente.
+- C-6 Serie contracts NCAP-R2 (#154) — PR #233 en cola; índice extendido + armonización de
+  dominio 2026-10-17 (coordenada multi-nodo, subnodosCount 6/52/0, consentimiento ADR-027,
+  oportunidades.js eliminado).
+
+**Caucete (K)**
+- K-1 Servicio informativo con fuentes publicadas (15 propias, 31 globales) — main (EV-050).
+- K-2 Ficha de valoración 7 dimensiones — main (EV-038, PR #196).
+- K-3 Ciclo de Cuidado mapear→validar→valorar→cuidar→construir — fases acreditadas; taller
+  con docentes #139 abierto.
+- K-4 Capas v6 patrón Dato–Interpretación–Sugerencia — main (EV-037).
+- K-5 Geo sensible ADR-036 — main (PR #148).
+- K-6 Primera ingesta real (REFES+CUE) — pipeline probado (EV-049); dataset pendiente.
+
+**Valle de Iglesia (V)**
+- V-1..V-8 (vista nodo, distrito, patrimonio modo protegido, Cuesta del Viento, producción,
+  conectividad, participación, eventos) — backend COMPLETO (VIG-001..VIG-007, EV-040..EV-047);
+  stage front: dashboard VIG aterrizado en PR #238; componentes restantes según §2.
+
+## 8. Backlog & Gobernanza — estado real (R15) [agent: vibe]
+
+- **Scope-Guard #134:** PRs `agent-google/*` solo-estética (`apps/web/src/design/`,
+  `styles.css`, `index.html`); lógica o docs = `mixto-r9`. El stage del Canvas Maestro
+  aterriza en ramas `agent-vibe/*` con CI roto declarado (PR #238).
+- **Contrato R9/R15:** GitHub acredita, la DH ratifica; sin CI verde no hay merge.
+- **CI:** GitHub Actions caído a nivel cuenta desde 2026-10-15 23:12Z (límite mensual;
+  reinicio esperado ~2026-11-01; recordatorio programado task 4fb0a626).
+- **Cola de merge:** 18 PRs abiertos, todos `r9-ratificado` (#216-#238). Cascada sugerida:
+  #219 → #220 → #224 → #229 → #227 → #216 → #217 → #218 → #230 → #231 → #225 → #232 → #234 →
+  #235 → #236 → #237 → #238 → #233.
+- **Numeración EV F0-C1 (propuesta):** EV-055/056 CORE-005 (#219/#220), EV-057 NUT-CAP-008
+  (#216), EV-058 sondeo UNIDE (#217), EV-059 normativa (#218), EV-060 UX-002 (#224),
+  EV-061 UX-003 (#227), EV-062 UX-004 (#229), EV-063 NVIG-R1 (#230), EV-064 NVIG-R3 (#231),
+  EV-065 NVIG-R5 (#234), EV-066 AUD-09 (#235), EV-067 live-ws (#236); #225/#232 sin EV
+  (registros documentales); #233/#237/#238 al merge.
+- **ADRs vivos:** 021 (3 nodos federados), 027 (anti-PII), 029 (DataSource), 034 (estética),
+  035 (fuentes verificables), 036 (resiliencia/geo sensible), 037 (Google Maps capa visual),
+  038 (transparencia de reportes), 039 (duplicados como sugerencia).
+- **Deuda declarada:** lockfile pnpm desincronizado (lucide-react en #238, requiere
+  `pnpm install` antes del merge); imports rotos del stage (#238); mapeo de nomenclaturas
+  de subnodos del Capital (#233); evidencia materializada de Centro Histórico (#215).
