@@ -32,22 +32,38 @@ export const SubnodoCapitalIdSchema = z.enum([
 export type SubnodoCapitalId = z.infer<typeof SubnodoCapitalIdSchema>;
 
 /**
- * Coordenadas WGS-84 (SRID 4326) con validación estricta de rango para San Juan Capital
+ * Coordenadas WGS-84 (SRID 4326) — envolvente provincial San Juan (multi-nodo ADR-021).
+ * Decisión DH 2026-10-17 (armonización de divergencias #233): el rango base pasó de
+ * Capital-only a la envolvente provincial 28°22'-32°38'S / 66°43'-70°38'O (compilación
+ * geográfica provincial; provisional hasta contraste directo IGN) — antes las coordenadas
+ * de Iglesia (-30.38/-69.20) y Caucete (-31.65/-68.28) fallaban la validación Zod.
+ * Original del agente (documentado): lat -31.60..-31.45 / lng -68.60..-68.45.
  */
 export const CoordenadaWGS84Schema = z.object({
+  lat: z.number().min(-32.64).max(-28.36),
+  lng: z.number().min(-70.64).max(-66.72),
+});
+export type CoordenadaWGS84 = z.infer<typeof CoordenadaWGS84Schema>;
+
+/**
+ * Envolvente estricta de San Juan Capital (uso Capital-only): conserva el rango
+ * original del contrato para validación fina dentro del nodo Capital.
+ */
+export const CoordenadaCapitalSchema = z.object({
   lat: z.number().min(-31.60).max(-31.45),
   lng: z.number().min(-68.60).max(-68.45),
 });
-export type CoordenadaWGS84 = z.infer<typeof CoordenadaWGS84Schema>;
+export type CoordenadaCapital = z.infer<typeof CoordenadaCapitalSchema>;
 
 /**
  * Geometría PostGIS SRID 4326 en GeoJSON
  */
 export const GeoJSONPointSchema = z.object({
   type: z.literal('Point'),
+  // Envolvente provincial San Juan (decisión DH 2026-10-17, #233); original: Capital-only.
   coordinates: z.tuple([
-    z.number().min(-68.60).max(-68.45), // Lng
-    z.number().min(-31.60).max(-31.45), // Lat
+    z.number().min(-70.64).max(-66.72), // Lng
+    z.number().min(-32.64).max(-28.36), // Lat
   ]),
 });
 
@@ -89,6 +105,25 @@ export const SubnodoCapitalSchema = z.object({
 export type SubnodoCapital = z.infer<typeof SubnodoCapitalSchema>;
 
 /**
+ * Acreditación con consentimiento (ADR-027, patrón OportunidadActor de main — decisión DH
+ * 2026-10-17, armonización de divergencias #233): un relevo sensible NUNCA nombra a una
+ * persona sin consentimiento confirmado (Ley 25.326). Rol con el mismo vocabulario que
+ * acreditadorRol de evidencias.ts. Original del agente (documentado):
+ * acreditadoPor: z.string().min(3) — string libre, sin consentimiento.
+ */
+export const AcreditadorConsentidoSchema = z
+  .object({
+    rol: z.enum(['AUDITOR_TECNICO', 'REFERENTE_COMUNITARIO', 'INVESTIGADOR_UNSJ', 'OPERADOR_MUNICIPAL', 'SISTEMA_AGENTE']),
+    nombre: z.string().trim().min(3).max(120).optional(),
+    consentimientoConfirmado: z.boolean(),
+  })
+  .refine((a) => a.nombre === undefined || a.consentimientoConfirmado === true, {
+    message: 'un acreditador nombrado exige consentimiento confirmado (ADR-027)',
+    path: ['consentimientoConfirmado'],
+  });
+export type AcreditadorConsentido = z.infer<typeof AcreditadorConsentidoSchema>;
+
+/**
  * Contrato de Relevo Territorial Sensible NCAP-R2 (ADR-036)
  */
 export const RelevoTerritorialNCAPR2Schema = z.object({
@@ -101,7 +136,7 @@ export const RelevoTerritorialNCAPR2Schema = z.object({
   observaciones: z.string().max(2000),
   privacidadNivel: z.enum(['PUBLICO', 'COMUNITARIO_PROTEGIDO', 'RESERVADO_SENSIBLE']),
   firmaCriptograficaSha256: z.string().length(64),
-  acreditadoPor: z.string().min(3),
+  acreditadoPor: AcreditadorConsentidoSchema,
 });
 export type RelevoTerritorialNCAPR2 = z.infer<typeof RelevoTerritorialNCAPR2Schema>;
 

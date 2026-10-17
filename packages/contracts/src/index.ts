@@ -839,7 +839,8 @@ export const ReporteHistorialSchema = z.object({
 
 // ─── Serie Contracts NCAP-R2 (PR #233): índice extendido [agent: vibe] ───
 // Decisión DH 2026-10-17: preservar TODOS los bindings inline de main (los consume
-// apps/api) y AÑADIR los 12 módulos canónicos + constantes NCAP-R2 (agent.google).
+// apps/api) y AÑADIR los 11 módulos canónicos + constantes NCAP-R2 (agent.google;
+// oportunidades.js eliminado por decisión DH 2026-10-17: dominio Bloque 9 canónico único).
 // Colisiones de nombres verificadas: 0 (76 exports de main vs exports de los módulos).
 // HONEST_EPISTEMIC_STATES_PALETTE armonizada al canon ADR-034 por decisión DH
 // 2026-10-17: validado #4ADE80, comunitario #75AADB, pendiente #F2A71B, sintético #FFC72C
@@ -856,7 +857,9 @@ export * from './activos.js';
 export * from './modeloFederado.js';
 export * from './territorialModel.js';
 export * from './directoryTaxonomy.js';
-export * from './oportunidades.js';
+// oportunidades.js ELIMINADO (decisión DH 2026-10-17, armonización de dominio #233):
+// duplicaba el dominio Bloque 9 canónico (Oportunidad* inline, PR #160). El vocabulario
+// de economía popular del agente queda documentado en la traza del PR como propuesta futura.
 
 // 2. Definiciones Canónicas Inline y Compatibilidad ADR-021
 export const PROTOCOLO_ACTUAL = 'NCAP-R2';
@@ -916,6 +919,13 @@ export const HONEST_EPISTEMIC_STATES_PALETTE = {
 
 /**
  * Los 3 Nodos Federados Canónicos de San Juan (ADR-021)
+ *
+ * subnodosCount con procedencia (armonización de divergencias #233, decisión DH
+ * 2026-10-17): capital = 6 (vocabulario ratificado R9 2026-10-17, traza #154 comment
+ * 6235922878: sj_capital_centro + sj_capital_desamparados en main + los 4 subnodos del
+ * lote 4; mapeo entre nomenclaturas = deuda declarada del PR); iglesia = 52 (VIG-001
+ * lotes 1+2 acreditados en main, EV-040/EV-041); caucete = 0 (R15 honesto: sin
+ * subnodos sembrados en main).
  */
 export const NODOS_FEDERADOS_REGISTRO = [
   {
@@ -925,7 +935,7 @@ export const NODOS_FEDERADOS_REGISTRO = [
     lat: -31.5375,
     lng: -68.5252,
     descripcion: 'Centro cívico, administrativo, comercial y universitario de la provincia',
-    subnodosCount: 4,
+    subnodosCount: 6, // ratificado DH 2026-10-17 (traza #154 comment 6235922878)
     estadoHonesto: 'validado'
   },
   {
@@ -935,7 +945,7 @@ export const NODOS_FEDERADOS_REGISTRO = [
     lat: -30.3800,
     lng: -69.2000,
     descripcion: 'Agroecología de altura, cuenca del Río Blanco, termalismo Pismanta y patrimonio protegido',
-    subnodosCount: 6,
+    subnodosCount: 52, // main (VIG-001 lotes 1+2, EV-040/EV-041)
     estadoHonesto: 'validado'
   },
   {
@@ -945,7 +955,7 @@ export const NODOS_FEDERADOS_REGISTRO = [
     lat: -31.6510,
     lng: -68.2810,
     descripcion: 'Vitivinicultura histórica, Santuario Difunta Correa y corredor biocéanico este',
-    subnodosCount: 5,
+    subnodosCount: 0, // R15: sin subnodos sembrados en main
     estadoHonesto: 'comunitario'
   }
 ] as const;
