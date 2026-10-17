@@ -252,3 +252,145 @@ export const DirectoryListingSchema = z.object({
   territorialContext: z.object({ subnodeId: z.string().optional(), corridorId: z.string().optional(), landmarkId: z.string().optional() }),
 }).strict();
 export type DirectoryListing = z.infer<typeof DirectoryListingSchema>;
+
+/* =============================================================================
+ * PUENTE LOCALOPPORTUNITY — DECISION DH 2026-10-17 (turno 20): alias puente
+ * =============================================================================
+ * El fixture apps/web/src/data/capitalTerritoryData.ts importa LocalOpportunity
+ * desde '@delocalsoy/contracts'. El modulo oportunidades.js fue eliminado (decision
+ * DH 2026-10-17: dominio Bloque 9 canonico unico = Oportunidad* inline en index.ts)
+ * y con el el tipo original — el import quedaba roto. Decision DH (traza #243):
+ * REPONER el tipo como ALIAS PUENTE que tipa el fixture/stage SIN duplicar el
+ * dominio canonico. Los enums espejan los canonicos de index.ts (OportunidadTipoSchema,
+ * OportunidadEstadoSchema, ActivoVisibilidadSchema) SIN importarlos: index.ts
+ * re-exporta este modulo, importar de vuelta crearia circularidad. categoryCodes se
+ * valida contra TAXONOMIA_DIRECTORIO_CANONICA (canon de 11 rubros ratificado, #243).
+ * Deuda: cuando el stage migre a Oportunidad* canonicas, este puente se elimina.
+ * ============================================================================= */
+
+// Espejos de los enums canonicos de index.ts (ver nota de circularidad arriba).
+export const LocalOpportunityTypeSchema = z.enum([
+  'human_capacity',
+  'productive_capacity',
+  'physical_asset',
+  'institutional_asset',
+  'cultural_asset',
+  'detected_demand',
+  'market_gap',
+  'partnership_opportunity',
+  'investment_opportunity',
+  'policy_opportunity',
+]); // espejo de OportunidadTipoSchema (index.ts)
+
+export const LocalOpportunityStatusSchema = z.enum([
+  'detected',
+  'under_review',
+  'validated',
+  'prioritized',
+  'in_development',
+  'active',
+  'implemented',
+  'paused',
+  'discarded',
+  'archived',
+]); // espejo de OportunidadEstadoSchema (index.ts)
+
+export const LocalOpportunityVisibilitySchema = z.enum(['public', 'generalized', 'restricted']); // espejo de ActivoVisibilidadSchema (ADR-036)
+
+export const LocalOpportunityEvidenceTypeSchema = z.enum([
+  'community_input',
+  'survey',
+  'platform_data',
+  'field_observation',
+  'institutional_document',
+  'news_source',
+  'statistical_source',
+]); // espejo del evidence_type de OportunidadEvidenciaSchema (index.ts)
+
+export const LocalOpportunityRoleSchema = z.enum([
+  'proposer',
+  'beneficiary',
+  'provider',
+  'partner',
+  'validator',
+  'supporter',
+]); // espejo del role de OportunidadActorSchema (index.ts)
+
+// Estado de validacion del fixture (mismo vocabulario que TerritorialEntity lote 3A).
+export const LocalOpportunityValidationStatusSchema = z.enum([
+  'corroborated',
+  'reviewed',
+  'under_review',
+  'unreviewed',
+]);
+
+export const LocalOpportunityResourceStatusSchema = z.enum(['needed', 'identified', 'committed']);
+
+/** Evidencia del fixture — forma exacta del lote 3A (id + fuente + fecha de captura). */
+export const LocalOpportunityEvidenceSchema = z.object({
+  id: z.string().min(1),
+  sourceId: z.string().min(1),
+  evidenceType: LocalOpportunityEvidenceTypeSchema,
+  description: z.string().min(1),
+  capturedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'capturedAt: YYYY-MM-DD'),
+  validationStatus: LocalOpportunityValidationStatusSchema,
+}).strict();
+
+/** Actor del fixture — consentimiento obligatorio (Ley 25.326/ADR-027);
+ *  contactInfo SOLO stage: nunca persiste ni se expone (relay de plataforma, MK-0). */
+export const LocalOpportunityActorSchema = z.object({
+  name: z.string().min(1),
+  role: LocalOpportunityRoleSchema,
+  consentConfirmed: z.boolean(),
+  contactInfo: z.string().optional(),
+}).strict();
+
+export const LocalOpportunityResourceSchema = z.object({
+  resourceType: z.string().min(1),
+  description: z.string().min(1),
+  status: LocalOpportunityResourceStatusSchema,
+}).strict();
+
+export const LocalOpportunityScoreSchema = z.object({
+  territorialImpact: z.number().int().min(1).max(5),
+  feasibility: z.number().int().min(1).max(5),
+  urgency: z.number().int().min(1).max(5),
+  totalScore: z.number().int().min(0).max(100),
+}).strict();
+
+const CODIGOS_CANON_RUBROS = new Set(TAXONOMIA_DIRECTORIO_CANONICA.map((c) => c.code));
+
+/** ALIAS PUENTE (decision DH 2026-10-17): tipa CAPITAL_OPPORTUNITIES_SEEDS del
+ *  fixture lote 3A (5 semillas). NO es contrato de API — el dominio canonico del
+ *  Bloque 9 es Oportunidad* (index.ts, NCAP-R6 #158). categoryCodes valida contra
+ *  el canon de 11 rubros ratificado (#243); la evidencia exige al menos 1 fuente
+ *  (criterio minimo del Bloque 9). */
+export const LocalOpportunitySchema = z.object({
+  id: z.string().min(1),
+  nodeId: z.string().min(1),
+  type: LocalOpportunityTypeSchema,
+  title: z.string().min(3),
+  description: z.string().min(10),
+  status: LocalOpportunityStatusSchema,
+  territorialContext: z.object({
+    subnodeId: z.string().optional(),
+    corridorId: z.string().optional(),
+    landmarkId: z.string().optional(),
+    serviceAreaName: z.string().optional(),
+  }),
+  actors: z.array(LocalOpportunityActorSchema),
+  evidence: z.array(LocalOpportunityEvidenceSchema).min(1, 'criterio Bloque 9: al menos una evidencia por oportunidad'),
+  tags: z.array(z.string()),
+  categoryCodes: z.array(z.string()).refine((codes) => codes.every((code) => CODIGOS_CANON_RUBROS.has(code)), {
+    message: 'categoryCodes debe usar codigos del canon de 11 rubros ratificado (#243)',
+  }),
+  impactHypothesis: z.string().min(1),
+  requiredResources: z.array(LocalOpportunityResourceSchema),
+  visibility: LocalOpportunityVisibilitySchema,
+  createdAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'createdAt: YYYY-MM-DD'),
+  updatedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'updatedAt: YYYY-MM-DD'),
+  createdBy: z.string().min(1),
+  lastReviewedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'lastReviewedAt: YYYY-MM-DD'),
+  score: LocalOpportunityScoreSchema,
+}).strict();
+export type LocalOpportunity = z.infer<typeof LocalOpportunitySchema>;
