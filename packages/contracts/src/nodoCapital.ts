@@ -2,7 +2,7 @@
  * packages/contracts/src/nodoCapital.ts
  * -----------------------------------------------------------------------------
  * DELocalSoy.AR — Contratos Canónicos del Nodo Capital (San Juan, Argentina)
- * Serie Contracts NCAP-R2 · SRID=4326 · 4 Subnodos · 4 Estados Epistémicos Honestos
+ * Serie Contracts NCAP-R2 · SRID=4326 · 6 Subnodos (2 distritos PEC 2025 + 4 áreas funcionales) · 4 Estados Epistémicos Honestos
  * -----------------------------------------------------------------------------
  */
 
@@ -178,4 +178,49 @@ export const SUBNODOS_CAPITAL_CANONICOS: Record<SubnodoCapitalId, {
     coberturaKm2: 6.4,
     poblacionEstimada: 34500,
   },
+};
+
+/**
+ * Registro Canónico de los 6 Subnodos del Nodo Capital — mapeo de nomenclaturas
+ * (decisión DH ratificada 2026-10-17: 6 ENTIDADES DISTINTAS; traza #154 comment
+ * 6235922878; armonización de dominio #233). Coexisten dos familias:
+ *
+ * 1. Distritos oficiales del PEC 2025, sembrados en main (Fase C, PR #198 →
+ *    main @ 6c851c6, seed-subnodos-capital.sql, assignment_status dh_directive):
+ *    keys sj_capital_* con guiones bajos, compatibles con el regex subnodo_key
+ *    ^[a-z0-9_]+$ que usan ActivoAlta/OportunidadAlta/AskPregunta.
+ * 2. Áreas funcionales del lote 4 NCAP-R2 (agent.google, SubnodoCapitalIdSchema):
+ *    ids capital-* con guiones — NO pasan el regex subnodo_key del repo; su clave
+ *    de integración territorial es subnodoKey (sj_capital_*).
+ *
+ * R15: las 4 áreas funcionales viven SOLO en contratos (vocabulario ratificado);
+ * NO están sembradas en la tabla subnodos de main — siembra futura a decisión DH
+ * (patrón VIG-001, boundary_status provisional). El área "Desamparados & Eje
+ * Universitario" toma subnodoKey sj_capital_eje_universitario para no colisionar
+ * con el distrito oficial homónimo sj_capital_desamparados (entidades distintas).
+ */
+export type OrigenSubnodoCapital = 'distrito_pec_2025_main' | 'area_funcional_lote_4';
+
+export const SUBNODOS_CAPITAL_REGISTRO: ReadonlyArray<{
+  subnodoKey: string;                  // clave subnodo_key del repo (regex ^[a-z0-9_]+$)
+  id: SubnodoCapitalId | null;         // id de contrato del lote 4 (null = distrito de main)
+  label: string;
+  origen: OrigenSubnodoCapital;
+  traza: string;
+}> = [
+  { subnodoKey: 'sj_capital_centro', id: null, label: 'Centro (distrito PEC 2025)', origen: 'distrito_pec_2025_main', traza: 'Fase C #198 → main @ 6c851c6; vocabulario v0.1 ratificado #154 (2026-10-13)' },
+  { subnodoKey: 'sj_capital_desamparados', id: null, label: 'Desamparados (distrito PEC 2025)', origen: 'distrito_pec_2025_main', traza: 'Fase C #198 → main @ 6c851c6; vocabulario v0.1 ratificado #154 (2026-10-13)' },
+  { subnodoKey: 'sj_capital_centro_historico', id: 'capital-centro-historico', label: 'Centro Histórico & Eje Cívico', origen: 'area_funcional_lote_4', traza: 'lote 4 NCAP-R2; ratificado 2026-10-17 (6 entidades distintas)' },
+  { subnodoKey: 'sj_capital_eje_universitario', id: 'capital-desamparados', label: 'Desamparados & Eje Universitario', origen: 'area_funcional_lote_4', traza: 'lote 4 NCAP-R2; ratificado 2026-10-17 (6 entidades distintas)' },
+  { subnodoKey: 'sj_capital_concepcion', id: 'capital-concepcion', label: 'Concepción & Pueblo Viejo', origen: 'area_funcional_lote_4', traza: 'lote 4 NCAP-R2; ratificado 2026-10-17 (6 entidades distintas)' },
+  { subnodoKey: 'sj_capital_trinidad', id: 'capital-trinidad', label: 'Trinidad & Eje Sur Ferroviario', origen: 'area_funcional_lote_4', traza: 'lote 4 NCAP-R2; ratificado 2026-10-17 (6 entidades distintas)' },
+];
+
+/** Resuelve el subnodoKey territorial (regex del repo) desde el id de contrato
+ *  del lote 4 — puente entre SubnodoCapitalIdSchema y la API/DB del repo. */
+export const SUBNODO_KEY_POR_ID: Record<SubnodoCapitalId, string> = {
+  'capital-centro-historico': 'sj_capital_centro_historico',
+  'capital-desamparados': 'sj_capital_eje_universitario',
+  'capital-concepcion': 'sj_capital_concepcion',
+  'capital-trinidad': 'sj_capital_trinidad',
 };
