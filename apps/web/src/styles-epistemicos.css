@@ -1,0 +1,145 @@
+/**
+ * styles.css
+ * -----------------------------------------------------------------------------
+ * DELocalSoy.AR — 16 Clases Canónicas Epistémicas (.delocal-honest-*)
+ * WCAG AA Conforme · Cuatro Señales Independientes (Color · Trazo · Glifo · Microcopia)
+ * -----------------------------------------------------------------------------
+ */
+
+@import "./design/tokens-epistemicos.css";
+
+/* BADGES EPISTÉMICOS */
+.delocal-honest-badge-validado {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.2rem 0.55rem;
+  background-color: var(--honest-validado-bg);
+  border: var(--honest-validado-border-width) var(--honest-validado-border-style) var(--honest-validado-border-color);
+  color: var(--honest-validado-text);
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 0.375rem;
+}
+
+.delocal-honest-badge-sintetico {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.2rem 0.55rem;
+  background-color: var(--honest-sintetico-bg);
+  border: var(--honest-sintetico-border-width) var(--honest-sintetico-border-style) var(--honest-sintetico-border-color);
+  color: var(--honest-sintetico-text);
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 0.375rem;
+}
+
+.delocal-honest-badge-comunitario {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.2rem 0.55rem;
+  background-color: var(--honest-comunitario-bg);
+  border: var(--honest-comunitario-border-width) var(--honest-comunitario-border-style) var(--honest-comunitario-border-color);
+  color: var(--honest-comunitario-text);
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: var(--honest-comunitario-border-radius);
+}
+
+.delocal-honest-badge-pendiente {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.2rem 0.55rem;
+  background-color: var(--honest-pendiente-bg);
+  border: var(--honest-pendiente-border-width) var(--honest-pendiente-border-style) var(--honest-pendiente-border-color);
+  color: var(--honest-pendiente-text);
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 0.375rem;
+}
+
+/* CARDS DE CONTENIDO TERRITORIAL */
+.delocal-honest-card-validado {
+  background-color: #ffffff;
+  border: var(--honest-validado-border-width) var(--honest-validado-border-style) var(--honest-validado-border-color);
+  border-radius: 0.5rem;
+  padding: 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.delocal-honest-card-sintetico {
+  background-color: #ffffff;
+  border: var(--honest-sintetico-border-width) var(--honest-sintetico-border-style) var(--honest-sintetico-border-color);
+  border-radius: 0.5rem;
+  padding: 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.delocal-honest-card-comunitario {
+  background-color: #ffffff;
+  border: var(--honest-comunitario-border-width) var(--honest-comunitario-border-style) var(--honest-comunitario-border-color);
+  border-radius: var(--honest-comunitario-border-radius);
+  padding: 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.delocal-honest-card-pendiente {
+  background-color: #ffffff;
+  border: var(--honest-pendiente-border-width) var(--honest-pendiente-border-style) var(--honest-pendiente-border-color);
+  border-radius: 0.5rem;
+  padding: 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* BORDES PUROS */
+.delocal-honest-border-validado {
+  border: var(--honest-validado-border-width) var(--honest-validado-border-style) var(--honest-validado-border-color) !important;
+}
+
+.delocal-honest-border-sintetico {
+  border: var(--honest-sintetico-border-width) var(--honest-sintetico-border-style) var(--honest-sintetico-border-color) !important;
+}
+
+.delocal-honest-border-comunitario {
+  border: var(--honest-comunitario-border-width) var(--honest-comunitario-border-style) var(--honest-comunitario-border-color) !important;
+}
+
+.delocal-honest-border-pendiente {
+  border: var(--honest-pendiente-border-width) var(--honest-pendiente-border-style) var(--honest-pendiente-border-color) !important;
+}
+
+/* GLIFOS */
+.delocal-honest-glyph-validado::before {
+  content: '●';
+  color: var(--honest-validado-color);
+  font-size: 0.8em;
+  line-height: 1;
+}
+
+.delocal-honest-glyph-sintetico::before {
+  content: '✦';
+  color: var(--honest-sintetico-color);
+  font-size: 0.85em;
+  line-height: 1;
+}
+
+.delocal-honest-glyph-comunitario::before {
+  content: '◈';
+  color: var(--honest-comunitario-color);
+  font-size: 0.85em;
+  line-height: 1;
+}
+
+.delocal-honest-glyph-pendiente::before {
+  content: '◐';
+  color: var(--honest-pendiente-color);
+  font-size: 0.85em;
+  line-height: 1;
+}
