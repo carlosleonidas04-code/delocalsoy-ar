@@ -214,13 +214,13 @@ Ley 104-A + SIIC (verificación individual) · ley ventanilla única 02-07-2026 
 
 ---
 
-## 5. Decisiones DH pendientes (cerrar antes de MK-1)
+## 5. Decisiones DH (ratificadas 2026-10-17 vía pregunta directa, traza #243)
 
-1. **Rubros canon**: 4 categorías (rama #233) vs 11 (fixture lote 3A). Recomendación: 4 como canon semilla + extensión documentada por categoría nueva con fuente.
-2. **Multinodo confirmado** (diseño ya `nodo_key`-scoped: capital primero, caucete/iglesia reutilizan sin cambios).
-3. **Dependencias FE** (react-hook-form + zodResolver; mapa FE-1; facetas FE-2) — encadenadas a las 8 decisiones abiertas de #163.
-4. **Nombre público**: "Mercado de Proximidad" vs "Marketplace" (vocabulario con agent.google).
-5. **Seed**: 0 comercios sembrados (recomendado, patrón VIG-005) — la demo sintética solo en `SyntheticDataSource`.
+1. **Rubros canon — RATIFICADO: 11 categorías del fixture lote 3A como canon**. `directoryTaxonomy.ts` (rama #233, 4 categorías) queda como subconjunto a armonizar: la serie contracts extiende `TAXONOMIA_CANONICA` con las 11 categorías del fixture `capitalTerritoryData.ts` (mismo repo, contenido acreditado — nada se deriva nuevo, R1). El join por código extensible se mantiene; código desconocido degrada a `unknown` honesto (R15).
+2. **Multinodo — RATIFICADO desde el día 1** (`nodo_key`-scoped: capital primero, caucete/iglesia reutilizan sin cambios).
+3. **Dependencias FE** (react-hook-form + zodResolver; mapa FE-1; facetas FE-2) — **ABIERTA**, encadenada a las 8 decisiones de #163.
+4. **Nombre público — RATIFICADO: «Mercado de Proximidad»** (vocabulario UI con agent.google sobre tokens `--honest-*`).
+5. **Seed — RATIFICADO: 0 comercios sembrados** (patrón VIG-005 "solo se publica lo verificado"); la demo sintética solo en `SyntheticDataSource`.
 
 ## 6. Plan de ejecución MK-1 (tras la cascada de merges, CI verde)
 
