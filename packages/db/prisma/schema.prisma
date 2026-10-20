@@ -243,6 +243,7 @@ model activos {
   patrimonio activos_patrimonio?
   productos      productos[]
   operativa      activos_operativa?
+  observaciones  patrimonio_observaciones[]
 
   /// Geometría puntal WGS84: columna + trigger + índice GiST en la migración
   /// versionada 20261008200000_r5b_activos (NULL-safe desde VIG-002: sin
@@ -568,4 +569,32 @@ model ingestas {
   @@index([nodo_key])
   @@index([estado])
   @@map("ingestas")
+}
+
+// ─── NODO-VIG VIG-009 (#241, épica #239): observaciones de estado patrimonial ───
+
+/// Observaciones de estado patrimonial (VIG-009 R1): testimonios append-only de
+/// ciudadanos sobre activos con ficha patrimonial (VIG-004). Cada observación es
+/// un testimonio con checklist estructurado y evidencia — JAMÁS un diagnóstico:
+/// el estado de conservación global nunca se publica como verificado sin informe
+/// técnico oficial (R15, diseño #241). SIN updated_at: la tabla es append-only, no
+/// se edita ni se borra (trazabilidad inmutable, ADR-038). Autor = pseudónimo
+/// sha256(usuario_id) truncado — sin PII (Ley 25.326, ADR-027). hash único →
+/// idempotencia del alta (mismo ciudadano + activo + fecha + checklist + nota =
+/// una sola observación).
+model patrimonio_observaciones {
+  id                String   @id @default(cuid())
+  activo_id         String   @map("activo_id")
+  fecha_observacion String   @map("fecha_observacion") // YYYY-MM-DD — fecha del testimonio
+  checklist         Json     @map("checklist") // PatrimonioObservacionChecklistSchema (VIG-009 R1)
+  nota              String?  @map("nota")
+  evidencia         Json     @map("evidencia") // PatrimonioObservacionEvidenciaSchema — testimonio con fuente
+  created_by_hash   String   @map("created_by_hash") // pseudónimo sha256(usuario_id) — sin PII
+  hash              String   @unique @map("hash") // idempotencia del alta
+  created_at        DateTime @default(now()) @map("created_at")
+
+  activo activos @relation(fields: [activo_id], references: [id], onDelete: Cascade)
+
+  @@index([activo_id])
+  @@map("patrimonio_observaciones")
 }
