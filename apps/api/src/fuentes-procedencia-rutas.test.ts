@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 // NODO-CAU R2 (#138/#147): catálogo de fuentes espaciales + procedencia por
 // conjunto — extremo a extremo contra servicios reales (PostgreSQL/PostGIS +
 // Redis):
-// - GET /api/fuentes: catálogo público anónimo (15 fuentes con organismo,
+// - GET /api/fuentes: catálogo público anónimo (16 fuentes con organismo,
 //   estado honesto de disponibilidad y cautela) y GET /api/fuentes/:key
 // - POST /api/ingestas: alta curada por admin (decisión DH 2026-10-15);
 //   NC-EV-09: la ingesta sin fecha de corte/precisión/CRS se rechaza;
@@ -60,12 +60,12 @@ describe.skipIf(!dbUp)('fuentes espaciales + procedencia (NODO-CAU R2 — regist
   const jsonHeaders = { 'content-type': 'application/json' };
   const PASSWORD = 'contrasena-muy-secreta-8+chars';
 
-  const TIPOS = ['wms', 'wfs', 'descarga', 'documento', 'api'];
+  const TIPOS = ['wms', 'wfs', 'descarga', 'documento', 'api', 'registro_web'];
   const ESTADOS = ['disponible', 'requiere_credenciales', 'requiere_solicitud', 'no_disponible', 'deprecado'];
   const KEYS = [
     'catastro_sj', 'ign', 'unide', 'indec_iiee', 'bahra', 'georef', 'refes',
     'mapa_educativo', 'mapa_cuidado', 'inpres', 'faud_unsj', 'hidraulica_sj',
-    'mapbiomas', 'idera', 'redtulum',
+    'mapbiomas', 'idera', 'redtulum', 'fuente_siic_web',
   ];
 
   // Ingesta de referencia: REFES 2026 recortado al departamento Caucete.
@@ -115,12 +115,12 @@ describe.skipIf(!dbUp)('fuentes espaciales + procedencia (NODO-CAU R2 — regist
     return ((await login.json()) as any).data.token as string;
   }
 
-  it('catálogo público: 15 fuentes con organismo, estado honesto y cautela', async () => {
+  it('catálogo público: 16 fuentes con organismo, estado honesto y cautela', async () => {
     const res = await fetch(base + '/api/fuentes');
     expect(res.status).toBe(200);
     const body: any = await res.json();
     expect(body.success).toBe(true);
-    expect(body.count).toBe(15);
+    expect(body.count).toBe(16);
     expect(body.data.map((f: any) => f.key).sort()).toEqual(KEYS.slice().sort());
     for (const f of body.data) {
       expect(f.organismo.length).toBeGreaterThan(3);
@@ -363,11 +363,11 @@ describe.skipIf(!dbUp)('fuentes espaciales + procedencia (NODO-CAU R2 — regist
     expect(invariantes[0].n).toBe(0);
   });
 
-  it('sellos seed: 15 fuente.registrada con hash seed-fuente-*, payload sin PII', async () => {
+  it('sellos seed: 16 fuente.registrada con hash seed-fuente-*, payload sin PII', async () => {
     const sellos = await prisma.events_raw.findMany({
       where: { type: 'fuente.registrada', hash: { startsWith: 'seed-fuente-' } },
     });
-    expect(sellos.length).toBe(15);
+    expect(sellos.length).toBe(16);
 
     const ign = await prisma.events_raw.findFirst({ where: { type: 'fuente.registrada', hash: 'seed-fuente-ign' } });
     expect(ign).not.toBeNull();
@@ -377,6 +377,24 @@ describe.skipIf(!dbUp)('fuentes espaciales + procedencia (NODO-CAU R2 — regist
     expect(Object.keys((ign?.payload as any) ?? {}).sort()).toEqual(['key', 'organismo', 'source']);
   });
 
+  it('MARKET-CAP MK-2 (#243): fuente_siic_web — tipo registro_web, disponible, cautela de verificación individual (ADR-035)', async () => {
+    const res = await fetch(base + '/api/fuentes/fuente_siic_web');
+    expect(res.status).toBe(200);
+    const body: any = await res.json();
+    expect(body.data.tipo).toBe('registro_web'); // tipo nuevo del catálogo (H5)
+    expect(body.data.estado).toBe('disponible');
+    expect(body.data.cautela).toContain('verificacion individual');
+    expect(body.data.cautela).toContain('NO padron bulk');
+
+    // Sello del seed MK-2 (patrón seed-cau-r2): fuente.registrada, sin PII.
+    const sello = await prisma.events_raw.findFirst({
+      where: { type: 'fuente.registrada', hash: 'seed-fuente-fuente_siic_web' },
+    });
+    expect(sello).not.toBeNull();
+    expect((sello?.payload as any).key).toBe('fuente_siic_web');
+    expect((sello?.payload as any).source).toBe('seed-market-cap-mk2');
+    expect(Object.keys((sello?.payload as any) ?? {}).sort()).toEqual(['key', 'organismo', 'source']);
+  });
   it('seed idempotente: re-ejecutar db:seed no duplica fuentes ni sellos', async () => {
     const antes = await Promise.all([
       prisma.fuentes.count(),
