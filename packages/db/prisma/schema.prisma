@@ -445,6 +445,7 @@ model activos_operativa {
   seguridad        Json?    @map("seguridad") // protocolos verificados con fuente
   habilitacion     Json?    @map("habilitacion") // HabilitacionSchema (4 atributos)
   procedencia      Json?    @map("procedencia") // ActivoProcedenciaSchema (ADR-035)
+  institucional    Json?    @map("institucional") // OperativaInstitucionalSchema (VIG-008 #240) — solo tras consentimiento formal
   created_at       DateTime @default(now()) @map("created_at")
   updated_at       DateTime @updatedAt @map("updated_at")
 
