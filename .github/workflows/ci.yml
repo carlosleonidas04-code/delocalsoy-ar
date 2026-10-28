@@ -1,5 +1,14 @@
 name: CI
 
+# v17 (PRE-ACT 2026-10-28): hardening de spending — concurrency con
+# cancel-in-progress (un push nuevo cancela el run obsoleto de la misma ref; en
+# main el arbol final queda verificado por el ultimo run — cada PR ya acredito
+# verde pre-merge), timeout-minutes por job (build 15 / test 25 / vertical 30 /
+# report 10 — el default de GitHub son 360 min por job: uno colgado = 6 horas
+# facturadas) y cache pnpm en los setup-node (sin redescargar dependencias).
+# Semantica de jobs SIN CAMBIOS (R4/R15): mismos pasos, mismos servicios,
+# misma evidencia. Sin path filters (ver docs/PRE_ACTIVACION_CI.md seccion 3).
+
 # v11: igual que v10 (version pnpm gobernada por packageManager; auto-report
 # como job separado tras concluir build). v11 amplía el tail del log
 # publicado a 20000 chars: los errores de tsc quedaban fuera del tail de 3500.
@@ -29,9 +38,15 @@ permissions:
   actions: read
   pull-requests: write
 
+concurrency:
+  # v17 (PRE-ACT): un solo run vivo por ref; los obsoletos se cancelan.
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       # Prisma exige la variable al generar; en CI no hay BD real, valor dummy.
       DATABASE_URL: "postgresql://ci:ci@localhost:5432/ci?schema=public"
@@ -42,6 +57,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: pnpm
       - name: Install dependencies
         run: |
           set -o pipefail
@@ -57,6 +73,7 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     services:
       postgis:
         image: postgis/postgis:16-3.4
@@ -89,6 +106,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: pnpm
       - name: Install dependencies
         run: |
           set -o pipefail
@@ -116,6 +134,7 @@ jobs:
     # proyección del worker exactamente una vez → visible en el mapa
     # público (R5: nada simulado — la salida real acredita, R4).
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     services:
       postgis:
         image: postgis/postgis:16-3.4
@@ -151,6 +170,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: pnpm
       - name: Install dependencies
         run: |
           set -o pipefail
@@ -189,6 +209,7 @@ jobs:
     needs: [build, test, vertical]
     if: failure() && github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Publicar log del fallo en el PR (R4)
         uses: actions/github-script@v7
