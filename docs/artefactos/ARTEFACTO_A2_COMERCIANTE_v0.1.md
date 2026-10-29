@@ -44,7 +44,7 @@ Nota de dominio (MK-1): la titularidad es un **estado de la ficha** (`sin_reclam
 
 - **Ciclo de vida:** ciudadano propone (testimonio) → titular reclama (CUIT/expediente + consentimiento granular) → moderador aprueba con justificación pública (ADR-038) → la evidencia primaria SIIC verifica SOLO el campo habilitación (ADR-035).
 - **Consentimiento granular por campo:** nunca pre-marcado; cada atributo publicado requiere consentimiento propio (ADR-027, Ley 25.326).
-- **Identificador siempre hash:** ni el propio titular ve su CUIT en claro una vez recla­mado; la ficha pública jamás lo expone.
+- **Identificador siempre hash:** ni el propio titular ve su CUIT en claro una vez reclamado; la ficha pública jamás lo expone.
 - **Rechazado nunca público:** `rechazado`/`archivado` salen del directorio y de la ficha (404 sin eco, ADR-036).
 - **Frontera de regímenes:** habilitación comercial (Ley 104-A, municipal/silencio positivo) ≠ habilitación turística (Ley 2400-T, VIG-005) — regímenes legales distintos documentados en ambos lados.
 

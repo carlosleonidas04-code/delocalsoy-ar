@@ -51,7 +51,7 @@
 
 **Ve:** bandejas con estados y justificaciones, fichas completas de lo que modera (incl. `sensible_nota` en canal de gestión), pipeline de ingestas con sellos, KPIs computados.
 
-**Jamás ve:** identificador en claro de ciudadanos o titulares (CUIT/expediente → hash), PII de escritores, moderaciones sin dejar sello (téchicamente imposible), publicar sin pasar el pipeline.
+**Jamás ve:** identificador en claro de ciudadanos o titulares (CUIT/expediente → hash), PII de escritores, moderaciones sin dejar sello (técnicamente imposible), publicar sin pasar el pipeline.
 
 ## 6. Trazabilidad
 
