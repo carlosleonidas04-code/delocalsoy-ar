@@ -73,10 +73,12 @@ function fieldsToMap(fields: string[]): Record<string, string> {
   return map;
 }
 
-// Crea el grupo si no existe (BUSYGROUP = ya existe: re-arranque normal).
+// Crea el grupo si no existe en '0' (AUD-08 D2, #103): la historia
+// completa se entrega desde el primer arranque — reprocesar es seguro por la
+// idempotencia de cada consumer. BUSYGROUP = ya existe: re-arranque normal.
 export async function ensureGroup(): Promise<void> {
   try {
-    await redisCommand(['XGROUP', 'CREATE', STREAM, GROUP, '$', 'MKSTREAM']);
+    await redisCommand(['XGROUP', 'CREATE', STREAM, GROUP, '0', 'MKSTREAM']);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (!message.includes('BUSYGROUP')) throw err;
