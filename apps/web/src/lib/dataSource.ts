@@ -17,7 +17,12 @@ import type {
   FuenteInformativa,
   IngestaPublicada,
 } from './servicioInformativo';
-import type { ComercioDetalle, ComercioItem, ComerciosQuery } from './comercios';
+import type {
+  ComercioDetalle,
+  ComercioHistorialEntrada,
+  ComercioItem,
+  ComerciosQuery,
+} from './comercios';
 
 export type SanJuanFocalNodeKey = 'capital' | 'caucete' | 'iglesia';
 export type Core004Role = 'ciudadano' | 'moderador' | 'admin';
@@ -316,6 +321,11 @@ export interface DataSource<TContext = unknown> {
   // implementaciones convergen (paridad sintética incluida).
   listComercios?(input?: ComerciosQuery): Promise<ComercioItem[]>;
   getComercio?(id: string): Promise<ComercioDetalle>;
+  // MARKET-CAP MK-2 (#254, sub-épica #152): historial público F-3 —
+  // bitácora derivada de sellos append-only (ADR-032), JAMÁS una tabla
+  // mutable. Opcional por contrato (ADR-029); la paridad sintética marca
+  // cada entrada sintetico: true y la UI la etiqueta [SINTÉTICO] (R15).
+  getComercioHistorial?(id: string): Promise<ComercioHistorialEntrada[]>;
 }
 
 export { ApiDataSource, type ApiDataSourceOptions };
@@ -898,6 +908,55 @@ export class SyntheticDataSource implements DataSource {
       });
     }
     return { ficha: { ...ficha }, operativa: null, productos: [], count_productos: 0 };
+  }
+
+  // MARKET-CAP MK-2 (#254): paridad sintética del historial F-3 — ciclo
+  // demo por ficha (H6: toda ficha viva tiene al menos 1 sello
+  // comercio.ingestado). Cada entrada declara sintetico: true (R15: la
+  // demo se declara SIEMPRE — el panel la etiqueta [SINTÉTICO], jamás se
+  // disfraza de registro sellado real).
+  private readonly syntheticHistorialComercios: Record<string, ComercioHistorialEntrada[]> = {
+    'syn-com-capital-01': [
+      { type: 'comercio.ingestado', occurred_at: '2026-10-08T12:00:00.000Z', sintetico: true },
+      {
+        type: 'comercio.titularidad_reclamada',
+        metodo: 'documento_verificable',
+        occurred_at: '2026-10-09T12:00:00.000Z',
+        sintetico: true,
+      },
+      {
+        type: 'comercio.titularidad_verificada',
+        metodo: 'documento_verificable',
+        verificado_por_hash: 'syn-hash-moderador-demo',
+        occurred_at: '2026-10-09T13:00:00.000Z',
+        sintetico: true,
+      },
+      {
+        type: 'comercio.habilitacion_actualizada',
+        estado_anterior: 'sin_dato',
+        estado_nuevo: 'verificada',
+        fuente_key: 'fuente_siic_web',
+        justificacion: 'Certificado web SIIC presentado por el titular (demo sintética, ADR-035).',
+        actualizado_por_hash: 'syn-hash-titular-demo',
+        occurred_at: '2026-10-10T12:00:00.000Z',
+        sintetico: true,
+      },
+    ],
+    'syn-com-capital-02': [
+      { type: 'comercio.ingestado', occurred_at: '2026-10-08T12:30:00.000Z', sintetico: true },
+    ],
+  };
+
+  public async getComercioHistorial(id: string): Promise<ComercioHistorialEntrada[]> {
+    const historial = this.syntheticHistorialComercios[id];
+    if (historial === undefined) {
+      throw new DataSourceHttpError({
+        status: 404,
+        endpoint: '/api/comercios/' + id + '/historial',
+        message: 'Historial no disponible en la demo sintética (R5: sin fallback silencioso)',
+      });
+    }
+    return historial.map((e) => ({ ...e }));
   }
 }
 

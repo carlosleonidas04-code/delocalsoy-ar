@@ -46,8 +46,10 @@ import {
 } from './servicioInformativo';
 import {
   normalizarComercioDetalle,
+  normalizarComercioHistorial,
   normalizarComercios,
   type ComercioDetalle,
+  type ComercioHistorialEntrada,
   type ComercioItem,
   type ComerciosQuery,
 } from './comercios';
@@ -566,5 +568,27 @@ export class ApiDataSource implements DataSource {
       });
     }
     return normalizarComercioDetalle(payload);
+  }
+
+  /**
+   * Consulta GET /api/comercios/:id/historial — bitácora pública F-3 del
+   * comercio (MARKET-CAP MK-2 #254): derivada 1:1 de los sellos comercio.*
+   * en events_raw (ADR-032, append-only — JAMÁS una tabla mutable). Regla
+   * R5: si !ok lanza DataSourceHttpError — JAMÁS devuelve [] como máscara
+   * de error (R15: error es error, lista vacía es dato honesto; H6: toda
+   * ficha viva tiene al menos 1 entrada comercio.ingestado).
+   */
+  public async getComercioHistorial(id: string): Promise<ComercioHistorialEntrada[]> {
+    const endpoint = '/api/comercios/' + encodeURIComponent(id) + '/historial';
+    const payload = await this.requestJson<any>(endpoint);
+    if (!Array.isArray(payload) && !Array.isArray(payload?.data)) {
+      throw new DataSourceHttpError({
+        status: 500,
+        endpoint,
+        message: 'Respuesta malformada de ' + endpoint + ': se esperaba un arreglo en data',
+        details: payload,
+      });
+    }
+    return normalizarComercioHistorial(payload);
   }
 }
