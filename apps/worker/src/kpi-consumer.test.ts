@@ -62,8 +62,9 @@ function snapshot(nodoKey: string, kpiKey: string): Promise<any> {
 
 describe.skipIf(!dbUp || !redisUp)('VIG-003 (#182) — consumidor de KPIs vig003-kpi', () => {
   beforeAll(async () => {
-    // El grupo arranca en '$': las entradas previas no se entregan — cada
-    // test publica y consume lo suyo.
+    // Desde AUD-08 (D2) el grupo nace en '0': la historia previa SE entrega
+    // y se absorbe idempotentemente (recompute con upsert) — cada test
+    // sigue publicando y consumiendo lo suyo.
     await ensureKpiGroup();
   });
 
