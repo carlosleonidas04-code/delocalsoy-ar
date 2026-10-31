@@ -46,7 +46,7 @@ La propuesta del 22-oct trabajaba sobre el handoff del 17-oct (base 77500be). De
 
 - La cola pasó de ~19 a ~50 PRs abiertos (frontend incluido: #224, #227, #229, #237, #238, #249, #275–#279, #280).
 - Llegaron los lotes ARTEFACTOS (#267, #275–#279) y MARKET-CAP.
-- `ci.yml` ya se resolvió (#262/#264): el diagnóstico «Actions caídas desde el 15-oct» del handoff ya no es el estado actual.
+- `ci.yml`: el arreglo está en cola — PRs #262/#264 abiertos al 31-oct (no merged): el diagnóstico «Actions caídas desde el 15-oct» del handoff sigue siendo el estado de main, pero ya tiene PRs que lo resuelven esperando la cascada.
 - RFC-027 (colaboración frontend) está en PR #225.
 - El handoff del 17-oct queda atrás en varios puntos: este documento acredita el estado actual y es el que rige.
 
