@@ -7,6 +7,7 @@ import eventsRouter from './routes/events.js';
 import fichasValoracionRouter from './routes/fichasValoracion.js';
 import fuentesRouter from './routes/fuentes.js';
 import healthRouter from './routes/health.js';
+import healthDetailedRouter from './routes/healthDetailed.js';
 import modeloFederadoRouter from './routes/modeloFederado.js';
 import nodosRouter from './routes/nodos.js';
 import oportunidadesRouter from './routes/oportunidades.js';
@@ -24,6 +25,12 @@ export function createApp(): Express {
   // HS256 y roles. Fail-closed sin JWT_SECRET. La API key R8 subsiste para
   // operaciones de sistema (guard R8 intocado).
   app.use('/api/auth', authRouter);
+
+  // A1 observabilidad (#290, hoja M1, RUNBOOK seccion 6): salud detallada por
+  // componente (db, redis/streams, projection_lag, proceso) — acceso admin
+  // (ADR-031): expone internals operativos. El health publico honesto (R5)
+  // sigue siendo GET /api/health; este lo complementa, nunca lo reemplaza.
+  app.use('/api/health/detailed', healthDetailedRouter);
 
   // Salud honesta del sistema: mode real|synthetic|degraded, nunca OK silencioso (R5)
   // Aterrizaje PR 1 — issue #20
