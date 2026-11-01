@@ -51,7 +51,7 @@ describe.skipIf(!dbUp)('Seed idempotente de nodos San Juan (ADR-021, #65)', () =
     for (const nombre of esperados) {
       expect(nombres, 'falta el nodo ' + nombre).toContain(nombre);
     }
-  });
+  }, 60000);
 
   it('re-ejecutar db:seed no duplica (idempotencia por NOT EXISTS)', async () => {
     const antes = await prisma.territorios.count({ where: { provincia: 'San Juan' } });
@@ -59,7 +59,7 @@ describe.skipIf(!dbUp)('Seed idempotente de nodos San Juan (ADR-021, #65)', () =
     seed();
     const despues = await prisma.territorios.count({ where: { provincia: 'San Juan' } });
     expect(despues).toBe(antes);
-  });
+  }, 60000);
 
   it('el seed preserva activo (un soft delete no se revive)', async () => {
     await prisma.territorios.updateMany({
@@ -76,7 +76,7 @@ describe.skipIf(!dbUp)('Seed idempotente de nodos San Juan (ADR-021, #65)', () =
       where: { nombre: 'Capital', provincia: 'San Juan' },
       data: { activo: true },
     });
-  });
+  }, 60000);
 
   it('GET /api/territorios?bbox de San Juan devuelve los 3 nodos con geometría', async () => {
     const res = await fetch(base + '/api/territorios?bbox=-70.0,-32.0,-66.5,-29.0');

@@ -15,6 +15,8 @@ import { HorizonTwoSpatialFederationPanel } from './components/HorizonTwoSpatial
 import { HorizonFourFieldAndTelemetryPanel } from './components/HorizonFourFieldAndTelemetryPanel';
 import { QuarterlyTrendsSection } from './components/QuarterlyTrendsSection';
 import { RecursiveProspectiveContractPanel } from './components/RecursiveProspectiveContractPanel';
+import { ShowcaseRecorridoPanel } from './components/ShowcaseRecorridoPanel';
+import { ServicioInformativoPanel } from './components/ServicioInformativoPanel';
 import { TerritoriosMap } from './components/TerritoriosMap';
 import { TerritorialPlatformHub } from './components/TerritorialPlatformHub';
 import { TraceabilityAndEvidenciasPanel } from './components/TraceabilityAndEvidenciasPanel';
@@ -6158,6 +6160,17 @@ pnpm install && git status -sb`}
             onTestDuplicateHashIdempotency={handleTestDuplicateHashIdempotency}
             onVerifyEvidencia={handleVerifyEvidencia}
           />
+        )}
+
+        {/* 6b. Recorrido del Showcase (VIG-007 — Demo final): Caucete → Capital → Valle de Iglesia con estado real (R15) */}
+        {(activeDesignLens === 'all' || activeDesignLens === 'lens_atlas_coco_baba') && (
+          <ShowcaseRecorridoPanel />
+        )}
+
+        {/* 6c. Servicio informativo ciudadano del nodo Caucete (NC-R5 #142, NODO-CAU): capas v6,
+            fuentes ADR-035 y ingestas publicadas (NC-EV-09) — acople por contrato DataSource (ADR-029) */}
+        {(activeDesignLens === 'all' || activeDesignLens === 'lens_atlas_coco_baba') && (
+          <ServicioInformativoPanel dataSource={defaultDataSource} />
         )}
 
         {/* 7. Estado de Integración API y Registro Maestro de Nodos Territoriales */}

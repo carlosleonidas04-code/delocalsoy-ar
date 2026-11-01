@@ -1,10 +1,14 @@
 import { prisma } from '@delocalsoy/db';
 import { consumeOnce, ensureGroup } from './consume.js';
+import { consumeKpisOnce, ensureKpiGroup } from './kpi.js';
+import { consumeRagOnce, ensureRagGroup } from './rag.js';
 
 /**
- * Loop del worker — CORE-004 R4b (ADR-032, #87).
- *
- * Consume el stream 'events:raw' en pasadas periódicas. Ante un error real
+ * Loop del worker — CORE-004 R4b (ADR-032, #87) + VIG-003 (NVIG-R3 #182,
+ * épica #167) + VIG-006 (NVIG-R8 #188): TRES proyecciones por consumer
+ * group sobre el MISMO stream 'events:raw' — R4b (event_projections),
+ * vig003-kpi (kpi_snapshots) y vig006-rag-index (rag_index).
+ * Consume en pasadas periódicas. Ante un error real
  * de proyección NO ackea (la entrada queda pending y XAUTOCLAIM la recupera
  * en la próxima pasada); ante Redis caído reintenta tras el intervalo — el
  * transporte es fail-open en la API y tolerante a fallos aquí.
@@ -22,6 +26,8 @@ process.on('SIGTERM', () => { running = false; });
 
 async function main(): Promise<void> {
   await ensureGroup();
+  await ensureKpiGroup();
+  await ensureRagGroup();
   let passes = 0;
   while (running) {
     try {
@@ -33,6 +39,24 @@ async function main(): Promise<void> {
       }
     } catch (err) {
       console.error('[worker] fallo en la pasada:', err instanceof Error ? err.message : String(err));
+    }
+    try {
+      const kpis = await consumeKpisOnce();
+      const kpiTotal = kpis.processed + kpis.discarded;
+      if (kpiTotal > 0 || kpis.errors > 0) {
+        console.log('[worker] pasada %d (vig003-kpi): %o', passes, kpis);
+      }
+    } catch (err) {
+      console.error('[worker] fallo en la pasada de KPIs:', err instanceof Error ? err.message : String(err));
+    }
+    try {
+      const rag = await consumeRagOnce();
+      const ragTotal = rag.processed + rag.discarded;
+      if (ragTotal > 0 || rag.errors > 0) {
+        console.log('[worker] pasada %d (vig006-rag-index): %o', passes, rag);
+      }
+    } catch (err) {
+      console.error('[worker] fallo en la pasada de indexación RAG:', err instanceof Error ? err.message : String(err));
     }
     if (STOP_AFTER_PASSES > 0 && passes >= STOP_AFTER_PASSES) break;
     await new Promise((resolve) => setTimeout(resolve, INTERVAL_MS));

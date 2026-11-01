@@ -5,8 +5,10 @@ import { prisma, Prisma } from '@delocalsoy/db';
 import { xaddEventReference } from '@delocalsoy/redis';
 import {
   ActivoAltaSchema,
+  ActivoCapitalN1Schema,
   ActivoEstadoCambioSchema,
   ActivoEstadoSchema,
+  ActivoTipoSchema,
   BboxStringSchema,
   SanJuanNodeSlugSchema,
 } from '@delocalsoy/contracts';
@@ -28,6 +30,15 @@ import { requireJwt, requireRole } from '../lib/auth.js';
  * Sello en events_raw (R4/R15): toda escritura queda acreditada en la fuente
  * de verdad con un evento 'activo.*' sin PII. Si el sello falla, la escritura
  * se revierte — nunca un estado persistido sin su evento.
+ *
+ * VIG-002 (NVIG-R2 #169, épica #167 — Opción A ratificada por la DH
+ * 2026-10-13: extender el dominio, no duplicarlo): tipos multimodales
+ * (local | prestador | experiencia | observacion), contexto subnodo validado
+ * contra subnodos, clasificaciones N1→N3 con fuente (taxonomía VIG-000),
+ * procedencia ADR-035 y visibilidad ADR-036 — restricted queda excluido de
+ * toda lectura pública (la custodia se profundiza en VIG-004). El estado
+ * 'archivado' (PATCH de moderación) retira del catálogo vivo. "Verificado"
+ * = aprobado + procedencia trazable, nunca un sello extra (R15).
  */
 const router: Router = Router();
 
@@ -86,6 +97,18 @@ router.post('/', requireJwt, async (req: Request, res: Response) => {
   const usuario = res.locals.usuario as { id: string };
   const autor = seudonimo(usuario.id);
 
+  // VIG-002: el subnodo declarado debe existir y pertenecer al nodo_key
+  // declarado — el contexto territorial no se acepta por confianza.
+  if (parsed.subnodo_key !== undefined) {
+    const subnodo = await prisma.subnodos.findFirst({
+      where: { key: parsed.subnodo_key, nodo_key: parsed.nodo_key },
+    });
+    if (subnodo === null) {
+      res.status(400).json({ success: false, error: 'subnodo_key inexistente o ajeno al nodo declarado' });
+      return;
+    }
+  }
+
   try {
     const activo = await prisma.activos.create({
       data: {
@@ -94,9 +117,29 @@ router.post('/', requireJwt, async (req: Request, res: Response) => {
         descripcion: parsed.descripcion ?? undefined,
         estado: 'propuesto',
         nodo_key: parsed.nodo_key,
+        subnodo_key: parsed.subnodo_key ?? undefined,
         lat: parsed.lat,
         lng: parsed.lng,
+        visibilidad: 'public', // ADR-036: nace público; restricted es decisión de custodia (VIG-004)
+        procedencia: parsed.procedencia ?? undefined, // ADR-035: opcional para el ciudadano
+        consentimiento: parsed.consentimiento ?? undefined, // granular, Ley 25.326
+        is_synthetic: false, // la propuesta ciudadana es registro comunitario real
         created_by_hash: autor,
+        // Clasificaciones N1→N3 (VIG-002): create anidado = atómico — sin
+        // activo huérfano si una clasificación falla.
+        ...(parsed.clasificaciones !== undefined
+          ? {
+              clasificaciones: {
+                create: parsed.clasificaciones.map((c) => ({
+                  n1: c.n1,
+                  n2: c.n2,
+                  n3: c.n3 ?? '',
+                  is_primary: c.is_primary,
+                  source: c.source,
+                })),
+              },
+            }
+          : {}),
       },
     });
 
@@ -107,6 +150,7 @@ router.post('/', requireJwt, async (req: Request, res: Response) => {
         activo_id: activo.id,
         tipo: activo.tipo,
         nodo_key: activo.nodo_key,
+        subnodo_key: activo.subnodo_key ?? null,
         estado: activo.estado,
         created_by_hash: autor,
       });
@@ -127,13 +171,20 @@ router.post('/', requireJwt, async (req: Request, res: Response) => {
 });
 
 // GET /api/activos — lectura pública y anónima (el mapa se sirve sin sesión).
-// Filtros opcionales ?estado= y ?nodo=; ?bbox= recorta con ST_Intersects
-// sobre el índice GiST (mismo patrón que /api/territorios).
+// Filtros opcionales ?estado= ?nodo= ?tipo= ?subnodo= ?n1= (capital N1 de la
+// taxonomía VIG-000, vía clasificaciones); ?bbox= recorta con ST_Intersects
+// sobre el índice GiST (mismo patrón que /api/territorios). ADR-036: la
+// visibilidad 'restricted' queda excluida de toda lectura pública.
 router.get('/', async (req: Request, res: Response) => {
   try {
     const estadoCrudo = typeof req.query.estado === 'string' ? req.query.estado : undefined;
     const nodoCrudo = typeof req.query.nodo === 'string' ? req.query.nodo : undefined;
     const bboxCrudo = typeof req.query.bbox === 'string' ? req.query.bbox : undefined;
+    const tipoCrudo = typeof req.query.tipo === 'string' ? req.query.tipo : undefined;
+    const subnodoCrudo = typeof req.query.subnodo === 'string' ? req.query.subnodo : undefined;
+    const n1Crudo = typeof req.query.n1 === 'string' ? req.query.n1 : undefined;
+    const productoCrudo = typeof req.query.producto === 'string' ? req.query.producto : undefined;
+    const mesCrudo = typeof req.query.mes === 'string' ? req.query.mes : undefined;
 
     let estado: z.infer<typeof ActivoEstadoSchema> | undefined;
     if (estadoCrudo !== undefined) {
@@ -155,23 +206,101 @@ router.get('/', async (req: Request, res: Response) => {
       nodo = parsedNodo.data;
     }
 
-    if (bboxCrudo !== undefined) {
-      const parsedBbox = BboxStringSchema.safeParse(bboxCrudo);
-      if (!parsedBbox.success) {
-        res.status(400).json({ success: false, error: 'bbox inválido', details: parsedBbox.error.errors });
+    // VIG-002: filtros multimodales de la lectura pública.
+    let tipo: z.infer<typeof ActivoTipoSchema> | undefined;
+    if (tipoCrudo !== undefined) {
+      const parsedTipo = ActivoTipoSchema.safeParse(tipoCrudo);
+      if (!parsedTipo.success) {
+        res.status(400).json({ success: false, error: 'tipo inválido', details: parsedTipo.error.errors });
         return;
       }
-      const [minLng, minLat, maxLng, maxLat] = parsedBbox.data.split(',').map(Number);
+      tipo = parsedTipo.data;
+    }
+
+    let subnodo: string | undefined;
+    if (subnodoCrudo !== undefined) {
+      if (!/^[a-z0-9_]+$/.test(subnodoCrudo) || subnodoCrudo.length > 60) {
+        res.status(400).json({ success: false, error: 'subnodo inválido' });
+        return;
+      }
+      subnodo = subnodoCrudo;
+    }
+
+    let n1: z.infer<typeof ActivoCapitalN1Schema> | undefined;
+    if (n1Crudo !== undefined) {
+      const parsedN1 = ActivoCapitalN1Schema.safeParse(n1Crudo);
+      if (!parsedN1.success) {
+        res.status(400).json({ success: false, error: 'n1 inválido', details: parsedN1.error.errors });
+        return;
+      }
+      n1 = parsedN1.data;
+    }
+
+    // VIG-005 (NVIG-R7 #174): filtros de producción y turismo.
+    let producto: string | undefined;
+    if (productoCrudo !== undefined) {
+      if (!/^[a-z0-9-]+$/.test(productoCrudo) || productoCrudo.length > 60) {
+        res.status(400).json({ success: false, error: 'producto inválido' });
+        return;
+      }
+      producto = productoCrudo;
+    }
+
+    let mes: number | undefined;
+    if (mesCrudo !== undefined) {
+      const parsedMes = Number(mesCrudo);
+      if (!Number.isInteger(parsedMes) || parsedMes < 1 || parsedMes > 12) {
+        res.status(400).json({ success: false, error: 'mes inválido' });
+        return;
+      }
+      mes = parsedMes;
+    }
+
+    if (bboxCrudo !== undefined || producto !== undefined || mes !== undefined) {
+      // VIG-005: la rama cruda se activa con cualquiera de los filtros
+      // espacial/temporales; el bbox solo se valida y siembra si vino.
+      let bboxFiltro = Prisma.empty;
+      if (bboxCrudo !== undefined) {
+        const parsedBbox = BboxStringSchema.safeParse(bboxCrudo);
+        if (!parsedBbox.success) {
+          res.status(400).json({ success: false, error: 'bbox inválido', details: parsedBbox.error.errors });
+          return;
+        }
+        const [minLng, minLat, maxLng, maxLat] = parsedBbox.data.split(',').map(Number);
+        bboxFiltro = Prisma.sql`AND ST_Intersects(a.geom, ST_MakeEnvelope(${minLng}, ${minLat}, ${maxLng}, ${maxLat}, 4326))`;
+      }
       const estadoFiltro = estado !== undefined ? Prisma.sql`AND a.estado = ${estado}` : Prisma.empty;
       const nodoFiltro = nodo !== undefined ? Prisma.sql`AND a.nodo_key = ${nodo}` : Prisma.empty;
+      const tipoFiltro = tipo !== undefined ? Prisma.sql`AND a.tipo = ${tipo}` : Prisma.empty;
+      const subnodoFiltro = subnodo !== undefined ? Prisma.sql`AND a.subnodo_key = ${subnodo}` : Prisma.empty;
+      const n1Join =
+        n1 !== undefined
+          ? Prisma.sql`JOIN activos_clasificaciones ac ON ac.activo_id = a.id AND ac.n1 = ${n1}`
+          : Prisma.empty;
+      // VIG-005: ?producto= — JOIN por slug de producto APROBADO (la
+      // propuesta 'propuesto' no altera el mapa: moderación primero).
+      const productoJoin =
+        producto !== undefined
+          ? Prisma.sql`JOIN productos pr ON pr.activo_id = a.id AND pr.slug = ${producto} AND pr.estado = 'aprobado'`
+          : Prisma.empty;
+      // VIG-005: ?mes= — temporada del activo por operativa O producto
+      // aprobado (jsonb @>): [] = sin_dato, no matchea (R15 honesto).
+      const mesJson = mes !== undefined ? '[' + mes + ']' : undefined;
+      const temporadaFiltro =
+        mes !== undefined
+          ? Prisma.sql`AND (EXISTS (SELECT 1 FROM activos_operativa o WHERE o.activo_id = a.id AND o.temporada_meses @> ${mesJson}::jsonb) OR EXISTS (SELECT 1 FROM productos pr2 WHERE pr2.activo_id = a.id AND pr2.estado = 'aprobado' AND pr2.temporada_meses @> ${mesJson}::jsonb))`
+          : Prisma.empty;
 
       const data = await prisma.$queryRaw`
-        SELECT a.id, a.tipo, a.titulo, a.descripcion, a.estado, a.nodo_key,
-               a.lat, a.lng, a.created_by_hash, a.created_at, a.updated_at,
+        SELECT a.id, a.tipo, a.titulo, a.descripcion, a.estado, a.nodo_key, a.subnodo_key,
+               a.lat, a.lng, a.visibilidad, a.is_synthetic, a.procedencia,
+               a.created_by_hash, a.created_at, a.updated_at,
                ST_AsGeoJSON(a.geom)::json AS geometry
         FROM activos a
-        WHERE ST_Intersects(a.geom, ST_MakeEnvelope(${minLng}, ${minLat}, ${maxLng}, ${maxLat}, 4326))
-          ${estadoFiltro} ${nodoFiltro}
+          ${n1Join}
+          ${productoJoin}
+        WHERE a.visibilidad <> 'restricted'
+          ${bboxFiltro} ${estadoFiltro} ${nodoFiltro} ${tipoFiltro} ${subnodoFiltro} ${temporadaFiltro}
         ORDER BY a.created_at DESC
         LIMIT 100`;
 
@@ -181,8 +310,13 @@ router.get('/', async (req: Request, res: Response) => {
 
     const data = await prisma.activos.findMany({
       where: {
+        // ADR-036: restricted nunca sale por la lectura pública (custodia VIG-004)
+        visibilidad: { not: 'restricted' },
         ...(estado !== undefined ? { estado } : {}),
         ...(nodo !== undefined ? { nodo_key: nodo } : {}),
+        ...(tipo !== undefined ? { tipo } : {}),
+        ...(subnodo !== undefined ? { subnodo_key: subnodo } : {}),
+        ...(n1 !== undefined ? { clasificaciones: { some: { n1 } } } : {}),
       },
       orderBy: { created_at: 'desc' },
       take: 100,
@@ -198,6 +332,8 @@ router.get('/', async (req: Request, res: Response) => {
 
 // PATCH /api/activos/:id/estado — moderación (R5b): solo moderador|admin.
 // El ciudadano propone; la comunidad ratifica a través de sus moderadores.
+// VIG-002: 'archivado' retira del catálogo vivo sin borrar la historia — el
+// sello activo.estado_cambiado queda como única acreditación (events_raw).
 router.patch('/:id/estado', requireJwt, requireRole('moderador', 'admin'), async (req: Request, res: Response) => {
   const id = req.params.id;
 
