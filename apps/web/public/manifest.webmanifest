@@ -1,0 +1,26 @@
+{
+  "name": "DELocalSoy.AR",
+  "short_name": "DELocalSoy",
+  "description": "Plataforma territorial de San Juan: nodos federados, patrimonio, relevamiento ciudadano y consulta honesta del dato.",
+  "lang": "es-AR",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0D0B08",
+  "theme_color": "#0D0B08",
+  "icons": [
+    {
+      "src": "/icono-delocalsoy.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icono-delocalsoy-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

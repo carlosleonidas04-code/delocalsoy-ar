@@ -1,0 +1,66 @@
+{
+  "meta": {
+    "node": "capital",
+    "generated_at": "2026-10-15",
+    "issue": 215,
+    "task": "NUT-CAP-008",
+    "responsible": "agent-vibe",
+    "note": "Ledger de pedidos formales del Nodo Capital. El texto completo de las solicitudes (SOL-CAP-001 a SOL-CAP-003 y SOL-PROV-004) debe aterrizar en docs/nodo-capital/SOLICITUDES-FORMALES-CAPITAL.md cuando la DH lo provea. R1: no se fabrica contenido ausente. Fundamento: Constitucion Provincial de San Juan, art. 27; restriccion de PII: Ley Nacional 25.326."
+  },
+  "requests": [
+    {
+      "id": "PED-CAP-001",
+      "solicitud_ref": "SOL-CAP-001",
+      "title": "Padron comercial municipal",
+      "recipient": "Municipalidad de la Ciudad de San Juan - Habilitaciones Comerciales",
+      "channel": null,
+      "sent_at": null,
+      "status": "pendiente",
+      "response": null,
+      "response_snapshot_hash": null,
+      "notes": "Padron de habilitaciones activas, esquema de campos, nomenclador de rubros, formato, licencia, frecuencia."
+    },
+    {
+      "id": "PED-CAP-002",
+      "solicitud_ref": "SOL-CAP-002",
+      "title": "Inventario de espacios publicos",
+      "recipient": "Municipalidad de la Ciudad de San Juan - espacios verdes / espacios publicos",
+      "channel": null,
+      "sent_at": null,
+      "status": "pendiente",
+      "response": null,
+      "response_snapshot_hash": null,
+      "notes": "Plazas, parques, paseos: nombre, direccion, superficie, estado, norma aprobatoria, equipamiento, formato geoespacial, licencia."
+    },
+    {
+      "id": "PED-CAP-003",
+      "solicitud_ref": "SOL-CAP-003",
+      "title": "Accesibilidad y movilidad",
+      "recipient": "Municipalidad de la Ciudad de San Juan - Obras, Movilidad o Planeamiento",
+      "channel": null,
+      "sent_at": null,
+      "status": "pendiente",
+      "response": null,
+      "response_snapshot_hash": null,
+      "notes": "Rampas, sendas y veredas del microcentro; plan de movilidad; ciclovias; obras vigentes; flujos peatonales."
+    },
+    {
+      "id": "PED-CAP-004",
+      "solicitud_ref": "SOL-PROV-004",
+      "title": "Datos abiertos y UNIDE",
+      "recipient": "Gobierno de San Juan - UNIDE / datos abiertos",
+      "channel": null,
+      "sent_at": null,
+      "status": "pendiente",
+      "response": null,
+      "response_snapshot_hash": null,
+      "notes": "Catalogo de datasets, licencias, WMS/WFS/API, capas de espacios verdes y zonificacion, registros sectoriales departamentales (RUPA, alimentos, farmacias), 2a etapa CNE 2020-2021."
+    }
+  ],
+  "summary": {
+    "total": 4,
+    "sent": 0,
+    "answered": 0,
+    "pending": 4
+  }
+}
