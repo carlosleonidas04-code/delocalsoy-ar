@@ -5,7 +5,7 @@ import type { ActivoAltaInput } from '../activosApi';
 
 type Item = { id: string };
 
-class AlmacenFake implements Adaptador {
+class AlmacenFake implements AdaptadorAlmacen {
   valor: string | null = null;
   escrituras = 0;
   leer(): string | null {
