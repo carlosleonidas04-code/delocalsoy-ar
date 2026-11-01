@@ -1,0 +1,123 @@
+/*
+ * Demo TV UX-004 (#228) - estetica PROVISIONAL de laboratorio.
+ * ADR-034: la estetica canonica es dominio de agent.google; estos estilos
+ * no son tokens ni producto, solo validacion 10-foot. Colores planos
+ * alineados con la paleta existente (#0D0B08 / #F5F1E8 / #FFC72C).
+ */
+
+.demo-tv {
+  min-height: 100vh;
+  margin: 0;
+  box-sizing: border-box;
+  background: #0d0b08;
+  color: #f5f1e8;
+  font-family: system-ui, sans-serif;
+  /* Overscan: 5% de seguridad por lado, como en TV reales. */
+  padding: 5vh 5vw;
+}
+
+.demo-tv__zona-segura {
+  border: 1px dashed rgba(255, 199, 44, 0.35);
+  box-sizing: border-box;
+  min-height: 90vh;
+  padding: 1.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.demo-tv__encabezado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 2rem;
+}
+
+.demo-tv__titulo {
+  margin: 0;
+  font-size: 3rem;
+  letter-spacing: 0.02em;
+}
+
+.demo-tv__titulo small {
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: #ffc72c;
+}
+
+.demo-tv__controles {
+  font-size: 1.3rem;
+  color: #a89f91;
+}
+
+.demo-tv__grilla {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.75rem;
+}
+
+.demo-tv__ficha {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  background: #181410;
+  border: 2px solid #332c22;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.demo-tv__ficha:focus {
+  outline: 3px solid #ffc72c;
+  outline-offset: 4px;
+  border-color: #ffc72c;
+}
+
+.demo-tv__ficha-categoria {
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #ffc72c;
+}
+
+.demo-tv__ficha-titulo {
+  margin: 0;
+  font-size: 1.7rem;
+  line-height: 1.25;
+}
+
+.demo-tv__ficha-meta {
+  font-size: 1.15rem;
+  color: #a89f91;
+}
+
+.demo-tv__ficha-estado {
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.demo-tv__estado-verified { color: #7dd88f; }
+.demo-tv__estado-community_validated { color: #ffc72c; }
+.demo-tv__estado-pending { color: #a89f91; }
+
+.demo-tv__detalle {
+  border-left: 4px solid #ffc72c;
+  background: #181410;
+  border-radius: 0.5rem;
+  padding: 1.25rem 1.75rem;
+  font-size: 1.35rem;
+  line-height: 1.4;
+}
+
+.demo-tv__detalle h2 { margin: 0 0 0.5rem; font-size: 1.8rem; }
+
+.demo-tv__pie {
+  font-size: 1.15rem;
+  color: #a89f91;
+  border-top: 1px solid #332c22;
+  padding-top: 1rem;
+}

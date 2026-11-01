@@ -34,6 +34,16 @@ import {
   type TerritoriesQuery,
   type TerritoryItem,
 } from './dataSource';
+import {
+  normalizarCapas,
+  normalizarFeatures,
+  normalizarFuentes,
+  normalizarIngestas,
+  type CapaInformativa,
+  type FeatureInformativa,
+  type FuenteInformativa,
+  type IngestaPublicada,
+} from './servicioInformativo';
 
 export interface ApiDataSourceOptions {
   fetchImpl?: typeof fetch;
@@ -419,5 +429,79 @@ export class ApiDataSource implements DataSource {
       is_synthetic: Boolean(data?.is_synthetic),
       created_at: String(data?.created_at ?? new Date().toISOString()),
     };
+  }
+
+  /**
+   * Consulta GET /api/fuentes — catálogo de fuentes espaciales (ADR-035,
+   * NODO-CAU R2 #147). Regla R5: ningún error HTTP se convierte en [].
+   */
+  public async listFuentes(): Promise<FuenteInformativa[]> {
+    const endpoint = '/api/fuentes';
+    const payload = await this.requestJson<any>(endpoint);
+    if (!Array.isArray(payload) && !Array.isArray(payload?.data)) {
+      throw new DataSourceHttpError({
+        status: 500,
+        endpoint,
+        message: 'Respuesta malformada de /api/fuentes: se esperaba un arreglo en data',
+        details: payload,
+      });
+    }
+    return normalizarFuentes(payload);
+  }
+
+  /**
+   * Consulta GET /api/ingestas?nodo= — procedencia publicada por conjunto
+   * (NC-EV-09, NODO-CAU R2 #138): la API solo sirve lo publicado y la
+   * normalización re-verifica. Regla R5: ningún error HTTP se convierte en [].
+   */
+  public async listIngestas(nodoKey: SanJuanFocalNodeKey): Promise<IngestaPublicada[]> {
+    const endpoint = '/api/ingestas?nodo=' + encodeURIComponent(nodoKey);
+    const payload = await this.requestJson<any>(endpoint);
+    if (!Array.isArray(payload) && !Array.isArray(payload?.data)) {
+      throw new DataSourceHttpError({
+        status: 500,
+        endpoint,
+        message: 'Respuesta malformada de ' + endpoint + ': se esperaba un arreglo en data',
+        details: payload,
+      });
+    }
+    return normalizarIngestas(payload);
+  }
+
+  /**
+   * Consulta GET /api/nodos/:key/capas — catálogo explícito de capas del nodo
+   * (CORE-002; vocabulario v6 de Caucete, #141). Regla R5: sin [] silenciosos.
+   */
+  public async listNodeCapas(nodoKey: SanJuanFocalNodeKey): Promise<CapaInformativa[]> {
+    const endpoint = '/api/nodos/' + encodeURIComponent(nodoKey) + '/capas';
+    const payload = await this.requestJson<any>(endpoint);
+    if (!Array.isArray(payload) && !Array.isArray(payload?.data)) {
+      throw new DataSourceHttpError({
+        status: 500,
+        endpoint,
+        message: 'Respuesta malformada de ' + endpoint + ': se esperaba un arreglo en data',
+        details: payload,
+      });
+    }
+    return normalizarCapas(payload);
+  }
+
+  /**
+   * Consulta GET /api/nodos/:key/features — features del nodo con estado
+   * honesto (verified | community_validated | pending | synthetic_demo).
+   * Regla R5: ningún error HTTP se convierte en [].
+   */
+  public async listNodeFeatures(nodoKey: SanJuanFocalNodeKey): Promise<FeatureInformativa[]> {
+    const endpoint = '/api/nodos/' + encodeURIComponent(nodoKey) + '/features';
+    const payload = await this.requestJson<any>(endpoint);
+    if (!Array.isArray(payload) && !Array.isArray(payload?.data)) {
+      throw new DataSourceHttpError({
+        status: 500,
+        endpoint,
+        message: 'Respuesta malformada de ' + endpoint + ': se esperaba un arreglo en data',
+        details: payload,
+      });
+    }
+    return normalizarFeatures(payload);
   }
 }

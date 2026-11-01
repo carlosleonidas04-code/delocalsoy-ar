@@ -1,5 +1,14 @@
 name: CI
 
+# v17 (PRE-ACT 2026-10-28): hardening de spending — concurrency con
+# cancel-in-progress (un push nuevo cancela el run obsoleto de la misma ref; en
+# main el arbol final queda verificado por el ultimo run — cada PR ya acredito
+# verde pre-merge), timeout-minutes por job (build 15 / test 25 / vertical 30 /
+# report 10 — el default de GitHub son 360 min por job: uno colgado = 6 horas
+# facturadas) y cache pnpm en los setup-node (sin redescargar dependencias).
+# Semantica de jobs SIN CAMBIOS (R4/R15): mismos pasos, mismos servicios,
+# misma evidencia. Sin path filters (ver docs/PRE_ACTIVACION_CI.md seccion 3).
+
 # v11: igual que v10 (version pnpm gobernada por packageManager; auto-report
 # como job separado tras concluir build). v11 amplía el tail del log
 # publicado a 20000 chars: los errores de tsc quedaban fuera del tail de 3500.
@@ -12,6 +21,19 @@ name: CI
 # v15 (CORE-004 R4b, #87): suite de apps/worker contra el MISMO PostGIS +
 # Redis del job `test` — consumer group idempotente (ADR-032, R4b):
 # events_raw → event_projections exactamente una vez.
+# v16 (CORE-004 R6, #87 — EV-035): job `vertical` — flujo vertical completo
+# en entorno limpio: PostGIS + Redis reales, base vacía recién migrada (sin
+# seed) y DOS procesos reales en background (API + worker); el cliente E2E
+# `apps/api/scripts/flujo-vertical-e2e.ts` acredita la cadena completa en
+# cada PR (registro → JWT → alta → sello → stream → proyección → visible).
+# v17 (CORE-005 R6, #206 — EV-056): el mismo cliente E2E extiende la cadena al
+# ciclo completo del reporte (dominio CORE-005 R2–R5): alta → sello
+# reporte.recibido → stream → proyección del worker → duplicados sugeridos
+# por proximidad (ADR-039) → reintento idempotente → moderación del ciclo
+# con justificación pública (ADR-038) → sellos 1:1 → historial público →
+# suscripción /mios → lectura pública del nodo. El vocabulario (nodo +
+# categoría) se planta como fixture idempotente vía prisma — el entorno
+# sigue limpio (sin seed).
 
 on:
   push:
@@ -24,9 +46,15 @@ permissions:
   actions: read
   pull-requests: write
 
+concurrency:
+  # v17 (PRE-ACT): un solo run vivo por ref; los obsoletos se cancelan.
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       # Prisma exige la variable al generar; en CI no hay BD real, valor dummy.
       DATABASE_URL: "postgresql://ci:ci@localhost:5432/ci?schema=public"
@@ -37,6 +65,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: pnpm
       - name: Install dependencies
         run: |
           set -o pipefail
@@ -52,6 +81,7 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     services:
       postgis:
         image: postgis/postgis:16-3.4
@@ -84,6 +114,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: pnpm
       - name: Install dependencies
         run: |
           set -o pipefail
@@ -101,10 +132,99 @@ jobs:
       - name: Tests worker (CORE-004 R4b — proyección idempotente ADR-032)
         run: pnpm --filter @delocalsoy/worker test
 
+  vertical:
+    # v16 (CORE-004 R6, #87 — EV-035): flujo vertical completo en entorno
+    # limpio. PostGIS + Redis REALES como servicios, migraciones sobre base
+    # vacía (sin seed) y DOS procesos reales en background: la API
+    # (src/server.ts) y el worker (src/index.ts, WORKER_INTERVAL_MS=500).
+    # El cliente E2E recorre la cadena completa: registro → login JWT →
+    # POST /api/activos → sello en events_raw → referencia al stream →
+    # proyección del worker exactamente una vez → visible en el mapa
+    # público (R5: nada simulado — la salida real acredita, R4).
+    # v17 (CORE-005 R6, #206 — EV-056): el mismo cliente E2E acredita además
+    # el ciclo completo del reporte: alta ciudadana → sello reporte.recibido →
+    # stream → proyección → duplicado sugerido por proximidad con distancia_m
+    # (R5, ADR-039 — nada se fusiona) → reintento idempotente → moderación
+    # justificada del ciclo (ADR-038) → sellos 1:1 proyectados → historial
+    # público → /mios → lectura pública del nodo (fixture de vocabulario
+    # idempotente, sin seed).
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgis:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: delocalsoy
+          POSTGRES_PASSWORD: delocalsoy
+          POSTGRES_DB: delocalsoy
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U delocalsoy"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: "postgresql://delocalsoy:delocalsoy@localhost:5432/delocalsoy?schema=public"
+      REDIS_URL: "redis://localhost:6379"
+      JWT_SECRET: "ci-jwt-secret-flujo-vertical-r6"
+      PORT: "3000"
+      WORKER_INTERVAL_MS: "500"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - name: Install dependencies
+        run: |
+          set -o pipefail
+          pnpm install --no-frozen-lockfile 2>&1 | tee install.log
+      - name: Prisma generate (EV-003)
+        run: |
+          set -o pipefail
+          pnpm --filter @delocalsoy/db db:generate 2>&1 | tee generate.log
+      - name: Migraciones versionadas sobre base vacía (db:deploy — entorno limpio)
+        run: pnpm --filter @delocalsoy/db db:deploy
+      - name: Levantar la API real (proceso en background)
+        run: |
+          nohup pnpm --filter @delocalsoy/api exec tsx src/server.ts > api.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:3000/api/health > /dev/null; then
+              echo "API arriba (intento $i)"; break
+            fi
+            sleep 2
+          done
+          curl -sf http://127.0.0.1:3000/api/health
+      - name: Levantar el worker real (proceso en background)
+        run: |
+          nohup pnpm --filter @delocalsoy/worker exec tsx src/index.ts > worker.log 2>&1 &
+          echo "worker lanzado (WORKER_INTERVAL_MS=500)"
+      - name: Flujo vertical E2E (EV-035 — CORE-004 R6, #87; EV-056 — CORE-005 R6, #206)
+        run: pnpm --filter @delocalsoy/api exec tsx scripts/flujo-vertical-e2e.ts
+      - name: Logs de los procesos reales (R4 — diagnóstico del auto-report)
+        if: failure()
+        run: |
+          echo "===== api.log (últimas 100 líneas) ====="
+          tail -n 100 api.log || true
+          echo "===== worker.log (últimas 100 líneas) ====="
+          tail -n 100 worker.log || true
+
   report:
-    needs: [build, test]
+    needs: [build, test, vertical]
     if: failure() && github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Publicar log del fallo en el PR (R4)
         uses: actions/github-script@v7
