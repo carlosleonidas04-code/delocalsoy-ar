@@ -320,6 +320,21 @@ router.post('/:activoId/observaciones', requireJwt, async (req: Request, res: Re
   }
 });
 
+// Filas tipadas de las lecturas: el cliente prisma se exporta `any` (patrón
+// mock de pruebas en lib/prisma), así que la forma de la fila se declara
+// explícita para que el callback de map quede contextualmente tipado
+// (mismo patrón que reportes.ts/fuentes.ts — fix TS7006 del PR #151).
+type ObservacionRow = {
+  id: string;
+  activo_id: string;
+  fecha_observacion: Date;
+  checklist: object;
+  nota: string | null;
+  evidencia: object;
+  created_by_hash: string;
+  created_at: Date;
+};
+
 // GET /api/patrimonio/:activoId/observaciones — bandeja pública append-only:
 // qué se observó, cuándo y con qué evidencia. El estado global de conservación
 // se declara SIEMPRE como no verificado aquí — sin informe técnico oficial no
@@ -331,11 +346,11 @@ router.get('/:activoId/observaciones', async (req: Request, res: Response) => {
       res.status(404).json({ success: false, error: 'activo no encontrado' });
       return;
     }
-    const observaciones = await prisma.patrimonio_observaciones.findMany({
+    const observaciones = (await prisma.patrimonio_observaciones.findMany({
       where: { activo_id: activo.id },
       orderBy: { created_at: 'asc' },
       take: 100,
-    });
+    })) as ObservacionRow[];
     res.json({
       success: true,
       data: observaciones.map((o) => ({
