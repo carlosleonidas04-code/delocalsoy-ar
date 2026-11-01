@@ -13,11 +13,15 @@ name: verify
 # Redis del job `test` — consumer group idempotente (ADR-032, R4b):
 # events_raw → event_projections exactamente una vez.
 
+# RETIRO (PRE-ACT 2026-10-28): este workflow duplicaba build+test+report de
+# ci.yml en CADA PR — doble factura, cero cobertura nueva (ci.yml v16+ es
+# superconjunto: incluye vertical). Queda SOLO manual (workflow_dispatch) para
+# referencia y rollback. ACCION DH REQUERIDA EL DIA 1: quitar los checks de
+# `verify` de los required status checks (Settings -> Branches) ANTES de
+# drenar la cascada, o los merges quedan bloqueados esperando checks que
+# ya nunca correra.
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
