@@ -190,7 +190,9 @@ export function crearColaRelevamiento(
       }
       if (pendientes.length > 0) {
         const idsQueQuedan = new Set(quedan.map((q) => q.id));
-        items = items.filter((it) => idsQueQuedan.has(it.id));
+        items = items
+          .filter((it) => idsQueQuedan.has(it.id))
+          .map((it) => quedan.find((q) => q.id === it.id) ?? it);
         persistir();
       }
       return resultado;
