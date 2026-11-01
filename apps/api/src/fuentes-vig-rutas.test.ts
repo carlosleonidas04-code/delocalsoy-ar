@@ -87,12 +87,12 @@ describe.skipIf(!dbUp)('fuentes del Valle de Iglesia (NVIG-R5 — catálogo y pr
     mujeres_de_montana_2026: 'requiere_solicitud',
   };
 
-  it('catálogo global: 35 fuentes (15 Caucete + 20 del valle) sin claves duplicadas', async () => {
+  it('catálogo global: 36 fuentes (15 Caucete + 20 del valle + 1 SIIC web MARKET-CAP MK-2 #243) sin claves duplicadas', async () => {
     const res = await fetch(base + '/api/fuentes');
     expect(res.status).toBe(200);
     const body: any = await res.json();
     expect(body.success).toBe(true);
-    expect(body.count).toBe(35);
+    expect(body.count).toBe(36);
     const keys = body.data.map((f: any) => f.key);
     expect(new Set(keys).size).toBe(keys.length);
     for (const k of KEYS_VIG) expect(keys).toContain(k);
