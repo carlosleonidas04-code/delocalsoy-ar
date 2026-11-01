@@ -1,0 +1,115 @@
+{
+  "meta": {
+    "node": "capital",
+    "project": "DELocalSoy.AR",
+    "task": "NUT-CAP-010",
+    "bloque": "B",
+    "generated_at": "2026-10-15",
+    "issue": 215,
+    "responsible": "agent-vibe",
+    "base": "main @ 77500be",
+    "method": "Bloque B del paquete NUT-CAP-008 (BLOQUE-B-UNIDE-SONDEO.md)",
+    "sources": [
+      "SRC-004",
+      "SRC-005",
+      "SRC-006"
+    ]
+  },
+  "endpoint": {
+    "wms_base": "https://unide.sanjuan.gob.ar/geoserver/wms",
+    "software": "GeoServer 2.11.1",
+    "contact": {
+      "person": "Alfredo Gómez",
+      "organization": "UNIDE",
+      "position": "Director",
+      "email": "unide@sanjuan.gov.ar",
+      "phone": "2644307463",
+      "city": "San Juan"
+    }
+  },
+  "probes": [
+    {
+      "id": "PRB-001",
+      "target": "WMS 1.3.0 GetCapabilities (anonimo)",
+      "url": "https://unide.sanjuan.gob.ar/geoserver/wms?service=WMS&version=1.3.0&request=GetCapabilities",
+      "result": "HTTP 200, XML valido, 1 nodo(s) Layer en el arbol (solo raiz): el Capability NO publica capas",
+      "epistemic_status": "verified",
+      "captured_at": "2026-10-15"
+    },
+    {
+      "id": "PRB-002",
+      "target": "WFS 2.0.0 GetCapabilities (anonimo)",
+      "url": "https://unide.sanjuan.gob.ar/geoserver/wfs?service=WFS&version=2.0.0&request=GetCapabilities",
+      "result": "HTTP 500 InsufficientAuthenticationException: Cannot access WFS.GetCapabilities as anonymous",
+      "epistemic_status": "verified",
+      "captured_at": "2026-10-15"
+    },
+    {
+      "id": "PRB-003",
+      "target": "WCS 2.0.1 GetCapabilities (anonimo)",
+      "url": "https://unide.sanjuan.gob.ar/geoserver/wcs?service=WCS&version=2.0.1&request=GetCapabilities",
+      "result": "HTTP 500 InsufficientAuthenticationException: Cannot access WCS.GetCapabilities as anonymous",
+      "epistemic_status": "verified",
+      "captured_at": "2026-10-15"
+    },
+    {
+      "id": "PRB-004",
+      "target": "WMTS (gwc) GetCapabilities (anonimo)",
+      "url": "https://unide.sanjuan.gob.ar/geoserver/gwc/service/wmts?service=WMTS&request=GetCapabilities",
+      "result": "HTTP 500 InsufficientAuthenticationException: Cannot access gwc.dispatch as anonymous",
+      "epistemic_status": "verified",
+      "captured_at": "2026-10-15"
+    },
+    {
+      "id": "PRB-005",
+      "target": "Panel GeoServer /web/ (anonimo)",
+      "url": "https://unide.sanjuan.gob.ar/geoserver/web/",
+      "result": "Accesible; declara WCS 1.0.0-2.0.1, WFS 1.0.0-2.0.0, WMS 1.1.1/1.3.0, TMS 1.0.0, WMS-C 1.1.1, WMTS 1.0.0; instancia GeoServer 2.11.1 de UNIDE",
+      "epistemic_status": "verified",
+      "captured_at": "2026-10-15"
+    },
+    {
+      "id": "PRB-006",
+      "target": "Catalogo oficial UNIDE (SRC-004)",
+      "url": "https://web.sanjuan.gob.ar/unide/geoservicios/",
+      "result": "Pagina publica solo la URL base del WMS; no enumera capas",
+      "epistemic_status": "verified",
+      "captured_at": "2026-10-15"
+    },
+    {
+      "id": "PRB-007",
+      "target": "Ficha IDERA (SRC-006)",
+      "url": "https://controlserviciosidera.iado-conicet.gob.ar/resource/660?lang=es",
+      "result": "Registro \"Infraestructura de Datos Espaciales de San Juan\"; health-check OK 2026-10-15T14:11:38Z, respuesta 0.47 s; no enumera capas",
+      "epistemic_status": "verified",
+      "captured_at": "2026-10-15"
+    },
+    {
+      "id": "PRB-008",
+      "target": "PDF campus IDERA (Geoservicios SIG IDE San Juan)",
+      "url": "https://campus.idera.gob.ar/pluginfile.php/699/mod_resource/content/0/Geoservicios_SIG_IDE-SAN%20JUAN.pdf",
+      "result": "Recurso eliminado del campus (\"No se puede encontrar registro de datos\"): fuente documental ya no disponible",
+      "epistemic_status": "provisional",
+      "captured_at": "2026-10-15"
+    }
+  ],
+  "snapshot": {
+    "file": "data/sources/capital/snapshots/unide-wms-getcapabilities-2026-10-15.xml",
+    "sha256": "34dc5b863f0083047acc51b71665a83985b55cd18a5deb7b3bca73bd954c38cf",
+    "bytes": 32794,
+    "caveat": "Texto de la respuesta capturado via servicio de lectura del agente (no descarga binaria cruda): puede no ser byte-exacto respecto de la respuesta original del servidor; el hash acredita exactamente lo capturado (R4)."
+  },
+  "conclusions": [
+    "El GetCapabilities WMS 1.3.0 anonimo responde correctamente pero NO publica ninguna capa (Capability con un unico nodo Layer raiz, sin hijos).",
+    "WFS, WCS y WMTS existen pero rechazan el acceso anonimo con HTTP 500 InsufficientAuthenticationException: requieren credenciales.",
+    "El catalogo oficial (SRC-004) publica solo la URL base; la ficha IDERA (SRC-006) registra el servicio con health-check OK pero sin inventario de capas.",
+    "Resultado del Bloque B: no hay capas reutilizables accesibles de forma anonima en esta pasada; ni visualizacion por capa ni descarga vectorial son posibles hoy sin credenciales.",
+    "Todos los unknowns de capas (espacios verdes, equipamiento urbano, zonificacion, limites administrativos, movilidad/red vial) permanecen unknown: no se inventan nombres (R1).",
+    "Refuerza PED-CAP-004 / SOL-PROV-004: solicitar credenciales, WFS/API o entrega formal de capas al UNIDE."
+  ],
+  "dod": {
+    "Inventario de capas con URL de GetCapabilities": "cumplido con resultado negativo verificable: 0 capas anonimas",
+    "Cada capa con estado verified/provisional/unknown": "no hay capas que etiquetar; los nombres de capas hipoteticos quedan unknown",
+    "Documentado si visualizable o descargable": "cumplido: ni visualizable ni descargable sin credenciales"
+  }
+}
