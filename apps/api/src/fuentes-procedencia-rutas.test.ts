@@ -5,8 +5,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 // NODO-CAU R2 (#138/#147): catálogo de fuentes espaciales + procedencia por
 // conjunto — extremo a extremo contra servicios reales (PostgreSQL/PostGIS +
 // Redis):
-// - GET /api/fuentes: catálogo público anónimo (15 fuentes con organismo,
-//   estado honesto de disponibilidad y cautela) y GET /api/fuentes/:key
+// - GET /api/fuentes: catálogo público anónimo (31 fuentes: 15 Caucete +
+//   16 del Valle de Iglesia NVIG-R5 #172 — con organismo, estado honesto de
+//   disponibilidad y cautela) y GET /api/fuentes/:key
 // - POST /api/ingestas: alta curada por admin (decisión DH 2026-10-15);
 //   NC-EV-09: la ingesta sin fecha de corte/precisión/CRS se rechaza;
 //   anti-PII antes de persistir; solo cita fuentes del catálogo (404);
@@ -62,10 +63,18 @@ describe.skipIf(!dbUp)('fuentes espaciales + procedencia (NODO-CAU R2 — regist
 
   const TIPOS = ['wms', 'wfs', 'descarga', 'documento', 'api'];
   const ESTADOS = ['disponible', 'requiere_credenciales', 'requiere_solicitud', 'no_disponible', 'deprecado'];
-  const KEYS = [
+  const KEYS_CAUCETE = [
     'catastro_sj', 'ign', 'unide', 'indec_iiee', 'bahra', 'georef', 'refes',
     'mapa_educativo', 'mapa_cuidado', 'inpres', 'faud_unsj', 'hidraulica_sj',
     'mapbiomas', 'idera', 'redtulum',
+  ];
+  // NVIG-R5 (#172): 16 fuentes específicas del Valle de Iglesia agregadas al
+  // catálogo global por seed-fuentes-vig.sql (trazas #167-#174).
+  const KEYS_VIG = [
+    'municipio_iglesia', 'decreto_2154_2009', 'ley_24790', 'ley_25291',
+    'leyes_patrimonio_sj', 'conicet_garcia_2024', 'michieli_2016', 'pedl_iglesia',
+    'cna_2018', 'hidrometria_sj', 'ley_826_g', 'viales_rn150',
+    'conectividad_agua_negra', 'ley_2400_t', 'inaes', 'turismo_sj',
   ];
 
   // Ingesta de referencia: REFES 2026 recortado al departamento Caucete.
@@ -115,13 +124,13 @@ describe.skipIf(!dbUp)('fuentes espaciales + procedencia (NODO-CAU R2 — regist
     return ((await login.json()) as any).data.token as string;
   }
 
-  it('catálogo público: 15 fuentes con organismo, estado honesto y cautela', async () => {
+  it('catálogo público: 31 fuentes (15 Caucete + 16 VIG, NVIG-R5 #172) con organismo, estado honesto y cautela', async () => {
     const res = await fetch(base + '/api/fuentes');
     expect(res.status).toBe(200);
     const body: any = await res.json();
     expect(body.success).toBe(true);
-    expect(body.count).toBe(15);
-    expect(body.data.map((f: any) => f.key).sort()).toEqual(KEYS.slice().sort());
+    expect(body.count).toBe(31);
+    expect(body.data.map((f: any) => f.key).sort()).toEqual([...KEYS_CAUCETE, ...KEYS_VIG].sort());
     for (const f of body.data) {
       expect(f.organismo.length).toBeGreaterThan(3);
       expect(f.cautela.length).toBeGreaterThan(10);
@@ -363,9 +372,12 @@ describe.skipIf(!dbUp)('fuentes espaciales + procedencia (NODO-CAU R2 — regist
     expect(invariantes[0].n).toBe(0);
   });
 
-  it('sellos seed: 15 fuente.registrada con hash seed-fuente-*, payload sin PII', async () => {
+  it('sellos seed: 15 fuente.registrada de seed-cau-r2 (catálogo multinodo), payload sin PII', async () => {
+    // NVIG-R5 (#172): los sellos seed-fuente-* ahora son multinodo (15
+    // Caucete + 16 VIG) — se filtran por payload.source para que la
+    // acreditación NODO-CAU R2 no dependa del tamaño del catálogo global.
     const sellos = await prisma.events_raw.findMany({
-      where: { type: 'fuente.registrada', hash: { startsWith: 'seed-fuente-' } },
+      where: { type: 'fuente.registrada', payload: { path: ['source'], equals: 'seed-cau-r2' } },
     });
     expect(sellos.length).toBe(15);
 
