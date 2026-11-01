@@ -1070,6 +1070,80 @@ export type ConsentimientoOrganizacion = z.infer<typeof ConsentimientoOrganizaci
 export type ConsentimientoOrganizacionRevocacion = z.infer<typeof ConsentimientoOrganizacionRevocacionSchema>;
 export type OperativaInstitucional = z.infer<typeof OperativaInstitucionalSchema>;
 
+// ─── NODO-VIG VIG-009 (#241, épica #239): Achango — observaciones y custodia ───
+
+// Checklist estructurado de la observación de estado patrimonial (VIG-009 R1):
+// cinco dimensiones del conjunto. true = el observador reporta el síntoma;
+// false = no lo observó — NO afirma "está sano": la observación es testimonio,
+// jamás diagnóstico (R15, diseño #241).
+export const PatrimonioObservacionChecklistSchema = z.object({
+  grietas: z.boolean(),
+  cornisas: z.boolean(),
+  techos: z.boolean(),
+  maderos: z.boolean(),
+  muros: z.boolean(),
+});
+
+// Evidencia del testimonio (mismo canon epistémico que oportunidades, ADR-035):
+// cada observación declara su fuente citable.
+export const PatrimonioObservacionEvidenciaSchema = z.object({
+  evidence_type: z.enum([
+    "community_input",
+    "survey",
+    "platform_data",
+    "field_observation",
+    "institutional_document",
+    "news_source",
+    "statistical_source",
+  ]),
+  descripcion: z.string().trim().min(3, "La evidencia requiere una descripción").max(1000),
+  reference_url: z.string().trim().url("URL de referencia inválida").max(500).optional(),
+});
+
+// Alta de observación de estado patrimonial (VIG-009 R1): ciudadano autenticado;
+// la fecha del testimonio es la del relevamiento, no la del alta en plataforma.
+export const PatrimonioObservacionAltaSchema = z.object({
+  fecha_observacion: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, "fecha_observacion: YYYY-MM-DD"),
+  checklist: PatrimonioObservacionChecklistSchema,
+  nota: z.string().trim().max(2000).optional(),
+  evidencia: PatrimonioObservacionEvidenciaSchema,
+});
+
+// Alcance granular del consentimiento de custodia (VIG-009 R3, patrón ficha de
+// tejedora del corpus VIG): cada campo es opt-in explícito — publicar el ROL sí;
+// nombre y contacto solo con consentimiento (Ley 25.326, ADR-027).
+export const CustodiaConsentimientoAlcanceSchema = z.object({
+  rol: z.boolean(),
+  nombre: z.boolean(),
+  contacto: z.boolean(),
+});
+
+// Consentimiento de custodia (VIG-009 R3): lo firma un ROL (guardián, cuidador
+// o familiar autorizado) — jamás un nombre civil (ADR-027). declaracion:
+// z.literal(true) hace imposible el consentimiento implícito; revocable en
+// cualquier momento por el mismo rol firmante.
+export const CustodiaConsentimientoSchema = z.object({
+  firmante_rol: z.enum(["guardian", "cuidador", "familiar_autorizado"]),
+  alcance: CustodiaConsentimientoAlcanceSchema,
+  vigencia_desde: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, "vigencia_desde: YYYY-MM-DD"),
+  vigencia_hasta: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, "vigencia_hasta: YYYY-MM-DD").nullable(),
+  declaracion: z.literal(true),
+});
+
+// Revocación del consentimiento de custodia (VIG-009 R3): el motivo pasa el
+// anti-PII de la API ANTES de sellarse (sin eco del valor).
+export const CustodiaConsentimientoRevocacionSchema = z.object({
+  firmante_rol: z.enum(["guardian", "cuidador", "familiar_autorizado"]),
+  motivo: z.string().trim().max(500).optional(),
+});
+
+export type PatrimonioObservacionChecklist = z.infer<typeof PatrimonioObservacionChecklistSchema>;
+export type PatrimonioObservacionEvidencia = z.infer<typeof PatrimonioObservacionEvidenciaSchema>;
+export type PatrimonioObservacionAlta = z.infer<typeof PatrimonioObservacionAltaSchema>;
+export type CustodiaConsentimientoAlcance = z.infer<typeof CustodiaConsentimientoAlcanceSchema>;
+export type CustodiaConsentimiento = z.infer<typeof CustodiaConsentimientoSchema>;
+export type CustodiaConsentimientoRevocacion = z.infer<typeof CustodiaConsentimientoRevocacionSchema>;
+
 // ─── CORE-005 R5 (#206, ADR-039): duplicados sugeridos por proximidad ───
 
 // Estados "abiertos" del reporte: los no terminales de la matriz R1 —
