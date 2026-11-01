@@ -229,7 +229,7 @@ describe.skipIf(!dbUp)('Comercios MARKET-CAP MK-2 (#243, sub-épica #152)', () =
     const email = 'mk2-' + ts + '-d@example.test';
     const id = await altaYAprobada(email, 'D');
     const tokenModerador = await registrarYLoguear(email);
-    await prisma.$executeRawUnsafe("ALTER TABLE events_raw ADD CONSTRAINT mk2_test_bloquea_sello CHECK (type <> 'comercio.habilitacion_actualizada')");
+    await prisma.$executeRawUnsafe("ALTER TABLE events_raw ADD CONSTRAINT mk2_test_bloquea_sello CHECK (type <> 'comercio.habilitacion_actualizada') NOT VALID");
     try {
       const patch = await fetch(base + '/api/comercios/' + id + '/habilitacion', {
         method: 'PATCH',
