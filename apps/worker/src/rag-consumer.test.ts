@@ -58,8 +58,9 @@ async function pendingCount(): Promise<number> {
 
 describe.skipIf(!dbUp || !redisUp)('VIG-006 (#188) — consumidor de indexación vig006-rag-index', () => {
   beforeAll(async () => {
-    // El grupo arranca en '$': las entradas previas no se entregan — cada
-    // test publica y consume lo suyo.
+    // Desde AUD-08 (D2) el grupo nace en '0': la historia previa SE entrega
+    // y se absorbe idempotentemente (recompute con upsert) — cada test
+    // sigue publicando y consumiendo lo suyo.
     await ensureRagGroup();
   });
 

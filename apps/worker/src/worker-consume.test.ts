@@ -52,8 +52,9 @@ async function pendingCount(): Promise<number> {
 
 describe.skipIf(!dbUp || !redisUp)('R4b — worker idempotente del stream (ADR-032, #87)', () => {
   beforeAll(async () => {
-    // El grupo arranca en '$': las entradas previas (suite de la API) no se
-    // entregan — cada test publica y consume lo suyo.
+    // Desde AUD-08 (D2) el grupo nace en '0': la historia previa (suite de
+    // la API) SE entrega y se absorbe idempotentemente (P2002 repeated) —
+    // cada test sigue publicando y consumiendo lo suyo.
     await ensureGroup();
   });
 
