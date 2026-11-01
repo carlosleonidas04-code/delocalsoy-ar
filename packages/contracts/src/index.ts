@@ -836,3 +836,30 @@ export const ReporteHistorialSchema = z.object({
   reporte_id: z.string(),
   transiciones: z.array(ReporteHistorialEntrySchema),
 });
+
+// ─── CORE-005 R5 (#206, ADR-039): duplicados sugeridos por proximidad ───
+
+// Estados "abiertos" del reporte: los no terminales de la matriz R1 —
+// resolved y descartado dejan de ser sugeribles como duplicados (la
+// cercanía con un reporte cerrado ya no agrega señal de duplicado).
+export const ReporteEstadoAbiertoSchema = z.enum([
+  "received",
+  "evaluating",
+  "in_progress",
+]);
+
+// Sugerencia de duplicado en la respuesta del alta (R5, ADR-039): un
+// reporte ABIERTO y REAL (is_synthetic = false — el demo nunca es
+// duplicado de un reporte ciudadano) del mismo nodo dentro del radio de
+// proximidad. Es una SUGERENCIA de lectura: el sistema NUNCA fusiona
+// reportes automáticamente — la decisión de marcar duplicado es humana,
+// con sello (ADR-039). El campo no persiste, no se sella y no muta nada.
+export const ReporteDuplicadoSugeridoSchema = z.object({
+  id: z.string(),
+  categoria: z.string(),
+  estado: ReporteEstadoAbiertoSchema,
+  lat: z.number().nullable(),
+  lng: z.number().nullable(),
+  distancia_m: z.number().nullable(),
+  created_at: z.string().datetime(),
+});
