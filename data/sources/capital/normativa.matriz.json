@@ -1,0 +1,168 @@
+{
+  "meta": {
+    "node": "capital",
+    "project": "DELocalSoy.AR",
+    "task": "NUT-CAP-012",
+    "bloque": "D",
+    "generated_at": "2026-10-15",
+    "issue": 215,
+    "responsible": "agent-vibe",
+    "base": "main @ 77500be",
+    "method": "Pasada de verificacion conforme a BLOQUE-D-VERIFICACION-NORMATIVA.md (matriz de la DH, preservada verbatim en docs/nodo-capital/)",
+    "regla_de_ingesta": "Texto oficial obtenido -> verified con URL y hash; solo prensa -> provisional; texto no disponible -> provisional + pedido formal; sin norma -> unknown"
+  },
+  "normas": [
+    {
+      "id": "NORM-CAP-001",
+      "nombre": "Registro Unico Municipal de Artesanos y Emprendedores (RUMAE)",
+      "identificador": "Despacho N° 325-26",
+      "tema": "Ferias, feriantes, espacio publico",
+      "estado_anterior": "provisional",
+      "estado_actual": "provisional",
+      "conclusion": "Texto oficial NO localizado en fuentes publicas accesibles en esta pasada (2026-10-15): sitio municipal bloquea lectura automatizada del digesto; sin publicacion hallada. Diez o mas medios coinciden en identificador y contenido (Diario Huarpe, Diario Colon, La Provincia SJ, Telesol, El Zonda, Diario de Cuyo, Del Sur, Tiempo de San Juan, Diario La Ventana, EstasInformado).",
+      "fuentes_nuevas_prensa": [
+        "https://www.diariodecuyo.com.ar/san-juan/capital-lanzan-un-registro-unico-artesanos-y-prohiben-la-reventa-las-ferias-municipales-n6583118",
+        "https://www.diarioelzondasj.com.ar/locales/capital-creo-un-registro-unico-para-artesanos-y-emprendedores",
+        "https://www.delsurdiario.com/provinciales/capital-arma-un-registro-unico-para-artesanos-y-emprendedores-se-acabo-la-feria-a-los-ponchazos",
+        "https://www.tiempodesanjuan.com/san-juan/registro-de-artesanos-y-emprendedores-en-capital-los-nuevos-requisitos-para-participar-en-ferias_1789487594",
+        "https://diariolaventana.com.ar/capital-creo-registro-de-artesano-y-establecio-condiciones-para-ferias-y-eventos/"
+      ],
+      "refuerza_pedido": "PED-CAP-001",
+      "pendiente_para_verified": "Texto oficial del Despacho y fecha de promulgacion"
+    },
+    {
+      "id": "NORM-CAP-002",
+      "nombre": "Regimen previo de ferias",
+      "identificador": "Ordenanza N° 9194",
+      "tema": "Ferias y feriantes",
+      "estado_anterior": "provisional",
+      "estado_actual": "provisional",
+      "conclusion": "Texto oficial NO localizado. Prensa multiple la referencia como regimen previo reemplazado por el Despacho 325-26. El digesto municipal en linea (wwwold.municipiosanjuan.gob.ar/ordenanzas) no es legible por lectura automatizada y la busqueda del patron de URL no la indexa.",
+      "refuerza_pedido": "PED-CAP-001",
+      "pendiente_para_verified": "Texto oficial y confirmacion de derogacion/reemplazo"
+    },
+    {
+      "id": "NORM-CAP-003",
+      "nombre": "Habilitacion comercial municipal",
+      "identificador": "numero pendiente",
+      "tema": "Habilitaciones comerciales",
+      "estado_anterior": "provisional",
+      "estado_actual": "provisional",
+      "conclusion": "La pagina oficial de Habilitaciones (SRC-007) menciona \"la presente Ordenanza\" sin exponer el numero; en esta pasada el sitio municipal bloqueo la relectura automatizada. No se hallo el numero por via publica.",
+      "refuerza_pedido": "PED-CAP-001",
+      "pendiente_para_verified": "Numero, anio y texto oficial"
+    },
+    {
+      "id": "NORM-CAP-004",
+      "nombre": "Gastronomia y publicidad en via publica",
+      "identificador": "Ordenanza N° 9587",
+      "tema": "Via publica, gastronomia, publicidad",
+      "estado_anterior": "verified",
+      "estado_actual": "verified",
+      "conclusion": "Texto oficial ya verificado (PDF municipal, 2009). Hallazgo de la pasada: en abril 2025 el Concejo Deliberante de Capital aprobo una nueva ordenanza de \"vehiculos gastronomicos\" (carros pancheros) que regula actividad gastronomica en via publica; ningun medio consultado publica su numero. Se registra como norma conexa con numero unknown, sin presumir derogacion ni modificacion de la 9587.",
+      "hallazgo_conexo": {
+        "nombre": "Regulacion de vehiculos gastronomicos (carros pancheros)",
+        "fecha_aprobacion": "2025-04",
+        "numero": null,
+        "estado": "provisional (prensa, sin numero ni texto oficial)",
+        "fuentes_prensa": [
+          "https://www.tiempodesanjuan.com/politica/en-capital-aprobaron-la-regulacion-carros-pancheros-todos-los-requisitos-que-se-exigen-n400552",
+          "https://www.0264noticias.com.ar/noticias/2025/06/05/77292-confirmaron-que-este-viernes-los-carros-pancheros-retoman-su-actividad"
+        ]
+      },
+      "pendiente_para_verified": "Vigencia y modificatorias de la 9587: confirmar numero y texto de la ordenanza 2025 de vehiculos gastronomicos y su relacion con la 9587"
+    },
+    {
+      "id": "NORM-CAP-005",
+      "nombre": "Acceso a la informacion publica provincial",
+      "identificador": "sin ley provincial identificada",
+      "tema": "Transparencia",
+      "estado_anterior": "provisional",
+      "estado_actual": "provisional",
+      "conclusion": "Sin ley provincial hallada ni confirmacion oficial de adhesion a la Ley 27.275 en esta pasada. Prensa registra proyectos en curso: Edgardo Sancassani (bloquista, 2026) con antecedente del oficialista Daniel Tomas (cuatro anios consecutivos). Operativamente se mantiene la via administrativa directa con fundamento en Constitucion Provincial art. 27.",
+      "fuentes_nuevas_prensa": [
+        "https://www.diariojudicial.com/news-21482-san-juan-quiere-su-ley-de-acceso-a-la-informacion-publica",
+        "https://elauditor.info/transparencia-y-participacion/en-san-juan-insisten-con-la-ley-de-acceso-a-la-informacion-publica_a6261b66dba5dbc6dee30db86"
+      ],
+      "refuerza_pedido": "PED-CAP-004",
+      "pendiente_para_verified": "Boletin Oficial / digesto: confirmacion de ausencia de adhesion"
+    },
+    {
+      "id": "NORM-CAP-006",
+      "nombre": "Proteccion de datos personales",
+      "identificador": "Ley Nacional 25.326 + Decreto 1558/2001",
+      "tema": "Datos personales",
+      "estado_anterior": "verified como marco nacional",
+      "estado_actual": "verified como marco nacional; sin norma provincial propia identificada",
+      "conclusion": "No se hallo ley provincial propia ni delegacion AAIP en San Juan. Evidencia operativa (prensa legal, provisional): la DNPDP sanciono al Ministerio de Salud de San Juan por filtracion de datos personales, lo que confirma el techo nacional como marco vigente aplicable. Se registra el proyecto de adhesion del diputado Enzo Cornejo (proyecto, no ley). El diseno mantiene minimizacion y ausencia de PII.",
+      "fuentes_nuevas_prensa": [
+        "https://beccarvarela.com/novedades/datos-personales-sancion-al-gobierno-de-san-juan-por-filtracion-de-datos-personales/",
+        "http://enzocornejo.com.ar/proyecto-de-ley-adhesion-a-la-ley-nacional-25-326-de-proteccion-de-los-datos-personales/"
+      ],
+      "pendiente_para_verified": "Confirmar inexistencia formal de norma provincial propia (pedido formal)"
+    },
+    {
+      "id": "NORM-CAP-007",
+      "nombre": "Licencias de datos abiertos y UNIDE",
+      "identificador": "sin identificador",
+      "tema": "Reutilizacion de datos",
+      "estado_anterior": "unknown",
+      "estado_actual": "unknown",
+      "conclusion": "El portal datosabiertos.sanjuan.gob.ar requiere JavaScript para renderizar y su API (CKAN /data.json) no responde a lectura automatizada sin JS: no fue posible leer licencia alguna. Las capas UNIDE siguen inaccesibles sin credenciales (ver sondeo Bloque B, PR #217). Sin licencia confirmada: derivados bloqueados.",
+      "refuerza_pedido": "PED-CAP-004",
+      "pendiente_para_verified": "Texto de licencia por dataset/capa (entrega formal o credenciales)"
+    },
+    {
+      "id": "NORM-CAP-008",
+      "nombre": "Uso cartografico IGN",
+      "identificador": "Terminos y Condiciones del IGN (sin numero de norma)",
+      "tema": "Cartografia derivada",
+      "estado_anterior": "unknown",
+      "estado_actual": "verified",
+      "texto_oficial_url": "https://www.ign.gob.ar/descargas/tyc3.html",
+      "conclusion": "Terminos y Condiciones de uso de la informacion del IGN localizados y leidos integramente (fuente oficial). Politica de licenciamiento verificada.",
+      "condiciones_clave": [
+        "Citar la fuente: \"FUENTE: Instituto Geografico Nacional de la Republica Argentina\"",
+        "Los datos descargados no deben alterarse",
+        "No insinuar patrocinio o aval del IGN",
+        "Conservar metadatos de fecha de actualizacion y condiciones de reutilizacion",
+        "En productos derivados, mencionar la fecha de los datos originales del IGN",
+        "Compartir los datos de manera libre y gratuita",
+        "Uso comercial permitido unicamente en obras derivadas en que la informacion sea insumo de un nuevo producto"
+      ],
+      "reutilizacion_autorizada": "La reutilizacion autorizada incluye copia, difusion, modificacion, adaptacion, extraccion, reordenamiento y combinacion, siempre que no desnaturalice el sentido de la informacion.",
+      "jurisdiccion": "Tribunales Federales con asiento en CABA; domicilio del IGN: Avenida Cabildo 381, CABA.",
+      "impacto_diseno": "La cartografia base del IGN es utilizable con atribucion y sin bloqueo para derivados; exige fecha de datos originales en productos derivados."
+    }
+  ],
+  "backlog_nut_cap_012": {
+    "Obtener texto oficial del Despacho 325-26": {
+      "estado": "no_obtenido",
+      "resultado": "no localizado por via publica; queda provisional + pedido formal (PED-CAP-001)"
+    },
+    "Obtener texto de la Ordenanza 9194": {
+      "estado": "no_obtenido",
+      "resultado": "idem"
+    },
+    "Obtener numero y texto de la ordenanza de habilitacion comercial": {
+      "estado": "no_obtenido",
+      "resultado": "numero sigue unknown; pagina oficial no lo expone (PED-CAP-001)"
+    },
+    "Confirmar situacion de adhesion a Ley 27.275": {
+      "estado": "sin_confirmacion_oficial",
+      "resultado": "sin ley provincial hallada; proyectos 2026 en curso (prensa); se mantiene provisional + pedido formal (PED-CAP-004)"
+    },
+    "Revisar terminos IGN": {
+      "estado": "cumplido",
+      "resultado": "terminos y politica de licenciamiento leidos integramente de fuente oficial; NORM-CAP-008 -> verified"
+    }
+  },
+  "dod": {
+    "Matriz normativa actualizada": "cumplido (este archivo)",
+    "Cada norma con identificador, tema, estado y fuente": "cumplido",
+    "Ninguna norma sin texto oficial presentada como verified": "cumplido: solo NORM-CAP-008 se eleva a verified (texto oficial leido); NORM-CAP-001/002/003/005/007 permanecen provisional/unknown",
+    "Pedidos formales creados para textos faltantes": "cumplido por referencia: PED-CAP-001 y PED-CAP-004 ya los cubren (requests.tracking.json)",
+    "Licencias de datos abiertos y UNIDE verificadas o marcadas unknown": "cumplido: marcadas unknown (portal requiere JS; capas inaccesibles)",
+    "Marco IGN revisado o marcado unknown": "cumplido: revisado y verificado"
+  }
+}
