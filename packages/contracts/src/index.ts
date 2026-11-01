@@ -967,6 +967,109 @@ export const ReporteHistorialSchema = z.object({
   transiciones: z.array(ReporteHistorialEntrySchema),
 });
 
+// ─── NODO-VIG VIG-008 (#240, épica #239): cooperativas — consentimiento institucional ───
+
+// Alcance granular del consentimiento institucional (persona jurídica):
+// cada uso de la identidad de la organización es opt-in explícito — el
+// catálogo y los contactos solo se publican tras asamblea ratificada.
+export const ConsentimientoOrganizacionAlcanceSchema = z.object({
+  ficha: z.boolean(),
+  productos: z.boolean(),
+  fotos: z.boolean(),
+  contacto: z.boolean(),
+});
+
+// Consentimiento de organización (VIG-008 R3): lo firma un ROL institucional
+// del consejo de administración — jamás un nombre civil (ADR-027, Ley
+// 25.326). declaracion: z.literal(true) hace imposible el consentimiento
+// pre-marcado: sin declaración explícita no hay alta ni enriquecimiento
+// (regla VIG-008 ratificada: NINGÚN dato enriquecido se siembra sin
+// consentimiento formal de la persona jurídica).
+export const ConsentimientoOrganizacionSchema = z.object({
+  organizacion_key: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9_]+$/, "organizacion_key: slug en minúsculas y guiones bajos")
+    .max(60),
+  organizacion_tipo: z.enum([
+    "cooperativa",
+    "asociacion_civil",
+    "federacion",
+    "mutual",
+    "otra",
+  ]),
+  firmante_rol: z.enum([
+    "presidente_consejo",
+    "vicepresidente_consejo",
+    "secretario",
+    "tesorero",
+    "sindico",
+    "representante_apoderado",
+  ]),
+  alcance: ConsentimientoOrganizacionAlcanceSchema,
+  vigencia_desde: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "vigencia_desde: YYYY-MM-DD"),
+  vigencia_hasta: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "vigencia_hasta: YYYY-MM-DD")
+    .nullable(),
+  declaracion: z.literal(true),
+});
+
+// Revocación del consentimiento institucional (VIG-008 R3): revocable en
+// cualquier momento por la propia organización, con el mismo rol firmante;
+// el motivo pasa el anti-PII de la API ANTES de sellarse (sin eco del valor).
+export const ConsentimientoOrganizacionRevocacionSchema = z.object({
+  organizacion_key: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9_]+$/, "organizacion_key: slug en minúsculas y guiones bajos")
+    .max(60),
+  firmante_rol: z.enum([
+    "presidente_consejo",
+    "vicepresidente_consejo",
+    "secretario",
+    "tesorero",
+    "sindico",
+    "representante_apoderado",
+  ]),
+  motivo: z.string().trim().min(10, "La revocación exige motivo (mínimo 10 caracteres)").max(500),
+});
+
+// Operativa institucional (VIG-008 R2, columna `institucional` de
+// activos_operativa): datos registrales públicos de la persona jurídica.
+// TODOS los campos de dato son nullable — vacío honesto (R15): sin dato no
+// se inventa; y `consentimiento_hash` es OBLIGATORIO: la ficha
+// institucional solo se llena tras consentimiento formal registrado —
+// sin él todo queda null. Cero PII: ni nombres de socios ni contactos
+// directos (Ley 25.326/ADR-027).
+export const OperativaInstitucionalSchema = z.object({
+  matricula_nacional: z.string().trim().max(20).nullable(),
+  matricula_provincial: z.string().trim().max(20).nullable(),
+  cuit: z
+    .string()
+    .trim()
+    .regex(/^\d{2}-\d{8}-\d$/, "cuit: formato XX-XXXXXXXX-X")
+    .nullable(),
+  fecha_constitucion: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "fecha_constitucion: YYYY-MM-DD")
+    .nullable(),
+  socios_activos_count: z.number().int().nonnegative().nullable(),
+  federacion_key: z.string().trim().max(60).nullable(),
+  domicilio_publicado: z.string().trim().max(200).nullable(),
+  consentimiento_hash: z.string().length(32),
+});
+
+export type ConsentimientoOrganizacionAlcance = z.infer<typeof ConsentimientoOrganizacionAlcanceSchema>;
+export type ConsentimientoOrganizacion = z.infer<typeof ConsentimientoOrganizacionSchema>;
+export type ConsentimientoOrganizacionRevocacion = z.infer<typeof ConsentimientoOrganizacionRevocacionSchema>;
+export type OperativaInstitucional = z.infer<typeof OperativaInstitucionalSchema>;
+
 // ─── CORE-005 R5 (#206, ADR-039): duplicados sugeridos por proximidad ───
 
 // Estados "abiertos" del reporte: los no terminales de la matriz R1 —

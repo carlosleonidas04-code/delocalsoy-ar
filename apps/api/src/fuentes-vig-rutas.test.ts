@@ -3,7 +3,8 @@ import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 // NVIG-R5 (#172): catálogo de fuentes y procedencia del Valle de
-// Iglesia. 16 fuentes específicas del valle al catálogo global ADR-035
+// Iglesia. 16 fuentes NVIG-R5 + 4 institucionales VIG-008 (#240) al
+// catálogo global ADR-035
 // (patrón NODO-CAU R2 #200: la tabla fuentes, las rutas /api/fuentes y el
 // pipeline ingestas se reutilizan SIN cambios de rutas ni de openapi).
 // Estados honestos verificados en las tandas 1-3 de investigación
@@ -56,6 +57,7 @@ describe.skipIf(!dbUp)('fuentes del Valle de Iglesia (NVIG-R5 — catálogo y pr
     'leyes_patrimonio_sj', 'conicet_garcia_2024', 'michieli_2016', 'pedl_iglesia',
     'cna_2018', 'hidrometria_sj', 'ley_826_g', 'viales_rn150',
     'conectividad_agua_negra', 'ley_2400_t', 'inaes', 'turismo_sj',
+    'fecoagro_web', 'cooperativas_sj', 'ley_2400t_convocatoria_2024', 'mujeres_de_montana_2026',
   ];
 
   // Estados honestos verificados en las tandas 1-3 (trazas #167-#174):
@@ -79,20 +81,24 @@ describe.skipIf(!dbUp)('fuentes del Valle de Iglesia (NVIG-R5 — catálogo y pr
     ley_2400_t: 'requiere_solicitud',
     inaes: 'requiere_solicitud',
     turismo_sj: 'requiere_solicitud',
+    fecoagro_web: 'disponible',
+    cooperativas_sj: 'requiere_solicitud',
+    ley_2400t_convocatoria_2024: 'requiere_solicitud',
+    mujeres_de_montana_2026: 'requiere_solicitud',
   };
 
-  it('catálogo global: 31 fuentes (15 Caucete + 16 del valle) sin claves duplicadas', async () => {
+  it('catálogo global: 35 fuentes (15 Caucete + 20 del valle) sin claves duplicadas', async () => {
     const res = await fetch(base + '/api/fuentes');
     expect(res.status).toBe(200);
     const body: any = await res.json();
     expect(body.success).toBe(true);
-    expect(body.count).toBe(31);
+    expect(body.count).toBe(35);
     const keys = body.data.map((f: any) => f.key);
     expect(new Set(keys).size).toBe(keys.length);
     for (const k of KEYS_VIG) expect(keys).toContain(k);
   });
 
-  it('catálogo VIG: 16 fuentes con organismo, estado honesto verificado y cautela', async () => {
+  it('catálogo VIG: 20 fuentes con organismo, estado honesto verificado y cautela', async () => {
     const res = await fetch(base + '/api/fuentes');
     const body: any = await res.json();
     for (const k of KEYS_VIG) {
@@ -128,11 +134,11 @@ describe.skipIf(!dbUp)('fuentes del Valle de Iglesia (NVIG-R5 — catálogo y pr
     await falta.arrayBuffer();
   });
 
-  it('sellos seed-vig-r5: 16 fuente.registrada con payload {key, organismo, source} sin PII', async () => {
+  it('sellos seed-vig-r5: 20 fuente.registrada con payload {key, organismo, source} sin PII', async () => {
     const sellos = await prisma.events_raw.findMany({
       where: { type: 'fuente.registrada', payload: { path: ['source'], equals: 'seed-vig-r5' } },
     });
-    expect(sellos.length).toBe(16);
+    expect(sellos.length).toBe(20);
 
     const keys = sellos.map((s: any) => (s.payload as any).key).sort();
     expect(keys).toEqual(KEYS_VIG.slice().sort());
