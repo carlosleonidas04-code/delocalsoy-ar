@@ -554,6 +554,16 @@ interface SelloRow {
   occurred_at: Date;
 }
 
+// Entrada del historial antes del parse del contrato: la forma pública de cada
+// sello expuesto (H1, DH §7.2). Anotación explícita (lección TS2345): flatMap
+// sobre un switch con retornos heterogéneos colapsa la inferencia de U a la
+// primera rama y rompe la asignabilidad de las demás.
+interface HistorialEntrada {
+  type: string;
+  occurred_at: string;
+  [campo: string]: unknown;
+}
+
 // GET /api/comercios/:id/historial — F-3: derivado 1:1 de los sellos en
 // events_raw (ADR-032, append-only); guard idéntico al de GET /:id (H3).
 router.get('/:id/historial', async (req: Request, res: Response) => {
@@ -576,7 +586,7 @@ router.get('/:id/historial', async (req: Request, res: Response) => {
       },
       orderBy: [{ occurred_at: 'asc' }, { id: 'asc' }],
     })) as SelloRow[];
-    const entries = sellos.flatMap((s) => {
+    const entries = sellos.flatMap((s): HistorialEntrada[] => {
       const p = s.payload as Record<string, unknown>;
       const occurred_at = s.occurred_at.toISOString();
       switch (s.type) {
