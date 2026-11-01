@@ -11,8 +11,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 // Prisma con el MISMO predicado (aserciones dinámicas contra el dominio
 // vivo, patrón vig003-kpis — otras suites del job test escriben en el
 // mismo nodo). Capital activó su base territorial (NCAP-R2 #154: 2 distritos
-// provisionales) y caucete sigue sin subnodos → 0 honesto; productos 0 en
-// ambos, nunca fabricado (R15, decisión DH traza #193). Requiere
+// provisionales) y caucete activó la suya (NODO-CAU R6 #145: ciudad + 9
+// localidades de referencia Georef); productos 0 en ambos, nunca fabricado
+// (R15, decisión DH traza #193). Requiere
 // Postgres/PostGIS real; sin base → skip honesto.
 
 process.env.DATABASE_URL =
@@ -140,8 +141,13 @@ describe.skipIf(!dbUp)('Demo final del showcase VIG-007 (#193, épica #167)', ()
     expect(capital.kpis).toBe(0); // sin snapshots aún → 0 honesto
     expect(capital.kpis).toBe(capital.kpis_detalle.length); // consistente siempre
     expect(capital.rag_fragmentos).toBe(0); // sin prosa indexada del nodo
-    // caucete sigue sin subnodos ni snapshots → counts 0 honestos (R15)
-    expect(caucete.subnodos).toBe(0);
+    // caucete activó su base territorial (NODO-CAU R6, #145, épica #137):
+    // 10 subnodos (ciudad + 9 localidades Georef) — count comparado con el
+    // dominio vivo con el MISMO predicado (patrón vig003-kpis); snapshots y
+    // productos siguen en 0 honesto (R15).
+    const subnodosCaucete = await prisma.subnodos.count({ where: { nodo_key: 'caucete' } });
+    expect(caucete.subnodos).toBe(subnodosCaucete);
+    expect(caucete.subnodos).toBe(10);
     expect(caucete.productos_aprobados).toBe(0);
     expect(caucete.kpis).toBe(caucete.kpis_detalle.length);
     expect(caucete.rag_fragmentos).toBe(0);
