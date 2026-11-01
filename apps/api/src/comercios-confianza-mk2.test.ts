@@ -19,6 +19,12 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 process.env.DATABASE_URL =
   process.env.TEST_DATABASE_URL ?? 'postgresql://delocalsoy:delocalsoy@localhost:5432/delocalsoy?schema=public';
 process.env.JWT_SECRET = 'test-jwt-secret-marketcap-mk2-confianza-32';
+// AUD-05 (#101): la suite excede el default de 5 intentos de auth por ventana
+// (login + register del mismo email) — se relaja con el knob diseñado
+// RATE_LIMIT_MAX; la verificación canónica del limiter vive en su propia
+// suite. Se restaura en afterAll para no filtrar el env a otros archivos.
+const RATE_LIMIT_MAX_PREV = process.env.RATE_LIMIT_MAX;
+process.env.RATE_LIMIT_MAX = '500';
 
 const { createApp } = await import('./app.js');
 const prisma = (await import('./lib/prisma.js')).default;
@@ -41,6 +47,9 @@ beforeAll(async () => {
 }, 60000);
 
 afterAll(async () => {
+  // Restaura el knob del limiter (AUD-05 #101) antes del cleanup.
+  if (RATE_LIMIT_MAX_PREV === undefined) delete process.env.RATE_LIMIT_MAX;
+  else process.env.RATE_LIMIT_MAX = RATE_LIMIT_MAX_PREV;
   // Cleanup de los comercios creados por la suite (el cascade borra la ficha).
   await prisma.activos
     .deleteMany({ where: { titulo: { startsWith: 'Comercio test MK-2' } } })

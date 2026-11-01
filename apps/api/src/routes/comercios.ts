@@ -545,6 +545,15 @@ router.patch('/:id/habilitacion', requireJwt, async (req: Request, res: Response
   }
 });
 
+// Lección #151 (TS7006): @delocalsoy/db exporta el cliente sin los tipos
+// generados — la fila de events_raw se declara explícitamente aquí.
+interface SelloRow {
+  id: string;
+  type: string;
+  payload: Record<string, unknown>;
+  occurred_at: Date;
+}
+
 // GET /api/comercios/:id/historial — F-3: derivado 1:1 de los sellos en
 // events_raw (ADR-032, append-only); guard idéntico al de GET /:id (H3).
 router.get('/:id/historial', async (req: Request, res: Response) => {
@@ -560,13 +569,13 @@ router.get('/:id/historial', async (req: Request, res: Response) => {
       res.status(404).json({ success: false, error: 'comercio no encontrado' });
       return;
     }
-    const sellos = await prisma.events_raw.findMany({
+    const sellos = (await prisma.events_raw.findMany({
       where: {
         type: { in: [...COMERCIO_SELLOS_HISTORIAL] },
         payload: { path: ['comercio_id'], equals: id },
       },
       orderBy: [{ occurred_at: 'asc' }, { id: 'asc' }],
-    });
+    })) as SelloRow[];
     const entries = sellos.flatMap((s) => {
       const p = s.payload as Record<string, unknown>;
       const occurred_at = s.occurred_at.toISOString();
