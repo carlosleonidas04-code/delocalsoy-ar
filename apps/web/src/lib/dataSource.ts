@@ -17,6 +17,7 @@ import type {
   FuenteInformativa,
   IngestaPublicada,
 } from './servicioInformativo';
+import type { ComercioDetalle, ComercioItem, ComerciosQuery } from './comercios';
 
 export type SanJuanFocalNodeKey = 'capital' | 'caucete' | 'iglesia';
 export type Core004Role = 'ciudadano' | 'moderador' | 'admin';
@@ -309,6 +310,12 @@ export interface DataSource<TContext = unknown> {
   listIngestas?(nodoKey: SanJuanFocalNodeKey): Promise<IngestaPublicada[]>;
   listNodeCapas?(nodoKey: SanJuanFocalNodeKey): Promise<CapaInformativa[]>;
   listNodeFeatures?(nodoKey: SanJuanFocalNodeKey): Promise<FeatureInformativa[]>;
+  // MARKET-CAP MK-1 (#243, sub-épica #152): Mercado de Proximidad — directorio
+  // de comercios del nodo Capital, multinodo desde día 1 (decisión DH) y
+  // acoplado por contrato DataSource (ADR-029). Opcional mientras ambas
+  // implementaciones convergen (paridad sintética incluida).
+  listComercios?(input?: ComerciosQuery): Promise<ComercioItem[]>;
+  getComercio?(id: string): Promise<ComercioDetalle>;
 }
 
 export { ApiDataSource, type ApiDataSourceOptions };
@@ -827,6 +834,70 @@ export class SyntheticDataSource implements DataSource {
   public async listNodeFeatures(nodoKey: SanJuanFocalNodeKey): Promise<FeatureInformativa[]> {
     if (nodoKey !== 'caucete') return [];
     return this.syntheticFeaturesCaucete.map((f) => ({ ...f }));
+  }
+
+  // MARKET-CAP MK-1 (#243, sub-épica #152): paridad sintética del Mercado de
+  // Proximidad — la demo vive SOLO aquí (VITE_MOCK_API === '1'), con prefijo
+  // [SINTÉTICO] y estado_epistemico 'synthetic_demo'. El seed real es 0
+  // comercios (decisión DH, patrón VIG-005, R15: jamás se maqueta).
+  private readonly syntheticComerciosCapital: ComercioItem[] = [
+    {
+      id: 'syn-com-capital-01',
+      titulo: '[SINTÉTICO] Almacén y despensa de proximidad del microcentro (demo)',
+      descripcion: 'Demo sintética del Mercado de Proximidad: ficha de ejemplo del rubro Alimentación y bebidas (canon de 11, #243).',
+      nodo_key: 'capital',
+      subnodo_key: 'sj_capital_centro',
+      lat: -31.5372,
+      lng: -68.5224,
+      rubro: { id: 'food_drink', rama: 'comercios', label: 'Alimentación y bebidas' },
+      estado: 'aprobado',
+      habilitacion_estado: 'sin_dato',
+      titularidad_estado: 'sin_reclamo',
+      estado_epistemico: 'synthetic_demo',
+    },
+    {
+      id: 'syn-com-capital-02',
+      titulo: '[SINTÉTICO] Taller de oficios del corredor Libertador (demo)',
+      descripcion: 'Demo sintética del Mercado de Proximidad: ficha de ejemplo del rubro Hogar y servicios técnicos (canon de 11, #243).',
+      nodo_key: 'capital',
+      subnodo_key: 'sj_capital_centro',
+      lat: -31.5413,
+      lng: -68.5361,
+      rubro: { id: 'home_technical', rama: 'comercios', label: 'Hogar y servicios técnicos' },
+      estado: 'aprobado',
+      habilitacion_estado: 'sin_dato',
+      titularidad_estado: 'sin_reclamo',
+      estado_epistemico: 'synthetic_demo',
+    },
+  ];
+
+  public async listComercios(input?: ComerciosQuery): Promise<ComercioItem[]> {
+    let items = this.syntheticComerciosCapital.map((c) => ({ ...c }));
+    if (typeof input?.nodo === 'string' && input.nodo !== '') {
+      items = items.filter((c) => c.nodo_key === input.nodo);
+    }
+    if (typeof input?.rubro === 'string' && input.rubro !== '') {
+      items = items.filter((c) => c.rubro.id === input.rubro);
+    }
+    if (typeof input?.subnodo === 'string' && input.subnodo !== '') {
+      items = items.filter((c) => c.subnodo_key === input.subnodo);
+    }
+    if (typeof input?.habilitacion === 'string' && input.habilitacion !== '') {
+      items = items.filter((c) => c.habilitacion_estado === input.habilitacion);
+    }
+    return items;
+  }
+
+  public async getComercio(id: string): Promise<ComercioDetalle> {
+    const ficha = this.syntheticComerciosCapital.find((c) => c.id === id);
+    if (ficha === undefined) {
+      throw new DataSourceHttpError({
+        status: 404,
+        endpoint: '/api/comercios/' + id,
+        message: 'Comercio no encontrado en la demo sintética (R5: sin fallback silencioso)',
+      });
+    }
+    return { ficha: { ...ficha }, operativa: null, productos: [], count_productos: 0 };
   }
 }
 

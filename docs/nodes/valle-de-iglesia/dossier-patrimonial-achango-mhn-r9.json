@@ -1,0 +1,27 @@
+{
+  "$schema": "https://delocalsoy.ar/schemas/v1/dossier-achango-r9.json",
+  "protocolo": "R9-CANON-VIG-009",
+  "timestamp": "2026-10-18T14:45:00.000Z",
+  "nodoEmisor": "NODO-VALLE-DE-IGLESIA-VIG",
+  "patrimonio": {
+    "id": "patrimonio-mhn-achango",
+    "denominacion": "Capilla de Achango (Nuestra Señora del Carmen)",
+    "categoriaLegal": "Monumento Histórico Nacional (MHN)",
+    "leyDeclaratoria": "Ley Nacional N° 24.790",
+    "anioDeclaratoria": 1997,
+    "puntoPublicoAutorizado": {
+      "lat": -30.2894,
+      "lng": -69.1978,
+      "srid": 4326,
+      "nota": "Punto público autorizado (VIG-004 / ADR-036)"
+    },
+    "modoProtegidoADR036": true,
+    "sistemaConstructivo": "Muros portantes de adobe de 1,10 m de espesor, cimientos de piedra rodada de río, viguería de álamo y algarrobo atada con tiento de cuero crudo, cubierta de caña y torta de barro con paja."
+  },
+  "manifiestoGobernanza": {
+    "ceroRecaudacion": true,
+    "sinManejoDeFondos": true,
+    "finalidad": "Información honesta + visibilidad estructurada + trazabilidad inmutable sin intermediación financiera"
+  },
+  "hashIntegridadDossier": "sha256:d8a5712f9b8417c8091ec1b45289de6d3a81f3b39c09d57a264a9ef4e11c8c50"
+}
