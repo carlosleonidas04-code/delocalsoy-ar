@@ -39,7 +39,7 @@ const BBOX = '-68.7,-31.2,-68.4,-30.9'; // envolvente del nodo caucete (SRID=432
 const { prisma } = await import('@delocalsoy/db');
 const { redisCommand, xaddEventReference } = await import('@delocalsoy/redis');
 
-const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+const stamp = new Date().toISOString().replace(/[:.]/g, '-').toLowerCase(); // UsuarioRegistroSchema normaliza email a minusculas (P2025 en el update directo)
 const email = 'vertical-r6-' + stamp + '@example.test';
 const password = 'flujo-vertical-r6-ci-2026';
 
