@@ -44,6 +44,13 @@ import {
   type FuenteInformativa,
   type IngestaPublicada,
 } from './servicioInformativo';
+import {
+  normalizarComercioDetalle,
+  normalizarComercios,
+  type ComercioDetalle,
+  type ComercioItem,
+  type ComerciosQuery,
+} from './comercios';
 
 export interface ApiDataSourceOptions {
   fetchImpl?: typeof fetch;
@@ -503,5 +510,61 @@ export class ApiDataSource implements DataSource {
       });
     }
     return normalizarFeatures(payload);
+  }
+
+  /**
+   * Consulta GET /api/comercios — Mercado de Proximidad del nodo Capital
+   * (MARKET-CAP MK-1 #243, sub-épica #152): fichas públicas aprobadas y
+   * moderadas (ADR-036), multinodo (nodo_key-scoped) desde día 1. Regla R5:
+   * ningún error HTTP se convierte en [].
+   */
+  public async listComercios(input?: ComerciosQuery): Promise<ComercioItem[]> {
+    const params = new URLSearchParams();
+    if (typeof input?.nodo === 'string' && input.nodo !== '') {
+      params.set('nodo', input.nodo);
+    }
+    if (typeof input?.rubro === 'string' && input.rubro !== '') {
+      params.set('rubro', input.rubro);
+    }
+    if (typeof input?.subnodo === 'string' && input.subnodo !== '') {
+      params.set('subnodo', input.subnodo);
+    }
+    if (typeof input?.habilitacion === 'string' && input.habilitacion !== '') {
+      params.set('habilitacion', input.habilitacion);
+    }
+    if (typeof input?.bbox === 'string' && input.bbox !== '') {
+      params.set('bbox', input.bbox);
+    }
+    const qs = params.toString();
+    const endpoint = '/api/comercios' + (qs !== '' ? '?' + qs : '');
+    const payload = await this.requestJson<any>(endpoint);
+    if (!Array.isArray(payload) && !Array.isArray(payload?.data)) {
+      throw new DataSourceHttpError({
+        status: 500,
+        endpoint,
+        message: 'Respuesta malformada de ' + endpoint + ': se esperaba un arreglo en data',
+        details: payload,
+      });
+    }
+    return normalizarComercios(payload);
+  }
+
+  /**
+   * Consulta GET /api/comercios/:id — detalle público del comercio: ficha +
+   * operativa (null honesto, VIG-005) + productos aprobados con count
+   * (MARKET-CAP MK-1 #243). Regla R5: el 404 se propaga, jamás se traga.
+   */
+  public async getComercio(id: string): Promise<ComercioDetalle> {
+    const endpoint = '/api/comercios/' + encodeURIComponent(id);
+    const payload = await this.requestJson<any>(endpoint);
+    if (payload === null || typeof payload !== 'object' || typeof payload.data !== 'object' || payload.data === null) {
+      throw new DataSourceHttpError({
+        status: 500,
+        endpoint,
+        message: 'Respuesta malformada de ' + endpoint + ': se esperaba un objeto en data',
+        details: payload,
+      });
+    }
+    return normalizarComercioDetalle(payload);
   }
 }
