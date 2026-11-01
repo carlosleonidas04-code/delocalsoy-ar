@@ -6,8 +6,10 @@ import {
   etiquetaEstadoEpistemico,
   etiquetaHabilitacion,
   etiquetaRubro,
+  etiquetaSelloHistorial,
   etiquetaTitularidad,
   notaComercios,
+  type ComercioHistorialEntrada,
   type ComercioItem,
 } from '../lib/comercios';
 
@@ -39,6 +41,87 @@ type PanelState =
   | { status: 'loading' }
   | { status: 'ok'; comercios: ComercioItem[] }
   | { status: 'error'; message: string };
+
+type HistorialState =
+  | { status: 'loading' }
+  | { status: 'ok'; entradas: ComercioHistorialEntrada[] }
+  | { status: 'error'; message: string };
+
+/**
+ * Inventario mínimo F0 (MK-2 #254): insignia del estado epistémico honesto
+ * de la ficha — el lenguaje claro es parte del dato (Verificado ≠ Validado
+ * por la comunidad ≠ Pendiente). Tokens honest-* por el flujo agent.google
+ * (ADR-034); aquí va la integración funcional.
+ */
+function HonestBadge({ estado }: { estado: string }) {
+  return (
+    <span
+      className="honest-badge"
+      data-estado={estado}
+      style={{
+        display: 'inline-block',
+        padding: '0.05rem 0.35rem',
+        fontSize: '0.68rem',
+        border: '1px solid currentColor',
+        borderRadius: '0.5rem',
+        opacity: 0.9,
+      }}
+    >
+      {etiquetaEstadoEpistemico(estado)}
+    </span>
+  );
+}
+
+/**
+ * Inventario mínimo F0 (MK-2 #254): chip de origen SIEMPRE declarado —
+ * registro real sellado vs demo [SINTÉTICO] (R15: lo sintético jamás se
+ * disfraza de real).
+ */
+function SourceChip({ sintetico }: { sintetico: boolean }) {
+  return (
+    <span
+      className="source-chip"
+      data-origen={sintetico ? 'sintetico' : 'real'}
+      style={{
+        display: 'inline-block',
+        padding: '0.05rem 0.35rem',
+        fontSize: '0.68rem',
+        border: '1px solid currentColor',
+        borderRadius: '0.5rem',
+        fontWeight: 600,
+      }}
+    >
+      {sintetico ? '[SINTÉTICO] demo' : 'Registro real sellado'}
+    </span>
+  );
+}
+
+/** Descripción honesta de una entrada del historial F-3 (sin PII — Ley 25.326). */
+function descripcionEntradaHistorial(e: ComercioHistorialEntrada): string {
+  switch (e.type) {
+    case 'comercio.ingestado':
+      return 'alta del comercio en el registro';
+    case 'comercio.estado_cambiado':
+      return (
+        'estado: ' + e.estado_anterior + ' → ' + e.estado_nuevo +
+        ' — justificación pública: «' + e.justificacion + '» — moderador (pseudónimo): ' + e.moderador_hash
+      );
+    case 'comercio.titularidad_reclamada':
+      return 'titularidad reclamada por método «' + e.metodo + '» (sin datos personales del reclamante)';
+    case 'comercio.titularidad_verificada':
+      return 'titularidad verificada por moderación (pseudónimo: ' + e.verificado_por_hash + ')';
+    case 'comercio.titularidad_desistida':
+      return 'reclamo de titularidad desistido por quién lo hizo (sin hash del reclamante — DH §7.2)';
+    case 'comercio.habilitacion_actualizada':
+      return (
+        'habilitación: ' + e.estado_anterior + ' → ' + e.estado_nuevo +
+        (e.fuente_key !== null ? ' — fuente: ' + e.fuente_key : '') +
+        ' — justificación pública: «' + e.justificacion + '» (ADR-038)'
+      );
+    case 'comercio.atributos_editados':
+      return 'atributos editados por el titular (pseudónimo: ' + e.titular_hash + ')';
+  }
+}
 
 export function ComerciosPanel({ dataSource }: { dataSource: DataSource }) {
   const [state, setState] = useState<PanelState>({ status: 'loading' });
@@ -72,6 +155,89 @@ export function ComerciosPanel({ dataSource }: { dataSource: DataSource }) {
       cancelado = true;
     };
   }, [dataSource]);
+
+  // MARKET-CAP MK-2 (#254): bitácora F-3 por comercio — carga perezosa por
+  // botón (nada se precarga), toggle para cerrar, error explícito (R5: el
+  // error se muestra, no se traga) y origen SIEMPRE declarado por entrada
+  // (SourceChip, R15). H1: la titularidad pública de la ficha es { estado }
+  // (#254 §9.3.4) — el hash del reclamante no existe en la UI.
+  const [historiales, setHistoriales] = useState<Record<string, HistorialState>>({});
+
+  const verHistorial = async (id: string) => {
+    if (historiales[id] !== undefined) {
+      setHistoriales((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      return;
+    }
+    setHistoriales((prev) => ({ ...prev, [id]: { status: 'loading' } }));
+    try {
+      if (!dataSource.getComercioHistorial) {
+        throw new Error(
+          'El DataSource actual no implementa la bitácora F-3 (getComercioHistorial).',
+        );
+      }
+      const entradas = await dataSource.getComercioHistorial(id);
+      setHistoriales((prev) => ({ ...prev, [id]: { status: 'ok', entradas } }));
+    } catch (err) {
+      setHistoriales((prev) => ({
+        ...prev,
+        [id]: { status: 'error', message: err instanceof Error ? err.message : String(err) },
+      }));
+    }
+  };
+
+  const renderBitacora = (id: string, estadoEpistemico: string) => {
+    const h = historiales[id];
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => void verHistorial(id)}
+          style={{ marginLeft: '0.4rem', fontSize: '0.68rem', padding: '0.05rem 0.45rem' }}
+        >
+          {h === undefined ? 'Ver bitácora pública (F-3)' : 'Ocultar bitácora F-3'}
+        </button>
+        {h?.status === 'loading' && (
+          <span role="status" style={{ display: 'block', fontSize: '0.7rem' }}>
+            Cargando la bitácora pública del comercio…
+          </span>
+        )}
+        {h?.status === 'error' && (
+          <span role="alert" style={{ display: 'block', fontSize: '0.7rem' }}>
+            Error al obtener la bitácora F-3: {h.message} (R5: el error se muestra, no se traga)
+          </span>
+        )}
+        {h?.status === 'ok' && (
+          <div style={{ margin: '0.25rem 0 0.5rem', fontSize: '0.72rem' }}>
+            <HonestBadge estado={estadoEpistemico} />{' '}
+            <strong>Bitácora pública F-3</strong> — derivada de sellos append-only (ADR-032),
+            en orden cronológico. Los cambios de habilitación llevan justificación pública
+            (ADR-038) y ningún dato personal del reclamante viaja (Ley 25.326, DH §7.2).
+            {h.entradas.length === 0 ? (
+              <p style={{ fontSize: '0.7rem', margin: '0.15rem 0' }}>
+                Sin transiciones registradas aún — 0 es un dato honesto (R15), no un error.
+              </p>
+            ) : (
+              <ol style={{ margin: '0.2rem 0', paddingLeft: '1.2rem' }}>
+                {h.entradas.map((e, i) => (
+                  <li
+                    key={e.type + '-' + e.occurred_at + '-' + String(i)}
+                    style={{ margin: '0.12rem 0' }}
+                  >
+                    {etiquetaSelloHistorial(e.type)} — {descripcionEntradaHistorial(e)} ·{' '}
+                    {e.occurred_at} <SourceChip sintetico={e.sintetico} />
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+        )}
+      </>
+    );
+  };
 
   const comerciosOk = state.status === 'ok' ? state.comercios : [];
   const comerciosReales = comerciosOk.filter((c) => esOrigenSintetico(c) === false);
@@ -188,6 +354,7 @@ export function ComerciosPanel({ dataSource }: { dataSource: DataSource }) {
                         {etiquetaHabilitacion(c.habilitacion_estado)} ·{' '}
                         {etiquetaTitularidad(c.titularidad_estado)}
                         {c.subnodo_key ? ' · subnodo ' + c.subnodo_key : ''}
+                        {renderBitacora(c.id, c.estado_epistemico)}
                       </li>
                     ))}
                   </ul>
@@ -214,6 +381,7 @@ export function ComerciosPanel({ dataSource }: { dataSource: DataSource }) {
                   {c.titulo} — {etiquetaDualComercio(c)} — {etiquetaRubro(c)} ·{' '}
                   {etiquetaHabilitacion(c.habilitacion_estado)}
                   {c.subnodo_key ? ' · subnodo ' + c.subnodo_key : ''}
+                  {renderBitacora(c.id, c.estado_epistemico)}
                 </li>
               ))}
             </ul>

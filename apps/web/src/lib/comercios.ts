@@ -177,6 +177,9 @@ export function normalizarComercios(payload: unknown): ComercioItem[] {
       const r = c as Record<string, unknown>;
       const rubro = (r.rubro ?? {}) as Record<string, unknown>;
       const habilitacion = (r.habilitacion ?? {}) as Record<string, unknown>;
+      // MK-2 (H1, §9.3.4): la API expone titularidadPublica { estado } — el
+      // mapper proyecta SOLO el estado; ningún hash del reclamante viaja
+      // (DH §7.2, Ley 25.326).
       const titularidad = (r.titularidad ?? {}) as Record<string, unknown>;
       return {
         id: comoTexto(r.id),
@@ -249,4 +252,143 @@ export function notaComercios(count: number): string {
   return count === 0
     ? 'Comercios publicados: 0 (el registro comunitario arranca vacío — decisión DH seed 0, patrón VIG-005, R15)'
     : 'Comercios publicados: ' + String(count);
+}
+
+// ─── MARKET-CAP MK-2 (#254, sub-épica #152): historial público F-3. ───
+// Bitácora derivada 1:1 de los sellos comercio.* en events_raw (ADR-032,
+// append-only: el historial es inmutable porque el registro no muta —
+// JAMÁS una tabla mutable). Espejo de la lista blanca
+// COMERCIO_SELLOS_HISTORIAL de contracts (#254): 7 variantes con forma
+// distinta; identificador_hash y reclamado_por_hash JAMÁS viajan (DH §7.2,
+// H1, Ley 25.326). `sintetico` declara el origen de cada entrada: false =
+// sello real servido por la API; la paridad sintética marca true y la UI la
+// etiqueta [SINTÉTICO] (R15: la demo se declara SIEMPRE, nunca se disfraza
+// de registro real).
+
+export type ComercioHistorialEntrada =
+  | { type: 'comercio.ingestado'; occurred_at: string; sintetico: boolean }
+  | {
+      type: 'comercio.estado_cambiado';
+      estado_anterior: string;
+      estado_nuevo: string;
+      justificacion: string;
+      moderador_hash: string;
+      occurred_at: string;
+      sintetico: boolean;
+    }
+  | { type: 'comercio.titularidad_reclamada'; metodo: string; occurred_at: string; sintetico: boolean }
+  | {
+      type: 'comercio.titularidad_verificada';
+      metodo: string;
+      verificado_por_hash: string;
+      occurred_at: string;
+      sintetico: boolean;
+    }
+  | { type: 'comercio.titularidad_desistida'; metodo: string | null; occurred_at: string; sintetico: boolean }
+  | {
+      type: 'comercio.habilitacion_actualizada';
+      estado_anterior: string;
+      estado_nuevo: string;
+      fuente_key: string | null;
+      justificacion: string;
+      actualizado_por_hash: string;
+      occurred_at: string;
+      sintetico: boolean;
+    }
+  | { type: 'comercio.atributos_editados'; titular_hash: string; occurred_at: string; sintetico: boolean };
+
+export const ETIQUETAS_SELLO_HISTORIAL: Record<string, string> = {
+  'comercio.ingestado': 'Alta del comercio (ingesta)',
+  'comercio.estado_cambiado': 'Cambio de estado de la ficha',
+  'comercio.titularidad_reclamada': 'Titularidad reclamada',
+  'comercio.titularidad_verificada': 'Titularidad verificada',
+  'comercio.titularidad_desistida': 'Reclamo de titularidad desistido',
+  'comercio.habilitacion_actualizada': 'Habilitación actualizada',
+  'comercio.atributos_editados': 'Atributos editados por el titular',
+};
+
+export function etiquetaSelloHistorial(type: string): string {
+  return ETIQUETAS_SELLO_HISTORIAL[type] ?? 'sello desconocido (' + type + ')';
+}
+
+/**
+ * Normaliza GET /api/comercios/:id/historial (MK-2 F-3, #254): re-verifica
+ * la forma de cada entrada por sello (defensa en profundidad — la API ya
+ * valida la salida con ComercioHistorialSchema, contracts #254). Lista
+ * blanca espejo: un sello futuro o una entrada malformada NO se expone
+ * (R15, no expuesto por omisión). Las entradas reales declaran
+ * sintetico: false — el origen es explícito, nunca implícito.
+ */
+export function normalizarComercioHistorial(payload: unknown): ComercioHistorialEntrada[] {
+  const entradas: ComercioHistorialEntrada[] = [];
+  for (const e of extraerData(payload)) {
+    if (typeof e !== 'object' || e === null) continue;
+    const r = e as Record<string, unknown>;
+    const occurred_at = comoTexto(r.occurred_at);
+    if (occurred_at === '') continue;
+    switch (r.type) {
+      case 'comercio.ingestado':
+        entradas.push({ type: 'comercio.ingestado', occurred_at, sintetico: false });
+        break;
+      case 'comercio.estado_cambiado':
+        entradas.push({
+          type: 'comercio.estado_cambiado',
+          estado_anterior: comoTexto(r.estado_anterior),
+          estado_nuevo: comoTexto(r.estado_nuevo),
+          justificacion: comoTexto(r.justificacion),
+          moderador_hash: comoTexto(r.moderador_hash),
+          occurred_at,
+          sintetico: false,
+        });
+        break;
+      case 'comercio.titularidad_reclamada':
+        entradas.push({
+          type: 'comercio.titularidad_reclamada',
+          metodo: comoTexto(r.metodo),
+          occurred_at,
+          sintetico: false,
+        });
+        break;
+      case 'comercio.titularidad_verificada':
+        entradas.push({
+          type: 'comercio.titularidad_verificada',
+          metodo: comoTexto(r.metodo),
+          verificado_por_hash: comoTexto(r.verificado_por_hash),
+          occurred_at,
+          sintetico: false,
+        });
+        break;
+      case 'comercio.titularidad_desistida':
+        entradas.push({
+          type: 'comercio.titularidad_desistida',
+          metodo: comoTextoNulo(r.metodo),
+          occurred_at,
+          sintetico: false,
+        });
+        break;
+      case 'comercio.habilitacion_actualizada':
+        entradas.push({
+          type: 'comercio.habilitacion_actualizada',
+          estado_anterior: comoTexto(r.estado_anterior),
+          estado_nuevo: comoTexto(r.estado_nuevo),
+          fuente_key: comoTextoNulo(r.fuente_key),
+          justificacion: comoTexto(r.justificacion),
+          actualizado_por_hash: comoTexto(r.actualizado_por_hash),
+          occurred_at,
+          sintetico: false,
+        });
+        break;
+      case 'comercio.atributos_editados':
+        entradas.push({
+          type: 'comercio.atributos_editados',
+          titular_hash: comoTexto(r.titular_hash),
+          occurred_at,
+          sintetico: false,
+        });
+        break;
+      default:
+        break; // lista blanca: un sello futuro NO se expone por omisión (R15)
+    }
+  }
+  return entradas;
 }
