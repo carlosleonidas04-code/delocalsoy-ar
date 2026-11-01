@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { prisma } from '@delocalsoy/db';
 import { xaddEventReference } from '@delocalsoy/redis';
-import { PatrimonioCustodiaSchema } from '@delocalsoy/contracts';
+import { PatrimonioCustodiaSchema, PatrimonioObservacionAltaSchema } from '@delocalsoy/contracts';
 import { detectaPII } from '../lib/anti-pii.js';
 import { requireJwt, requireRole } from '../lib/auth.js';
 
@@ -223,6 +223,153 @@ router.patch('/:activoId', requireJwt, requireRole('moderador', 'admin'), async 
   } catch (err) {
     console.error('[patrimonio] custodia:', err instanceof Error ? err.message : String(err));
     res.status(500).json({ success: false, error: 'fallo al aplicar la custodia' });
+  }
+});
+
+// ─── VIG-009 R1 (#241, épica #239): observaciones de estado patrimonial ───
+
+// POST /api/patrimonio/:activoId/observaciones — testimonio ciudadano append-only.
+// La observación JAMÁS es un diagnóstico (R15): el estado de conservación global
+// de la ficha no cambia por observaciones — solo un informe técnico oficial lo
+// acredita. Sin sello no hay observación acreditada (patrón custodia): si el
+// evento falla, la fila se revierte.
+router.post('/:activoId/observaciones', requireJwt, async (req: Request, res: Response) => {
+  const id = req.params.activoId;
+
+  let parsed: z.infer<typeof PatrimonioObservacionAltaSchema>;
+  try {
+    parsed = PatrimonioObservacionAltaSchema.parse(req.body);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ success: false, error: 'datos inválidos', details: error.errors });
+      return;
+    }
+    throw error;
+  }
+
+  // Anti-PII (ADR-020 cond. 1, Ley 25.326): sobre la nota y la descripción de la
+  // evidencia — la observación es un testimonio del EDIFICIO, nunca de personas.
+  const contenido = (parsed.nota ?? '') + ' ' + parsed.evidencia.descripcion;
+  const pii = detectaPII(contenido);
+  if (pii) {
+    res.status(400).json({
+      error: 'payload rechazado: contiene datos personales identificables (' + pii + ') — ADR-020 cond. 1, Ley 25.326',
+    });
+    return;
+  }
+
+  try {
+    const activo = await prisma.activos.findUnique({ where: { id } });
+    if (activo === null) {
+      res.status(404).json({ success: false, error: 'activo no encontrado' });
+      return;
+    }
+    // R1: observaciones SOLO sobre activos con ficha patrimonial (VIG-004).
+    const ficha = await prisma.activos_patrimonio.findUnique({ where: { activo_id: id } });
+    if (ficha === null) {
+      res.status(404).json({ success: false, error: 'el activo no tiene ficha patrimonial' });
+      return;
+    }
+
+    const autor = seudonimo((res.locals.usuario as { id: string }).id);
+    const hash = createHash('sha256')
+      .update([autor, id, parsed.fecha_observacion, JSON.stringify(parsed.checklist), parsed.nota ?? ''].join('|'))
+      .digest('hex');
+
+    const existente = await prisma.patrimonio_observaciones.findUnique({ where: { hash } });
+    if (existente !== null) {
+      res.json({ success: true, data: { observacion_id: existente.id, activo_id: id, duplicada: true } });
+      return;
+    }
+
+    const observacion = await prisma.patrimonio_observaciones.create({
+      data: {
+        activo_id: id,
+        fecha_observacion: parsed.fecha_observacion,
+        checklist: parsed.checklist,
+        nota: parsed.nota ?? null,
+        evidencia: parsed.evidencia,
+        created_by_hash: autor,
+        hash,
+      },
+    });
+
+    try {
+      await sellarEvento('patrimonio.observado', {
+        activo_id: id,
+        observacion_id: observacion.id,
+        fecha_observacion: parsed.fecha_observacion,
+        checklist: parsed.checklist,
+        observador_hash: autor,
+      });
+    } catch (err) {
+      // Sin sello no hay observación acreditada: rollback de la fila (patrón custodia).
+      await prisma.patrimonio_observaciones.delete({ where: { id: observacion.id } }).catch(() => undefined);
+      console.error('[patrimonio] sellar observacion:', err instanceof Error ? err.message : String(err));
+      res.status(500).json({ success: false, error: 'fallo al sellar la observación' });
+      return;
+    }
+
+    res.status(201).json({
+      success: true,
+      data: { observacion_id: observacion.id, activo_id: id, duplicada: false },
+    });
+  } catch (err) {
+    console.error('[patrimonio] observacion:', err instanceof Error ? err.message : String(err));
+    res.status(500).json({ success: false, error: 'fallo al registrar la observación' });
+  }
+});
+
+// Filas tipadas de las lecturas: el cliente prisma se exporta `any` (patrón
+// mock de pruebas en lib/prisma), así que la forma de la fila se declara
+// explícita para que el callback de map quede contextualmente tipado
+// (mismo patrón que reportes.ts/fuentes.ts — fix TS7006 del PR #151).
+type ObservacionRow = {
+  id: string;
+  activo_id: string;
+  fecha_observacion: Date;
+  checklist: object;
+  nota: string | null;
+  evidencia: object;
+  created_by_hash: string;
+  created_at: Date;
+};
+
+// GET /api/patrimonio/:activoId/observaciones — bandeja pública append-only:
+// qué se observó, cuándo y con qué evidencia. El estado global de conservación
+// se declara SIEMPRE como no verificado aquí — sin informe técnico oficial no
+// existe estado verificado (R15, VIG-009 R1).
+router.get('/:activoId/observaciones', async (req: Request, res: Response) => {
+  try {
+    const activo = await prisma.activos.findUnique({ where: { id: req.params.activoId } });
+    if (activo === null) {
+      res.status(404).json({ success: false, error: 'activo no encontrado' });
+      return;
+    }
+    const observaciones = (await prisma.patrimonio_observaciones.findMany({
+      where: { activo_id: activo.id },
+      orderBy: { created_at: 'asc' },
+      take: 100,
+    })) as ObservacionRow[];
+    res.json({
+      success: true,
+      data: observaciones.map((o) => ({
+        id: o.id,
+        activo_id: o.activo_id,
+        fecha_observacion: o.fecha_observacion,
+        checklist: o.checklist,
+        nota: o.nota,
+        evidencia: o.evidencia,
+        created_by_hash: o.created_by_hash,
+        created_at: o.created_at,
+      })),
+      count: observaciones.length,
+      estado_conservacion_global: null,
+      estado_conservacion_nota: 'estado global no verificado: requiere informe técnico oficial (R15, VIG-009 R1)',
+    });
+  } catch (err) {
+    console.error('[patrimonio] observaciones:', err instanceof Error ? err.message : String(err));
+    res.status(500).json({ success: false, error: 'fallo al obtener las observaciones' });
   }
 });
 

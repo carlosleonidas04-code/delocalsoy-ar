@@ -1183,18 +1183,105 @@ export default defineConfig({
           });
 
         // WebSocket Server para Conversaciones de Voz en Tiempo Real con gemini-3.8-live (Live API)
+        // R12 #123 (decision DH 2026-10-17: "gate de auth + rate limit en el upgrade"): el upgrade
+        // de live-ws ya NO es anonimo. Origin allowlist + token de sesion (fail-closed: sin
+        // LIVE_WS_TOKEN configurado se rechaza todo upgrade) + limites por IP (conexiones
+        // concurrentes, frames/min y bytes por frame) segun el HANDOFF M29 del lote live-ws
+        // de [agent: google] (Origin + Bearer + 45 frames/min + 64 KB/frame).
         if (server.httpServer) {
-          const wss = new WebSocketServer({ noServer: true });
+          const LIVE_WS_TOKEN = process.env.LIVE_WS_TOKEN;
+          const LIVE_WS_ALLOWED_ORIGINS = (process.env.LIVE_WS_ALLOWED_ORIGINS || 'http://localhost:3000')
+            .split(',')
+            .map((origin: string) => origin.trim())
+            .filter((origin: string) => origin.length > 0);
+          const LIVE_WS_MAX_CLIENTS_PER_IP = Number(process.env.LIVE_WS_MAX_CLIENTS_PER_IP || 10);
+          const LIVE_WS_MAX_FRAMES_PER_MIN = Number(process.env.LIVE_WS_MAX_FRAMES_PER_MIN || 45);
+          const LIVE_WS_MAX_FRAME_BYTES = Number(process.env.LIVE_WS_MAX_FRAME_BYTES || 64 * 1024);
+          const wsClientsByIp = new Map<string, Set<any>>();
+          const wsFrameTimesByIp = new Map<string, number[]>();
+
+          const wsReject = (socket: any, statusCode: number, reason: string) => {
+            try {
+              socket.write(
+                `HTTP/1.1 ${statusCode} ${reason}\r\n` +
+                  'Connection: close\r\n' +
+                  'Content-Type: application/json\r\n' +
+                  '\r\n' +
+                  JSON.stringify({ success: false, error: `live-ws: ${reason}` }),
+              );
+            } catch {
+              // socket ya cerrado
+            }
+            try {
+              socket.destroy();
+            } catch {
+              // socket ya destruido
+            }
+          };
+
+          const wss = new WebSocketServer({ noServer: true, maxPayload: LIVE_WS_MAX_FRAME_BYTES });
           server.httpServer.on('upgrade', (request, socket, head) => {
             const reqUrl = request.url || '';
-            if (reqUrl.startsWith('/api/ia-etica/live-ws')) {
-              wss.handleUpgrade(request, socket, head, (wsClient) => {
-                wss.emit('connection', wsClient, request);
-              });
+            if (!reqUrl.startsWith('/api/ia-etica/live-ws')) {
+              return; // upgrade de otra ruta: no gestionada aqui (comportamiento previo)
             }
+            const wsIp = request.socket.remoteAddress || 'unknown';
+            // 1) Origin allowlist (M29)
+            const originHeader = request.headers.origin;
+            if (!originHeader || !LIVE_WS_ALLOWED_ORIGINS.includes(originHeader)) {
+              wsReject(socket, 403, 'origin no autorizado');
+              return;
+            }
+            // 2) Auth fail-closed (M29: Bearer o ?token=) - sin LIVE_WS_TOKEN la superficie queda cerrada (R15)
+            const authHeader = request.headers.authorization || '';
+            const tokenFromQuery = new URL(reqUrl, 'http://localhost:3000').searchParams.get('token');
+            const presentedToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : tokenFromQuery;
+            if (!LIVE_WS_TOKEN || !presentedToken || presentedToken !== LIVE_WS_TOKEN) {
+              wsReject(
+                socket,
+                LIVE_WS_TOKEN ? 401 : 503,
+                LIVE_WS_TOKEN
+                  ? 'token de sesion ausente o invalido'
+                  : 'live-ws deshabilitado: LIVE_WS_TOKEN no configurado (fail-closed, R15)',
+              );
+              return;
+            }
+            // 3) Rate limit de conexiones concurrentes por IP
+            const clientsOfIp = wsClientsByIp.get(wsIp) || new Set<any>();
+            if (clientsOfIp.size >= LIVE_WS_MAX_CLIENTS_PER_IP) {
+              wsReject(socket, 429, 'limite de conexiones concurrentes por ip');
+              return;
+            }
+            wss.handleUpgrade(request, socket, head, (wsClient) => {
+              clientsOfIp.add(wsClient);
+              wsClientsByIp.set(wsIp, clientsOfIp);
+              wsClient.on('close', () => {
+                clientsOfIp.delete(wsClient);
+                if (clientsOfIp.size === 0) {
+                  wsClientsByIp.delete(wsIp);
+                }
+              });
+              wss.emit('connection', wsClient, request);
+            });
           });
 
-          wss.on('connection', async (clientWs) => {
+          wss.on('connection', async (clientWs, upgradeRequest) => {
+            // R12 #123: rate limit de frames por IP (M29 - 45 frames/min); el exceso cierra la sesion.
+            const connIp = (upgradeRequest as any)?.socket?.remoteAddress || 'unknown';
+            clientWs.on('message', () => {
+              const nowMs = Date.now();
+              const recent = (wsFrameTimesByIp.get(connIp) || []).filter((t) => nowMs - t < 60_000);
+              if (recent.length >= LIVE_WS_MAX_FRAMES_PER_MIN) {
+                try {
+                  clientWs.close(1008, 'rate limit de frames alcanzado');
+                } catch {
+                  clientWs.terminate();
+                }
+                return;
+              }
+              recent.push(nowMs);
+              wsFrameTimesByIp.set(connIp, recent);
+            });
             const ai = createServerGeminiClient();
             if (!ai) {
               clientWs.send(
