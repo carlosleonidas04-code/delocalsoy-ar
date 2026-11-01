@@ -33,7 +33,9 @@ WHERE NOT EXISTS (SELECT 1 FROM territorios WHERE nombre = 'Iglesia' AND provinc
 INSERT INTO nodos (id, key, nombre, subtitle, foco, centro_lat, centro_lng, poblacion, activo)
 VALUES
   (gen_random_uuid()::text, 'capital', 'Capital', 'Centro–Cívico–Desamparados', 'Comercio y espacio público', -31.537, -68.522, 115000, true),
-  (gen_random_uuid()::text, 'caucete', 'Caucete', 'Departamento', 'Educación, salud y comunidad', -31.383, -68.281, 44000, true),
+  -- NODO-CAU R6 (#145, épica #137): centro del nodo caucete corregido al centroide de
+  -- la localidad censal Caucete (Georef/INDEC -31.6515, -68.2820); antes -31.383, -68.281 (~30 km al sur).
+  (gen_random_uuid()::text, 'caucete', 'Caucete', 'Departamento', 'Educación, salud y comunidad', -31.651, -68.282, 44000, true),
   (gen_random_uuid()::text, 'iglesia', 'Iglesia', 'Departamento', 'Producción y turismo', -31.206, -68.866, 8800, true)
 ON CONFLICT (key) DO NOTHING;
 
