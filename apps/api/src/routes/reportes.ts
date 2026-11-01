@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { prisma, Prisma } from '@delocalsoy/db';
 import { xaddEventReference } from '@delocalsoy/redis';
-import { ReporteAltaSchema, ReporteEstadoCambioSchema, REPORTE_TRANSICIONES } from '@delocalsoy/contracts';
+import { ReporteAltaSchema, ReporteDuplicadoSugeridoSchema, ReporteEstadoCambioSchema, REPORTE_TRANSICIONES } from '@delocalsoy/contracts';
 import { detectaPII } from '../lib/anti-pii.js';
 import { requireJwt, requireRole } from '../lib/auth.js';
 
@@ -27,6 +27,12 @@ import { requireJwt, requireRole } from '../lib/auth.js';
  * Idempotencia por hash único (patrón activos/fichas): el mismo ciudadano
  * reintentando el mismo reporte (nodo + categoría + descripción + punto)
  * recibe 200 con el reporte ya existente — sin sello nuevo, sin duplicar.
+ *
+ * Duplicados sugeridos (CORE-005 R5, ADR-039): la respuesta del alta (y su
+ * reintento idempotente) incluye duplicados_sugeridos — reportes abiertos
+ * reales del mismo nodo dentro del radio, con ST_DWithin sobre reportes.geom.
+ * Es una sugerencia de lectura: NADA se fusiona, persiste o sella; la
+ * decisión de marcar duplicado es humana, con sello (ADR-039).
  */
 const router: Router = Router();
 
@@ -68,6 +74,66 @@ async function sellarEvento(type: string, payload: Record<string, unknown>): Pro
     hash: event.hash,
     occurred_at: event.occurred_at.toISOString(),
   });
+}
+
+// R5 (#206, ADR-039): duplicados sugeridos por proximidad — SUGERENCIA en la
+// respuesta del alta, nunca una fusión automática. Solo reportes abiertos
+// (received|evaluating|in_progress — resolved y descartado son terminales y
+// dejan de ser sugeribles) del mismo nodo, y solo reales (is_synthetic =
+// false: el demo nunca es duplicado de un reporte ciudadano). Doble filtro
+// espacial: pre-caja en grados sobre el índice GiST de reportes.geom (cota
+// superior — 1° de latitud ≈ 111 320 m, cubre el círculo en ambas
+// dimensiones) y distancia exacta en metros con el cast a geography. El
+// radio es configurable (REPORTES_DUPLICADOS_RADIO_M, default 100 m). La
+// consulta NO persiste, NO sella y NO muta nada (ADR-039: la decisión de
+// marcar duplicado es humana, con sello).
+const RADIO_DUPLICADOS_CONFIGURADO = Number(process.env.REPORTES_DUPLICADOS_RADIO_M ?? '100');
+const RADIO_DUPLICADOS_M =
+  Number.isFinite(RADIO_DUPLICADOS_CONFIGURADO) && RADIO_DUPLICADOS_CONFIGURADO > 0
+    ? RADIO_DUPLICADOS_CONFIGURADO
+    : 100;
+
+type DuplicadoRow = {
+  id: string;
+  categoria: string;
+  estado: 'received' | 'evaluating' | 'in_progress';
+  lat: number | null;
+  lng: number | null;
+  distancia_m: number | null;
+  created_at: Date;
+};
+
+async function sugerirDuplicados(
+  nodoId: string,
+  reporteId: string,
+  lat: number | null,
+  lng: number | null
+): Promise<z.infer<typeof ReporteDuplicadoSugeridoSchema>[]> {
+  if (lat === null || lng === null) return [];
+  const radioGrados = RADIO_DUPLICADOS_M / 111320;
+  const rows = (await prisma.$queryRaw`
+    SELECT id, categoria, estado, lat, lng,
+      ST_Distance(geom::geography, ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography) AS distancia_m,
+      created_at
+    FROM reportes
+    WHERE nodo_id = ${nodoId}
+      AND estado IN ('received', 'evaluating', 'in_progress')
+      AND is_synthetic = false
+      AND id <> ${reporteId}
+      AND ST_DWithin(geom, ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326), ${radioGrados})
+      AND ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography, ${RADIO_DUPLICADOS_M})
+    ORDER BY distancia_m ASC
+    LIMIT 5
+  `) as DuplicadoRow[];
+  return rows.map((r) => ({
+    id: r.id,
+    categoria: r.categoria,
+    estado: r.estado,
+    lat: r.lat,
+    lng: r.lng,
+    distancia_m: r.distancia_m === null ? null : Number(r.distancia_m),
+    created_at: r.created_at.toISOString(),
+  }));
 }
 
 // POST /api/reportes — alta ciudadana (requireJwt): todo usuario con sesión
@@ -159,14 +225,52 @@ router.post('/', requireJwt, async (req: Request, res: Response) => {
       return;
     }
 
-    res.status(201).json({ success: true, data: reporte });
+    // R5 (ADR-039): la sugerencia vive SOLO en esta respuesta — sin
+    // persistencia, sin sello, sin fusión. Fail-open honesto: si la consulta
+    // falla, el alta YA está acreditada (reporte + sello); se responde con
+    // duplicados_verificados: false en vez de un 500 tras una escritura
+    // comprometida (el reintento del cliente caería en idempotencia sin
+    // recuperar la sugerencia). false ≠ "sin duplicados" (R15: nunca se
+    // declara un vacío no verificado).
+    let duplicadosSugeridos: z.infer<typeof ReporteDuplicadoSugeridoSchema>[] = [];
+    let duplicadosVerificados = true;
+    try {
+      duplicadosSugeridos = await sugerirDuplicados(nodo.id, reporte.id, parsed.lat, parsed.lng);
+    } catch (err) {
+      duplicadosVerificados = false;
+      console.error('[reportes] sugerir duplicados:', err instanceof Error ? err.message : String(err));
+    }
+
+    res.status(201).json({
+      success: true,
+      data: reporte,
+      duplicados_sugeridos: duplicadosSugeridos,
+      duplicados_verificados: duplicadosVerificados,
+    });
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
       // Reintento idempotente del mismo ciudadano: 200 con el reporte ya
       // existente — sin sello nuevo (R4: una escritura, un evento).
       const existente = await prisma.reportes.findUnique({ where: { hash } });
       if (existente !== null) {
-        res.status(200).json({ success: true, data: existente, idempotente: true });
+        // R5 (ADR-039): la sugerencia acompaña también al reintento
+        // idempotente — mismo cálculo de lectura, sin escritura nueva.
+        let sugeridos: z.infer<typeof ReporteDuplicadoSugeridoSchema>[] = [];
+        let verificados = true;
+        try {
+          sugeridos = await sugerirDuplicados(existente.nodo_id, existente.id, existente.lat, existente.lng);
+        } catch (err) {
+          verificados = false;
+          console.error('[reportes] sugerir duplicados (idempotente):', err instanceof Error ? err.message : String(err));
+        }
+        res.status(200).json({
+          success: true,
+          data: existente,
+          idempotente: true,
+          duplicados_sugeridos: sugeridos,
+          duplicados_verificados: verificados,
+        });
+        return;
         return;
       }
     }
