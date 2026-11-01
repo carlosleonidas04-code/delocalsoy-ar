@@ -51,6 +51,10 @@ export const UsuarioRegistroSchema = z.object({
   display_name: z.string().trim().min(1).max(80).optional(),
 });
 
+// MARKET-CAP MK-1 fase 1 (#243, PR #246): dominio del Mercado de Proximidad —
+// re-export del modulo comercios (conflict-neutral v2: zona prefijo común).
+export * from './comercios.js';
+
 export const UsuarioLoginSchema = z.object({
   email: z.string().trim().toLowerCase().email("Email inválido"),
   password: z.string().min(1, "La contraseña es requerida"),
