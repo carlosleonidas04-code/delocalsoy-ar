@@ -1,15 +1,61 @@
 import { useState, useId } from 'react';
-import type {
-  LocalOpportunity,
-  OpportunityType,
-  OpportunityStatus,
-  DirectoryCategoryCode,
-} from '@delocalsoy/contracts';
-import {
-  ALLOWED_OPPORTUNITY_TRANSITIONS,
-  validateOpportunity,
-} from '@delocalsoy/contracts';
+import type { LocalOpportunity } from '@delocalsoy/contracts';
 import { CAPITAL_OPPORTUNITIES_SEEDS } from '../data/capitalTerritoryData';
+
+// Fix puente (#233, ratificado por la DH 2026-11-01): oportunidades.js fue eliminado de
+// contracts (decisión DH 2026-10-17: dominio Bloque 9 canónico único = Oportunidad* en
+// index.ts). Los tipos se derivan del alias puente LocalOpportunity (directoryTaxonomy.ts);
+// la matriz de transiciones y el validador se recuperan VERBATIM del oportunidades.ts
+// original (lote 1, restaurado byte-exacto en 3ce3af263f) como código stage-local del
+// panel — no duplican el dominio canónico (la matriz canónica vive en la API, NCAP-R6).
+// Deuda registrada: cuando el stage migre a Oportunidad* canónicas, esta copia se elimina.
+type OpportunityType = LocalOpportunity['type'];
+type OpportunityStatus = LocalOpportunity['status'];
+type DirectoryCategoryCode = LocalOpportunity['categoryCodes'][number];
+
+const ALLOWED_OPPORTUNITY_TRANSITIONS: Record<OpportunityStatus, readonly OpportunityStatus[]> = {
+  detected: ['under_review', 'discarded', 'archived'],
+  under_review: ['validated', 'detected', 'discarded', 'archived'],
+  validated: ['prioritized', 'in_development', 'active', 'paused', 'archived'],
+  prioritized: ['in_development', 'active', 'validated', 'paused', 'archived'],
+  in_development: ['active', 'implemented', 'paused', 'validated', 'archived'],
+  active: ['implemented', 'paused', 'archived'],
+  implemented: ['active', 'archived'],
+  paused: ['under_review', 'validated', 'active', 'discarded', 'archived'],
+  discarded: ['under_review', 'archived'],
+  archived: ['under_review', 'detected'],
+};
+
+// Verbatim de packages/contracts/src/oportunidades.ts (lote 1, 3ce3af263f) — stage-local.
+function validateOpportunity(opp: LocalOpportunity): string[] {
+  const errors: string[] = [];
+
+  if (opp.actors.length === 0) {
+    errors.push('La oportunidad debe contener al menos un actor con consentimiento.');
+  }
+
+  const unconsentedActors = opp.actors.filter((a) => !a.consentConfirmed);
+  if (unconsentedActors.length > 0) {
+    errors.push('Todos los actores registrados deben haber otorgado consentimiento explícito.');
+  }
+
+  if (opp.evidence.length === 0) {
+    errors.push('La oportunidad debe incorporar al menos una evidencia comprobable.');
+  }
+
+  if (opp.status === 'validated' || opp.status === 'active' || opp.status === 'implemented') {
+    const hasCorroboratedEvidence = opp.evidence.some(
+      (e) => e.validationStatus === 'corroborated' || e.validationStatus === 'reviewed'
+    );
+    if (!hasCorroboratedEvidence) {
+      errors.push(
+        `Para alcanzar estado '${opp.status}', la oportunidad requiere evidencia revisada o corroborada.`
+      );
+    }
+  }
+
+  return errors;
+}
 
 const OPPORTUNITY_TYPE_LABELS: Record<OpportunityType, string> = {
   human_capacity: 'Capacidad Humana',
@@ -127,12 +173,18 @@ export function BancoPotencialidadesPanel() {
       ],
       tags: ['participativo', 'nodo capital', newType],
       categoryCodes: ['social_economy'] as DirectoryCategoryCode[],
-      impactHypothesis: newImpactHypothesis.trim() || undefined,
+      // Puente LocalOpportunity: impactHypothesis es string min(1) — vacío = aún sin
+      // hipótesis declarada (falsy, el render lo omite); no se inventa texto (R15).
+      impactHypothesis: newImpactHypothesis.trim(),
       requiredResources: [],
       visibility: 'public',
       createdAt: new Date().toISOString().split('T')[0],
       updatedAt: new Date().toISOString().split('T')[0],
       createdBy: 'ciudadano_activo',
+      lastReviewedAt: new Date().toISOString().split('T')[0],
+      // Score pendiente de relevo comunitario: valores mínimos honestos hasta revisión
+      // (totalScore 0 = sin relevo aún) — no se inventa puntuación (R15).
+      score: { territorialImpact: 1, feasibility: 1, urgency: 1, totalScore: 0 },
     };
 
     const errors = validateOpportunity(candidate);
@@ -599,7 +651,7 @@ export function BancoPotencialidadesPanel() {
             )}
 
             <div className="grid grid-cols-2 gap-2 pt-1">
-              {(ALLOWED_OPPORTUNITY_TRANSITIONS[selectedOppForTransition.status] || []).map((targetStatus) => {
+              {(ALLOWED_OPPORTUNITY_TRANSITIONS[selectedOppForTransition.status] || []).map((targetStatus: OpportunityStatus) => {
                 const info = OPPORTUNITY_STATUS_LABELS[targetStatus];
                 return (
                   <button
