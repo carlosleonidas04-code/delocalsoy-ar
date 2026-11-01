@@ -56,6 +56,132 @@ export const UsuarioLoginSchema = z.object({
   password: z.string().min(1, "La contraseña es requerida"),
 });
 
+// ─── Serie Contracts NCAP-R2 (PR #233): índice extendido [agent: vibe] ───
+// Decisión DH 2026-10-17: preservar TODOS los bindings inline de main (los consume
+// apps/api) y AÑADIR los 11 módulos canónicos + constantes NCAP-R2 (agent.google;
+// oportunidades.js eliminado por decisión DH 2026-10-17: dominio Bloque 9 canónico único).
+// Colisiones de nombres verificadas: 0 (76 exports de main vs exports de los módulos).
+// HONEST_EPISTEMIC_STATES_PALETTE armonizada al canon ADR-034 por decisión DH
+// 2026-10-17: validado #4ADE80, comunitario #75AADB, pendiente #F2A71B, sintético #FFC72C
+// (valores originales del agente: #00A86B / #E06D53 / #94A3B8 — ver traza del PR #233).
+// 1. Re-exportaciones Modulares Canónicas (Lote 1 + Lote Complementario NCAP-R2)
+export * from './nodoCapital.js';
+export * from './ncap.js';
+export * from './territorios.js';
+export * from './evidencias.js';
+export * from './health.js';
+export * from './openapi.js';
+export * from './plataformaTerritorial.js';
+export * from './activos.js';
+export * from './modeloFederado.js';
+export * from './territorialModel.js';
+export * from './directoryTaxonomy.js';
+export * from './caucete.js';
+// oportunidades.js ELIMINADO (decisión DH 2026-10-17, armonización de dominio #233):
+// duplicaba el dominio Bloque 9 canónico (Oportunidad* inline, PR #160). El vocabulario
+// de economía popular del agente queda documentado en la traza del PR como propuesta futura.
+
+// 2. Definiciones Canónicas Inline y Compatibilidad ADR-021
+export const PROTOCOLO_ACTUAL = 'NCAP-R2';
+export const SRID_CANONICO = 4326;
+export const VERSION_CONTRACTS = '0.6.0-ncap.r2';
+
+/**
+ * Constantes de Paleta de Estados Honestos (WCAG AA & 4 Señales Canónicas)
+ */
+export const HONEST_EPISTEMIC_STATES_PALETTE = {
+  validado: {
+    label: 'Acreditado / Terreno',
+    colorHex: '#4ADE80',
+    bgClass: 'bg-emerald-50 dark:bg-emerald-950/40',
+    borderClass: 'border-emerald-500 border-solid',
+    textClass: 'text-emerald-700 dark:text-emerald-300',
+    glyph: '●',
+    microcopy: 'Acreditado criptográficamente · R15',
+    strokeWidth: 2,
+    borderStyle: 'solid'
+  },
+  sintetico: {
+    label: 'Sintético / Inferencia',
+    colorHex: '#FFC72C',
+    contrastColorHex: '#D97706',
+    bgClass: 'bg-amber-50 dark:bg-amber-950/40',
+    borderClass: 'border-amber-400 border-dashed',
+    textClass: 'text-amber-800 dark:text-amber-300',
+    glyph: '✦',
+    microcopy: 'Inferencia heurística / Estimación',
+    strokeWidth: 1.5,
+    borderStyle: 'dashed'
+  },
+  comunitario: {
+    label: 'Comunitario / Vecinal',
+    colorHex: '#75AADB',
+    bgClass: 'bg-orange-50 dark:bg-orange-950/40',
+    borderClass: 'border-orange-500 border-dotted',
+    textClass: 'text-orange-700 dark:text-orange-300',
+    glyph: '◈',
+    microcopy: 'Aporte territorial de asamblea',
+    strokeWidth: 1.5,
+    borderStyle: 'dotted'
+  },
+  pendiente: {
+    label: 'Pendiente de Auditoría',
+    colorHex: '#F2A71B',
+    bgClass: 'bg-slate-50 dark:bg-slate-900/40',
+    borderClass: 'border-slate-400 border-dashed',
+    textClass: 'text-slate-700 dark:text-slate-300',
+    glyph: '◐',
+    microcopy: 'Relevo en curso · Acreditación R9',
+    strokeWidth: 1,
+    borderStyle: 'dashed'
+  }
+} as const;
+
+/**
+ * Los 3 Nodos Federados Canónicos de San Juan (ADR-021)
+ *
+ * subnodosCount con procedencia (armonización de divergencias #233, decisión DH
+ * 2026-10-17): capital = 6 (vocabulario ratificado R9 2026-10-17, traza #154 comment
+ * 6235922878: sj_capital_centro + sj_capital_desamparados en main + los 4 subnodos del
+ * lote 4; mapeo de nomenclaturas RESUELTO: SUBNODOS_CAPITAL_REGISTRO en nodoCapital.ts, 6 entidades distintas, decisión DH 2026-10-17); iglesia = 52 (VIG-001
+ * lotes 1+2 acreditados en main, EV-040/EV-041); caucete = 0 (R15 honesto: sin
+ * subnodos sembrados en main).
+ */
+export const NODOS_FEDERADOS_REGISTRO = [
+  {
+    id: 'nodo-capital-san-juan',
+    nombre: 'Nodo San Juan Capital',
+    region: 'Valle de Tulum',
+    lat: -31.5375,
+    lng: -68.5252,
+    descripcion: 'Centro cívico, administrativo, comercial y universitario de la provincia',
+    subnodosCount: 6, // ratificado DH 2026-10-17 (traza #154 comment 6235922878)
+    estadoHonesto: 'validado'
+  },
+  {
+    id: 'nodo-valle-de-iglesia',
+    nombre: 'Nodo Valle de Iglesia',
+    region: 'Cordillera Central / Valles Andinos',
+    lat: -30.3800,
+    lng: -69.2000,
+    descripcion: 'Agroecología de altura, cuenca del Río Blanco, termalismo Pismanta y patrimonio protegido',
+    subnodosCount: 52, // main (VIG-001 lotes 1+2, EV-040/EV-041)
+    estadoHonesto: 'validado'
+  },
+  {
+    id: 'nodo-caucete-este',
+    nombre: 'Nodo Caucete Este',
+    region: 'Valle Este & Oasis Irrigado',
+    lat: -31.6510,
+    lng: -68.2810,
+    descripcion: 'Vitivinicultura histórica, Santuario Difunta Correa y corredor biocéanico este',
+    subnodosCount: 0, // R15: sin subnodos sembrados en main
+    estadoHonesto: 'comunitario'
+  }
+] as const;
+
+export type NodoFederadoRegistro = (typeof NODOS_FEDERADOS_REGISTRO)[number];
+
 // ─── CORE-004 R5b (dominio activos, #87) ───
 
 // Tipos de activo territorial: base R5b + kinds multimodales VIG-002 (NVIG-R2
