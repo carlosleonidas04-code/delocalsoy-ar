@@ -38,7 +38,7 @@ import { requireJwt, requireRole } from '../lib/auth.js';
  * escritura queda sellada, traza del PR).
  */
 
-const router = Router();
+const router: Router = Router(); // anotación: TS2742 declaration emit (patrón activos.ts/auth.ts)
 
 // Multinodo desde día 1 (decisión DH, traza #243): espeja ComercioNodoKeySchema
 // sin importarlo — el contrato valida la forma; aquí se reconcilia 404/400.
