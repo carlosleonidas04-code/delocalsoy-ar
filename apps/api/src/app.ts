@@ -2,6 +2,7 @@ import express, { type Express, type Request, type Response, type NextFunction }
 import { randomUUID } from 'node:crypto';
 import activosRouter from './routes/activos.js';
 import authRouter from './routes/auth.js';
+import comerciosRouter from './routes/comercios.js';
 import evidenciasRouter from './routes/evidencias.js';
 import eventsRouter from './routes/events.js';
 import fichasValoracionRouter from './routes/fichasValoracion.js';
@@ -45,6 +46,11 @@ export function createApp(): Express {
   // en events_raw, moderación PATCH /:id/estado (moderador|admin) y GET
   // público anónimo con recorte espacial bbox sobre PostGIS.
   app.use('/api/activos', activosRouter);
+
+  // MARKET-CAP MK-1 (#243, sub-épica #152): Mercado de Proximidad — alta
+  // ciudadana de comercios con moderación (nace 'propuesto'), ficha 1:1
+  // comercio_ficha y lectura pública multinodo (facetas + bbox).
+  app.use('/api/comercios', comerciosRouter);
 
   // Dominio: fichas de valoración comunitaria del espacio público
   // (NODO-CAU R4, #149) — testimonio revisable anclado a features de la capa
