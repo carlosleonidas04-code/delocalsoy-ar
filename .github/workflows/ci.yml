@@ -26,6 +26,14 @@ name: CI
 # seed) y DOS procesos reales en background (API + worker); el cliente E2E
 # `apps/api/scripts/flujo-vertical-e2e.ts` acredita la cadena completa en
 # cada PR (registro → JWT → alta → sello → stream → proyección → visible).
+# v17 (CORE-005 R6, #206 — EV-056): el mismo cliente E2E extiende la cadena al
+# ciclo completo del reporte (dominio CORE-005 R2–R5): alta → sello
+# reporte.recibido → stream → proyección del worker → duplicados sugeridos
+# por proximidad (ADR-039) → reintento idempotente → moderación del ciclo
+# con justificación pública (ADR-038) → sellos 1:1 → historial público →
+# suscripción /mios → lectura pública del nodo. El vocabulario (nodo +
+# categoría) se planta como fixture idempotente vía prisma — el entorno
+# sigue limpio (sin seed).
 
 on:
   push:
@@ -133,6 +141,13 @@ jobs:
     # POST /api/activos → sello en events_raw → referencia al stream →
     # proyección del worker exactamente una vez → visible en el mapa
     # público (R5: nada simulado — la salida real acredita, R4).
+    # v17 (CORE-005 R6, #206 — EV-056): el mismo cliente E2E acredita además
+    # el ciclo completo del reporte: alta ciudadana → sello reporte.recibido →
+    # stream → proyección → duplicado sugerido por proximidad con distancia_m
+    # (R5, ADR-039 — nada se fusiona) → reintento idempotente → moderación
+    # justificada del ciclo (ADR-038) → sellos 1:1 proyectados → historial
+    # público → /mios → lectura pública del nodo (fixture de vocabulario
+    # idempotente, sin seed).
     runs-on: ubuntu-latest
     timeout-minutes: 30
     services:
@@ -195,7 +210,7 @@ jobs:
         run: |
           nohup pnpm --filter @delocalsoy/worker exec tsx src/index.ts > worker.log 2>&1 &
           echo "worker lanzado (WORKER_INTERVAL_MS=500)"
-      - name: Flujo vertical E2E (EV-035 — R6, #87)
+      - name: Flujo vertical E2E (EV-035 — CORE-004 R6, #87; EV-056 — CORE-005 R6, #206)
         run: pnpm --filter @delocalsoy/api exec tsx scripts/flujo-vertical-e2e.ts
       - name: Logs de los procesos reales (R4 — diagnóstico del auto-report)
         if: failure()
