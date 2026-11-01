@@ -5,12 +5,16 @@ import { prisma, Prisma } from '@delocalsoy/db';
 import { xaddEventReference } from '@delocalsoy/redis';
 import {
   BboxStringSchema,
+  COMERCIO_SELLOS_HISTORIAL,
   COMERCIO_TRANSICIONES,
   ComercioAltaSchema,
   ComercioAtributosSchema,
   ComercioEstadoCambioSchema,
+  ComercioHabilitacionCambioSchema,
   ComercioHabilitacionEstadoSchema,
+  ComercioHistorialSchema,
   ComercioReclamoTitularSchema,
+  ComercioTitularidadDesistimientoSchema,
   TAXONOMIA_CANONICA_DELOCALSOY,
   TAXONOMIA_DIRECTORIO_CANONICA,
 } from '@delocalsoy/contracts';
@@ -122,6 +126,13 @@ function estadoEpistemico(activo: ActivoConFicha): 'verified' | 'community_valid
 
 // Ficha pública (contrato ComercioFichaPublicaSchema + descripcion/nodo_key/
 // lat/lng del activo para el mapa). Sin PII: v1 no tiene columnas de contacto.
+// Titularidad pública (H1): el hash del reclamante NO sale en ninguna
+// salida pública. La edición del titular sigue funcionando porque
+// PATCH /:id lee la fila real, no esta proyección.
+function titularidadPublica(titularidad: Record<string, unknown>): { estado: string } {
+  return { estado: (titularidad.estado as string) ?? 'sin_reclamo' };
+}
+
 function fichaPublica(activo: ActivoConFicha) {
   const ficha = activo.comercio_ficha;
   return {
@@ -135,7 +146,7 @@ function fichaPublica(activo: ActivoConFicha) {
     rubro: resolverRubro(ficha?.rubro_id ?? ''),
     estado: activo.estado,
     habilitacion: ficha?.habilitacion ?? { estado: 'sin_dato' },
-    titularidad: ficha?.titularidad ?? { estado: 'sin_reclamo' },
+    titularidad: titularidadPublica((ficha?.titularidad ?? {}) as Record<string, unknown>),
     atributos: ficha?.atributos ?? {},
     estado_epistemico: estadoEpistemico(activo),
   };
@@ -459,6 +470,134 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 });
 
+// PATCH /api/comercios/:id/habilitacion — cambio de habilitación (DH §7.1
+// y §7.3): titular verificado o moderador|admin; justificación pública
+// ≥ 10 con anti-PII (ADR-038, ADR-020 cond. 1); sello + rollback (R4/R15).
+router.patch('/:id/habilitacion', requireJwt, async (req: Request, res: Response) => {
+  const id = req.params.id;
+  const usuario = res.locals.usuario as { id: string; rol: string };
+
+  let parsed: z.infer<typeof ComercioHabilitacionCambioSchema>;
+  try {
+    parsed = ComercioHabilitacionCambioSchema.parse(req.body);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ success: false, error: 'datos inválidos', details: error.errors });
+      return;
+    }
+    throw error;
+  }
+
+  // Anti-PII sobre la justificación pública ANTES de persistir (ADR-020).
+  const pii = detectaPII(parsed.justificacion);
+  if (pii) {
+    res.status(400).json({
+      error: 'payload rechazado: contiene datos personales identificables (' + pii + ') — ADR-020 cond. 1, Ley 25.326',
+    });
+    return;
+  }
+
+  try {
+    const activo = await prisma.activos.findUnique({ where: { id }, include: { comercio_ficha: true } });
+    if (!activo || !activo.comercio_ficha) {
+      res.status(404).json({ success: false, error: 'comercio no encontrado' });
+      return;
+    }
+    const ficha = activo.comercio_ficha as ComercioFichaRow;
+    const titularidad = (ficha.titularidad ?? {}) as { estado?: string; reclamado_por_hash?: string };
+    const esTitular = titularidad.estado === 'verificada' && titularidad.reclamado_por_hash === seudonimo(usuario.id);
+    const esModeracion = usuario.rol === 'moderador' || usuario.rol === 'admin';
+    if (!esTitular && !esModeracion) {
+      res.status(403).json({ success: false, error: 'solo el titular verificado o moderación puede cambiar la habilitación' });
+      return;
+    }
+    const anterior = ((ficha.habilitacion ?? {}) as { estado?: string }).estado ?? 'sin_dato';
+    if (anterior === parsed.habilitacion.estado) {
+      res.status(409).json({ success: false, error: 'la habilitación ya está en estado ' + anterior });
+      return;
+    }
+    await prisma.comercio_ficha.update({
+      where: { activo_id: id },
+      data: { habilitacion: parsed.habilitacion as object },
+    });
+    try {
+      await sellarEvento('comercio.habilitacion_actualizada', {
+        comercio_id: id,
+        estado_anterior: anterior,
+        estado_nuevo: parsed.habilitacion.estado,
+        fuente_key: parsed.habilitacion.fuente_key ?? null,
+        justificacion: parsed.justificacion,
+        actualizado_por_hash: seudonimo(usuario.id),
+      });
+    } catch (err) {
+      // Rollback (R4/R15): sin sello no hay cambio acreditado.
+      await prisma.comercio_ficha
+        .update({ where: { activo_id: id }, data: { habilitacion: ficha.habilitacion as object } })
+        .catch(() => undefined);
+      console.error('[comercios] sellar cambio de habilitación:', err instanceof Error ? err.message : String(err));
+      res.status(500).json({ success: false, error: 'fallo al sellar el cambio de habilitación' });
+      return;
+    }
+    res.json({ success: true, data: { activo_id: id, habilitacion: parsed.habilitacion } });
+  } catch (err) {
+    console.error('[comercios] cambiar habilitación:', err instanceof Error ? err.message : String(err));
+    res.status(500).json({ success: false, error: 'fallo al cambiar la habilitación' });
+  }
+});
+
+// GET /api/comercios/:id/historial — F-3: derivado 1:1 de los sellos en
+// events_raw (ADR-032, append-only); guard idéntico al de GET /:id (H3).
+router.get('/:id/historial', async (req: Request, res: Response) => {
+  const id = req.params.id;
+  try {
+    const activo = await prisma.activos.findUnique({ where: { id }, include: { comercio_ficha: true } });
+    if (
+      !activo ||
+      !activo.comercio_ficha ||
+      activo.visibilidad === 'restricted' ||
+      !['propuesto', 'aprobado'].includes(activo.estado)
+    ) {
+      res.status(404).json({ success: false, error: 'comercio no encontrado' });
+      return;
+    }
+    const sellos = await prisma.events_raw.findMany({
+      where: {
+        type: { in: [...COMERCIO_SELLOS_HISTORIAL] },
+        payload: { path: ['comercio_id'], equals: id },
+      },
+      orderBy: [{ occurred_at: 'asc' }, { id: 'asc' }],
+    });
+    const entries = sellos.flatMap((s) => {
+      const p = s.payload as Record<string, unknown>;
+      const occurred_at = s.occurred_at.toISOString();
+      switch (s.type) {
+        case 'comercio.ingestado':
+          return [{ type: s.type, occurred_at }];
+        case 'comercio.estado_cambiado':
+          return [{ type: s.type, estado_anterior: p.estado_anterior, estado_nuevo: p.estado_nuevo, justificacion: p.justificacion, moderador_hash: p.moderador_hash, occurred_at }];
+        case 'comercio.titularidad_reclamada':
+          // SIN identificador_hash y SIN reclamado_por_hash (DH §7.2, H1).
+          return [{ type: s.type, metodo: p.metodo, occurred_at }];
+        case 'comercio.titularidad_verificada':
+          return [{ type: s.type, metodo: p.metodo, verificado_por_hash: p.verificado_por_hash, occurred_at }];
+        case 'comercio.titularidad_desistida':
+          // SIN desistido_por_hash en la salida pública.
+          return [{ type: s.type, metodo: p.metodo ?? null, occurred_at }];
+        case 'comercio.habilitacion_actualizada':
+          return [{ type: s.type, estado_anterior: p.estado_anterior, estado_nuevo: p.estado_nuevo, fuente_key: p.fuente_key ?? null, justificacion: p.justificacion, actualizado_por_hash: p.actualizado_por_hash, occurred_at }];
+        case 'comercio.atributos_editados':
+          return [{ type: s.type, titular_hash: p.titular_hash, occurred_at }];
+        default:
+          return []; // lista blanca: un sello futuro NO se expone por omisión (R15)
+      }
+    });
+    res.json({ success: true, data: ComercioHistorialSchema.parse(entries) });
+  } catch (err) {
+    console.error('[comercios] historial:', err instanceof Error ? err.message : String(err));
+    res.status(500).json({ success: false, error: 'fallo al obtener el historial' });
+  }
+});
+
 // PATCH /api/comercios/:id/estado — moderación (R5b): solo moderador|admin.
 // Matriz COMERCIO_TRANSICIONES sellada en el contrato (patrón CORE-005 R1):
 // la transición inválida NO se negocia en la ruta. Justificación pública
@@ -578,6 +717,33 @@ router.post('/:id/titular', requireJwt, async (req: Request, res: Response) => {
         return;
       }
       res.json({ success: true, data: { activo_id: id, titularidad: titularidadNueva } });
+      return;
+    }
+
+    // Dentro del bloque ciudadano de POST /:id/titular, antes del reclamo:
+    const desistimiento = ComercioTitularidadDesistimientoSchema.safeParse(req.body);
+    if (desistimiento.success) {
+      if (titularidad.estado !== 'reclamada' || titularidad.reclamado_por_hash !== seudonimo(usuario.id)) {
+        res.status(403).json({ success: false, error: 'solo quién reclamó la titularidad puede desistir' });
+        return;
+      }
+      const titularidadNueva = { estado: 'desistida', metodo: titularidad.metodo ?? null };
+      await prisma.comercio_ficha.update({ where: { activo_id: id }, data: { titularidad: titularidadNueva as object } });
+      try {
+        await sellarEvento('comercio.titularidad_desistida', {
+          comercio_id: id,
+          metodo: titularidad.metodo ?? null,
+          desistido_por_hash: seudonimo(usuario.id),
+        });
+      } catch (err) {
+        await prisma.comercio_ficha
+          .update({ where: { activo_id: id }, data: { titularidad: titularidad as object } })
+          .catch(() => undefined);
+        console.error('[comercios] sellar desistimiento:', err instanceof Error ? err.message : String(err));
+        res.status(500).json({ success: false, error: 'fallo al sellar el desistimiento' });
+        return;
+      }
+      res.json({ success: true, data: { activo_id: id, titularidad: { estado: 'desistida' } } }); // respuesta saneada (H1)
       return;
     }
 

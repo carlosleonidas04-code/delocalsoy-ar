@@ -149,3 +149,80 @@ export const ComercioFichaPublicaSchema = z.object({
   estado_epistemico: z.enum(['verified', 'community_validated', 'pending', 'synthetic_demo']),
 });
 export type ComercioFichaPublica = z.infer<typeof ComercioFichaPublicaSchema>;
+
+// MK-2: cambio de habilitación (justificación pública ADR-038)
+export const ComercioHabilitacionCambioSchema = z.object({
+  habilitacion: ComercioHabilitacionSchema, // refine ADR-035 ya vivo (#246)
+  justificacion: z.string().min(10, 'ADR-038: justificación pública obligatoria'),
+}).strict();
+export type ComercioHabilitacionCambio = z.infer<typeof ComercioHabilitacionCambioSchema>;
+
+// MK-2: desistimiento del reclamo (ratificado §7.5)
+export const ComercioTitularidadDesistimientoSchema = z.object({
+  accion: z.literal('desistir'),
+  declaracion_consentimiento: z.literal(true), // nunca pre-marcado (ADR-027)
+}).strict();
+export type ComercioTitularidadDesistimiento = z.infer<typeof ComercioTitularidadDesistimientoSchema>;
+
+// MK-2: titularidad pública (sin hash del reclamante, DH §7.2)
+export const ComercioTitularidadPublicaSchema = z.object({
+  estado: ComercioTitularidadSchema.shape.estado,
+}).strict();
+export type ComercioTitularidadPublica = z.infer<typeof ComercioTitularidadPublicaSchema>;
+
+// MK-2: historial público F-3 (derivado de sellos, nunca tabla mutable)
+export const COMERCIO_SELLOS_HISTORIAL = [
+  'comercio.ingestado',
+  'comercio.estado_cambiado',
+  'comercio.titularidad_reclamada',
+  'comercio.titularidad_verificada',
+  'comercio.titularidad_desistida',
+  'comercio.habilitacion_actualizada',
+  'comercio.atributos_editados',
+] as const;
+
+export const ComercioHistorialEntradaSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('comercio.ingestado'), occurred_at: z.string() }).strict(),
+  z.object({
+    type: z.literal('comercio.estado_cambiado'),
+    estado_anterior: z.string(),
+    estado_nuevo: z.string(),
+    justificacion: z.string(),
+    moderador_hash: z.string(),
+    occurred_at: z.string(),
+  }).strict(),
+  z.object({
+    type: z.literal('comercio.titularidad_reclamada'),
+    metodo: z.string(),
+    occurred_at: z.string(), // SIN identificador_hash y SIN reclamado_por_hash (DH §7.2)
+  }).strict(),
+  z.object({
+    type: z.literal('comercio.titularidad_verificada'),
+    metodo: z.string(),
+    verificado_por_hash: z.string(),
+    occurred_at: z.string(),
+  }).strict(),
+  z.object({
+    type: z.literal('comercio.titularidad_desistida'),
+    metodo: z.string().nullable(),
+    occurred_at: z.string(), // SIN desistido_por_hash en la salida pública
+  }).strict(),
+  z.object({
+    type: z.literal('comercio.habilitacion_actualizada'),
+    estado_anterior: z.string(),
+    estado_nuevo: z.string(),
+    fuente_key: z.string().nullable(),
+    justificacion: z.string(),
+    actualizado_por_hash: z.string(),
+    occurred_at: z.string(),
+  }).strict(),
+  z.object({
+    type: z.literal('comercio.atributos_editados'),
+    titular_hash: z.string(),
+    occurred_at: z.string(),
+  }).strict(),
+]);
+
+export const ComercioHistorialSchema = z.array(ComercioHistorialEntradaSchema);
+export type ComercioHistorialEntrada = z.infer<typeof ComercioHistorialEntradaSchema>;
+export type ComercioHistorial = z.infer<typeof ComercioHistorialSchema>;
