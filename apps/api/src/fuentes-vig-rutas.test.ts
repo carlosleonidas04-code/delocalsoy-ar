@@ -118,7 +118,7 @@ describe.skipIf(!dbUp)('fuentes del Valle de Iglesia (NVIG-R5 — catálogo y pr
     const por = (key: string) => body.data.find((f: any) => f.key === key);
     expect(por('conicet_garcia_2024').cautela).toContain('not_demonstrated_inca');
     expect(por('michieli_2016').cautela).toContain('Calingasta');
-    expect(por('municipio_iglesia').cautela).toContain('1906-C.D.-2020');
+    expect(por('municipio_iglesia').nombre).toContain('1906-C.D.-2020');
     expect(por('decreto_2154_2009').cautela).toContain('ADR-036');
     expect(por('conectividad_agua_negra').cautela).toContain('2024-03');
   });
