@@ -1,6 +1,6 @@
 # VIG-009 — Sistema de apoyo de Achango: ejecución y estado canónico (#241, épica #239)
 
-> Ejecutado 2026-10-20 sobre la rama `feat/vig-009-achango` (apilada sobre VIG-008 #240 / rama `feat/vig-008-cooperativas`, PR #252). CI de GitHub Actions caído hasta ~2026-11-01: sin merge sin CI verde (R15). Este documento registra lo ejecutado, lo bloqueado y las decisiones de la Dirección Humana. openapi v7.26.0 (+2 rutas: POST/GET `/api/patrimonio/{activoId}/observaciones`).
+> Ejecutado 2026-10-20 sobre la rama `feat/vig-009-achango` (apilada sobre VIG-008 #240 / rama `feat/vig-008-cooperativas`, PR #252). CI de GitHub Actions caído hasta ~2026-11-01: sin merge sin CI verde (R15). Este documento registra lo ejecutado, lo bloqueado y las decisiones de la Dirección Humana. openapi v7.27.0 (+2 rutas: POST/GET `/api/patrimonio/{activoId}/observaciones`).
 
 ## 1. Alcance y reglas no negociables
 
