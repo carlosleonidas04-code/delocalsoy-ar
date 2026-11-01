@@ -1,0 +1,96 @@
+{
+  "$schema": "https://delocalsoy.ar/schemas/v1/ficha-cooperativa-r9.json",
+  "protocolo": "R9-CANON-VIG-008",
+  "timestamp": "2026-10-18T14:45:00.000Z",
+  "nodoEmisor": "NODO-VALLE-DE-IGLESIA-VIG",
+  "entidad": {
+    "id": "coop-tudcum",
+    "razonSocial": "Cooperativa Agropecuaria Tudcum Limitada",
+    "distritoSede": "Tudcum, Departamento Iglesia",
+    "tipoEntidad": "Cooperativa Agropecuaria (1er Grado)",
+    "sha256Hash": "a93b48f95c21df0b8495bb587b1c4b9cf801f9de5d11700445d4a92c300ab57e"
+  },
+  "camposEpistemicos": {
+    "matriculaInaes": {
+      "valor": "28.777",
+      "estado": "validado",
+      "fuente": "Padrón Oficial INAES",
+      "fecha": "2024-06-15"
+    },
+    "matriculaProvincial": {
+      "valor": "659",
+      "estado": "validado",
+      "fuente": "Dirección Provincial de Cooperativas de San Juan",
+      "fecha": "2024-06-15"
+    },
+    "fechaConstitucion": {
+      "valor": "12-08-2004",
+      "estado": "validado",
+      "fuente": "Estatuto Constitutivo Registrado INAES",
+      "fecha": "2004-08-12"
+    },
+    "domicilioPublicado": {
+      "valor": "Calle Florida s/n, Tudcum",
+      "estado": "validado",
+      "fuente": "Sede Social Institucional Pública",
+      "fecha": "2024-06-15",
+      "nota": "Dirección postal pública. Sin punto geoespacial hasta consentimiento de geolocalización (ADR-036)."
+    },
+    "sociosActivos": {
+      "valor": 10,
+      "estado": "validado",
+      "fuente": "Acta de Asamblea General Ordinaria Pública",
+      "fecha": "2025-11-20"
+    },
+    "federacion": {
+      "valor": "FECOAGRO (Federación de Cooperativas Agropecuarias de San Juan)",
+      "estado": "validado",
+      "fuente": "Registro de Entidades Adheridas FECOAGRO",
+      "fecha": "2005-09-05"
+    },
+    "fechaAfiliacionFederacion": {
+      "valor": "05-09-2005",
+      "estado": "validado",
+      "fuente": "Acta Consejo de Administración FECOAGRO N° 142",
+      "fecha": "2005-09-05"
+    },
+    "estadoVigenciaInaes": {
+      "valor": "sin consulta formal (reordenamiento nacional en curso)",
+      "estado": "pendiente",
+      "fuente": "Proceso de fiscalización y reordenamiento INAES 2024-2026",
+      "fecha": "2026-03-01",
+      "nota": "unknown_directo: Estado registral formal en trámite de consulta institucional."
+    },
+    "habilitacionTuristica2400T": {
+      "valor": "padrón no encontrado — sin datos",
+      "estado": "sintetico",
+      "fuente": "Revisión padrón provincial prestadores Ley 2400-T",
+      "fecha": "2026-09-10",
+      "nota": "unknown honesto: Sin antecedente de registro en la categoría turismo agroecológico."
+    },
+    "productosPublicadosCount": {
+      "valor": 0,
+      "estado": "sintetico",
+      "fuente": "Inventario de catálogo con verificación de origen",
+      "fecha": "2026-10-17",
+      "nota": "vacío honesto: Solo se publican productos con consentimiento y certificación comunitaria activa."
+    }
+  },
+  "gobernanzaADR027": {
+    "regla": "Cero nombres civiles. Solo roles institucionales sin PII (Ley 25.326).",
+    "estructuraRoles": [
+      "Presidenta del Consejo de Administración",
+      "Secretaria",
+      "Tesorera",
+      "Vocal Titular",
+      "Síndica Titular"
+    ],
+    "consentimientoInstitucional": "pendiente",
+    "estadoConsentimientoNota": "Requiere asamblea institucional ratificada de la cooperativa para publicar catálogo o contactos directos."
+  },
+  "integridadCriptografica": {
+    "algoritmo": "SHA-256",
+    "hashEsperado": "a93b48f95c21df0b8495bb587b1c4b9cf801f9de5d11700445d4a92c300ab57e",
+    "inmutable": true
+  }
+}
