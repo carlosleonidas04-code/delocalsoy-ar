@@ -2,7 +2,14 @@
 -- Iglesia. Extiende el catálogo global ADR-035 (patrón NODO-CAU R2
 -- #138/#147, PR #200) con 16 fuentes específicas del valle verificadas en
 -- las tandas 1-3 de investigación (verificación 2026-10-13, trazas
--- #167-#174). El catálogo NO contiene datos del territorio: nunca un
+-- #167-#174). MÁS 4 fuentes institucionales de VIG-008 (#240, épica
+-- #239, 2026-10-20): fecoagro_web, cooperativas_sj,
+-- ley_2400t_convocatoria_2024 y mujeres_de_montana_2026. Los datos
+-- declarados por FECOAGRO (matrículas INAES/provinciales) quedan
+-- community_validated hasta evidencia materializada del padrón
+-- (ADR-035, decisión DH 2026-10-18); VIG-008 R3: sin consentimiento
+-- institucional no se publica ficha enriquecida.
+-- El catálogo NO contiene datos del territorio: nunca un
 -- feature real sin fuente citable (R15). Reutiliza la tabla global
 -- fuentes y el pipeline de ingestas SIN cambios de rutas ni de openapi.
 -- Multinodo: IGN/INDEC/BAHRA/Georef/UNIDE/INPRES/MapBiomas/IDERA ya
@@ -34,6 +41,19 @@ VALUES
   (gen_random_uuid()::text, 'turismo_sj', 'Ministerio de Turismo de San Juan', 'Oferta turística provincial — FIT 2026 y ruta Mujeres de Montaña', NULL, 'documento', NULL, 'requiere_solicitud', 'Ruta declarada públicamente (municipal + provincial 29-09-2026, FIT) pero instrument_status=not_found: los 12 emprendimientos quedan candidate_provider unverified; identidad/domicilio solo con consentimiento (ADR-027, Ley 25.326).', '2026-10-17T12:00:00Z', '2026-10-17T12:00:00Z')
 ON CONFLICT (key) DO NOTHING;
 
+-- VIG-008 (#240, épica #239): 4 fuentes institucionales del eje
+-- cooperativas (fichas R9-CANON-VIG-008 aterrizadas en #242). Los
+-- datos DECLARADOS por FECOAGRO no acreditan verificación registral
+-- en vivo (ADR-035): community_validated hasta evidencia
+-- materializada; sin consentimiento no hay ficha enriquecida (R3).
+INSERT INTO fuentes (id, key, organismo, nombre, url, tipo, licencia, estado, cautela, created_at, updated_at)
+VALUES
+  (gen_random_uuid()::text, 'fecoagro_web', 'FECOAGRO Ltda. (Federación de Cooperativas Agropecuarias de San Juan)', 'Sitio web institucional de FECOAGRO', 'https://fecoagro.com.ar', 'api', NULL, 'disponible', 'Datos DECLARADOS por la propia federación: matrículas INAES (Tudcum 28.777/659; Valles Iglesianos 11.463/170, miembro fundador 18-12-1992) sin verificación en vivo → community_validated hasta evidencia materializada del padrón (ADR-035, decisión DH 2026-10-18). VIG-008 R3: sin consentimiento institucional no se publica ficha enriquecida.', '2026-10-20T12:00:00Z', '2026-10-20T12:00:00Z'),
+  (gen_random_uuid()::text, 'cooperativas_sj', 'Dirección Provincial de Cooperativas y Mutualidades de San Juan', 'Registro provincial de cooperativas y mutualidades', NULL, 'documento', NULL, 'requiere_solicitud', 'Matrículas provinciales (Tudcum 659; Valles Iglesianos 170) solo por declaración FECOAGRO: solicitud formal pendiente (VIG-008 R7); verificar registro y vigencia antes de publicar.', '2026-10-20T12:00:00Z', '2026-10-20T12:00:00Z'),
+  (gen_random_uuid()::text, 'ley_2400t_convocatoria_2024', 'Ministerio de Turismo de San Juan', 'Ley 2400-T — convocatoria 2024 de prestadores turísticos', NULL, 'documento', NULL, 'requiere_solicitud', 'Convocatoria 2024 sin padrón desagregado por prestador; el padrón sigue no encontrado (revisión 2026-09-10): distinguido ≠ habilitado. Complementa la fuente ley_2400_t ya registrada.', '2026-10-20T12:00:00Z', '2026-10-20T12:00:00Z'),
+  (gen_random_uuid()::text, 'mujeres_de_montana_2026', 'Casa de San Juan — FIT 2026', 'Ruta Mujeres de Montaña — FIT 2026 (12 emprendimientos del valle)', NULL, 'documento', NULL, 'requiere_solicitud', 'Los 12 emprendimientos quedan candidate_provider unverified con resguardo anti-PII; instrument_status=not_found; sin consentimiento institucional no se siembran talleres (ADR-027, Ley 25.326). Complementa la fuente turismo_sj ya registrada.', '2026-10-20T12:00:00Z', '2026-10-20T12:00:00Z')
+ON CONFLICT (key) DO NOTHING;
+
 -- Sellos fuente.registrada (patrón seed-cau-r2: events_raw única fuente
 -- de verdad; hash fijo seed-fuente-<key> → idempotencia; payload source
 -- 'seed-vig-r5' distingue el origen del sello; sin PII).
@@ -42,5 +62,5 @@ SELECT gen_random_uuid()::text, 'fuente.registrada',
        jsonb_build_object('key', f.key, 'organismo', f.organismo, 'source', 'seed-vig-r5'),
        'seed-fuente-' || f.key, f.created_at, f.created_at
 FROM fuentes f
-WHERE f.key IN ('municipio_iglesia', 'decreto_2154_2009', 'ley_24790', 'ley_25291', 'leyes_patrimonio_sj', 'conicet_garcia_2024', 'michieli_2016', 'pedl_iglesia', 'cna_2018', 'hidrometria_sj', 'ley_826_g', 'viales_rn150', 'conectividad_agua_negra', 'ley_2400_t', 'inaes', 'turismo_sj')
+WHERE f.key IN ('municipio_iglesia', 'decreto_2154_2009', 'ley_24790', 'ley_25291', 'leyes_patrimonio_sj', 'conicet_garcia_2024', 'michieli_2016', 'pedl_iglesia', 'cna_2018', 'hidrometria_sj', 'ley_826_g', 'viales_rn150', 'conectividad_agua_negra', 'ley_2400_t', 'inaes', 'turismo_sj', 'fecoagro_web', 'cooperativas_sj', 'ley_2400t_convocatoria_2024', 'mujeres_de_montana_2026')
 ON CONFLICT (hash) DO NOTHING;

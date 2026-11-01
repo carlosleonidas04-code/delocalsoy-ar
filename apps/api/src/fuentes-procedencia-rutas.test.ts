@@ -5,8 +5,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 // NODO-CAU R2 (#138/#147): catálogo de fuentes espaciales + procedencia por
 // conjunto — extremo a extremo contra servicios reales (PostgreSQL/PostGIS +
 // Redis):
-// - GET /api/fuentes: catálogo público anónimo (31 fuentes: 15 Caucete +
-//   16 del Valle de Iglesia NVIG-R5 #172 — con organismo, estado honesto de
+// - GET /api/fuentes: catálogo público anónimo (35 fuentes: 15 Caucete +
+//   20 del Valle de Iglesia NVIG-R5 #172 + VIG-008 #240 — con organismo,
+//   estado honesto de
 //   disponibilidad y cautela) y GET /api/fuentes/:key
 // - POST /api/ingestas: alta curada por admin (decisión DH 2026-10-15);
 //   NC-EV-09: la ingesta sin fecha de corte/precisión/CRS se rechaza;
@@ -68,13 +69,15 @@ describe.skipIf(!dbUp)('fuentes espaciales + procedencia (NODO-CAU R2 — regist
     'mapa_educativo', 'mapa_cuidado', 'inpres', 'faud_unsj', 'hidraulica_sj',
     'mapbiomas', 'idera', 'redtulum',
   ];
-  // NVIG-R5 (#172): 16 fuentes específicas del Valle de Iglesia agregadas al
-  // catálogo global por seed-fuentes-vig.sql (trazas #167-#174).
+  // NVIG-R5 (#172): 16 fuentes del Valle de Iglesia + VIG-008 (#240): 4
+  // institucionales agregadas al catálogo global por seed-fuentes-vig.sql
+  // (trazas #167-#174; VIG-008 2026-10-20).
   const KEYS_VIG = [
     'municipio_iglesia', 'decreto_2154_2009', 'ley_24790', 'ley_25291',
     'leyes_patrimonio_sj', 'conicet_garcia_2024', 'michieli_2016', 'pedl_iglesia',
     'cna_2018', 'hidrometria_sj', 'ley_826_g', 'viales_rn150',
     'conectividad_agua_negra', 'ley_2400_t', 'inaes', 'turismo_sj',
+    'fecoagro_web', 'cooperativas_sj', 'ley_2400t_convocatoria_2024', 'mujeres_de_montana_2026',
   ];
 
   // Ingesta de referencia: REFES 2026 recortado al departamento Caucete.
@@ -124,12 +127,12 @@ describe.skipIf(!dbUp)('fuentes espaciales + procedencia (NODO-CAU R2 — regist
     return ((await login.json()) as any).data.token as string;
   }
 
-  it('catálogo público: 31 fuentes (15 Caucete + 16 VIG, NVIG-R5 #172) con organismo, estado honesto y cautela', async () => {
+  it('catálogo público: 35 fuentes (15 Caucete + 20 VIG, NVIG-R5 #172 + VIG-008 #240) con organismo, estado honesto y cautela', async () => {
     const res = await fetch(base + '/api/fuentes');
     expect(res.status).toBe(200);
     const body: any = await res.json();
     expect(body.success).toBe(true);
-    expect(body.count).toBe(31);
+    expect(body.count).toBe(35);
     expect(body.data.map((f: any) => f.key).sort()).toEqual([...KEYS_CAUCETE, ...KEYS_VIG].sort());
     for (const f of body.data) {
       expect(f.organismo.length).toBeGreaterThan(3);
