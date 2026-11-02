@@ -221,7 +221,8 @@ describe('ART-R4 — directorio público (solo aprobado+public, ADR-036)', () =>
     expect(comercios[0].habilitacion_estado).toBe('verificada');
     expect(comercios[0].titularidad_estado).toBe('verificada');
     expect(t.llamadas[0].ruta).toBe('/api/comercios?rubro=food_drink&nodo=capital');
-    expect((t.llamadas[0].init ?? {}).headers).toBeUndefined(); // lectura anónima
+    const init0 = (t.llamadas[0].init ?? {}) as Record<string, unknown>;
+    expect(init0.headers).toBeUndefined(); // lectura anónima
   });
 
   it('count 0 honesto (seed 0 comercios, decisión DH, patrón VIG-005)', async () => {

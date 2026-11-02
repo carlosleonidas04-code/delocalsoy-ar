@@ -872,7 +872,7 @@ export function A2Comerciante() {
           </p>
           <p>
             <label>
-              justificación pública (>=10, ADR-038){' '}
+              justificación pública ({'>='}10, ADR-038){' '}
               <input value={habJustificacion} onChange={(e) => setHabJustificacion(e.target.value)} required />
             </label>
           </p>
