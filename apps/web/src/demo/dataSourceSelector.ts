@@ -1,4 +1,10 @@
 /**
+ * @deprecated ADR-040 (FE-DEUDA-01, #292): el contrato canónico del frontend
+ * es `lib/dataSource.ts` con el selector único `VITE_MOCK_API`. Este selector
+ * `VITE_DATA_SOURCE` ya no selecciona nada fuera del árbol `demo/` (ADR-029),
+ * que queda como fixtures de suites — no montado en la app.
+ */
+/**
  * Selector de origen de datos del demo (DEMO-3, #18).
  *
  * VITE_DATA_SOURCE=synthetic (default) → SyntheticDataSource (literales
@@ -25,3 +31,4 @@ export function makeDemoDataSource(): DataSource {
     ? new ApiDataSource()
     : new SyntheticDataSource();
 }
+

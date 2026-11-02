@@ -1,4 +1,11 @@
 /**
+ * @deprecated ADR-040 (FE-DEUDA-01, #292): el contrato canónico del frontend
+ * es `lib/dataSource.ts` con el selector único `VITE_MOCK_API` ('1' = demo
+ * sintética explícita). Este árbol `demo/` (ADR-029) queda como fixtures de
+ * las suites `dataSource.contract.test.ts` y `apiDataSource.mapping.test.ts`:
+ * no se monta en la app ni admite importadores nuevos fuera de `demo/`.
+ */
+/**
  * Tipos del dominio territorial del demo (DEMO-2, #17).
  *
  * Contrato de datos de la UI: el demo consume exclusivamente estas formas a
