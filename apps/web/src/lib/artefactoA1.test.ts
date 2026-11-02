@@ -33,7 +33,7 @@ function crearTransporte() {
   let cola: Programada[] = [];
   const transporte: TransporteSesion = async (ruta, init) => {
     llamadas.push({ ruta, init: init as Record<string, unknown> });
-    const sig = cola.length > 0 ? cola.shift() : { status: 500, cuerpo: { success: false } };
+    const sig = cola.shift() ?? { status: 500, cuerpo: { success: false } };
     return {
       ok: sig.status >= 200 && sig.status < 300,
       status: sig.status,
