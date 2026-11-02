@@ -2,16 +2,35 @@
   "openapi": "3.1.0",
   "info": {
     "title": "DELocalSoy.AR Federated API Contract",
-    "version": "7.25.0",
-    "description": "Reconciliado CORE-004 (regla documental, #87): documenta todas las rutas montadas en apps/api/src/app.ts. R1: 11 rutas v7.7.0. R3 (ADR-031): /api/auth/* + system.* reservado (H-01). EV-031/EV-032. R4a (ADR-032): transporte Redis Streams (stream events:raw) — events_raw única fuente de verdad, publish fail-open. R5a (auditoría #99–#102): rate limiting 429 por IP+hash(email) en /api/auth/{register,login} (header Retry-After); 5xx sanitizados sin mensajes internos. R5b (dominio activos, #87): /api/activos — POST ciudadano autenticado con pseudónimo sha256 sin PII (Ley 25.326), GET público anónimo con recorte espacial bbox (PostGIS), PATCH /api/activos/{id}/estado para moderación moderador|admin; sellos activo.propuesto y activo.estado_cambiado en events_raw con rollback si el sello falla. NODO-CAPITAL NCAP-R6 (#158, Bloque 9 — Banco de Potencialidades): /api/oportunidades — registro ciudadano autenticado de capacidades, demandas, vacíos y vínculos del desarrollo local (evidencia obligatoria, actores nombrados con consentimiento confirmado, pseudónimo sha256 sin PII, anti-PII server-side, idempotencia por hash único, contexto territorial nodo+subnodo SIN geometría propia), GET público anónimo con filtros ('discarded' nunca se publica), PATCH /api/oportunidades/{id}/estado moderador|admin con matriz de transiciones del ciclo de vida (400 salto inválido, 409 sin transición); sellos oportunidad.propuesta y oportunidad.estado_cambiado en events_raw con rollback si fallan. NODO-VIG VIG-001 (#167/#171): /api/nodos/{key}/subnodos — jerarquía territorial del Valle de Iglesia (distrito → paraje → subparaje + localidad INDEC; primer lote de 34 entidades ratificado por la DH 2026-10-13), lectura pública con filtros ?type= y ?parent= (none = hijos directos del nodo); lat/lng solo con punto público BAHRA/Georef — null honesto (R15). NODO-VIG VIG-002 (NVIG-R2 #169, épica #167): /api/activos multimodal — tipos local|prestador|experiencia|observacion, contexto subnodo validado contra subnodos, clasificaciones N1→N3 de la taxonomía VIG-000 (filtro ?n1=), procedencia ADR-035, consentimiento granular Ley 25.326, visibilidad ADR-036 (restricted excluido de toda lectura pública — custodia VIG-004) y estado archivado (retira del catálogo vivo); semilla verificada de 6 activos del Valle de Iglesia. NODO-VIG VIG-003 (NVIG-R3 #182, épica #167): /api/nodos/{key}/kpis — KPIs materializados del nodo (kpi_snapshots): set honesto v1 de 9 KPIs agregados sin PII (Ley 25.326) re-computados desde el dominio por el consumidor vig003-kpi del worker (upsert idempotente por nodo_key+kpi_key, nunca incrementos); visibilidad restricted excluida del cálculo (ADR-036); cobertura v1 null honesto (R15); lectura pública anónima, 404 nodo inexistente, count 0 honesto. NODO-VIG VIG-004 (NVIG-R6 #173, épica #167): /api/patrimonio/{activoId} — ficha patrimonial pública (declaratoria, conservación, reglas de acceso con fuente, punto público de acceso, sensible_status honesto) NUNCA el campo `sensible` ni `sensible_nota` (ADR-036); custodia PATCH moderador|admin con transición de visibilidad ADR-036 y sello patrimonio.custodiado en events_raw con rollback; la ficha se publica también para restricted (la declaratoria es registro público) sin el punto propio del activo, NODO-VIG VIG-005 (NVIG-R7 #174, épica #167): /api/activos/{id}/productos — catálogo de productos del activo (tabla productos 1:N, slug único por activo): GET público anónimo y alta ciudadana autenticada que nace 'propuesto' (autor = pseudónimo sha256(usuario_id) sin PII, Ley 25.326; anti-PII server-side antes de persistir, ADR-020; sello producto.propuesto en events_raw con rollback si falla); PATCH /api/productos/{productoId}/estado — moderación moderador|admin (aprobado|rechazado|archivado; sello producto.estado_cambiado en events_raw con rollback si falla); GET /api/operativa/{activoId} — operativa pública del activo (horario, temporada de picos, capacidad honesta R15 — capacity_status unknown: distinguido ≠ habilitado; habilitación con verificación); filtros ?producto= y ?mes= en /api/activos (slug de producto aprobado; mes 1-12 por temporada del activo — operativa o producto aprobado); visibilidad restricted excluida de toda lectura y escritura (ADR-036). NODO-VIG VIG-006 (NVIG-R8 #188, épica #167): /api/nodos/{key}/ask — consulta territorial ética SIN LLM (decisión DH ratificada 2026-10-14): recuperación full-text nativa PostgreSQL en español sobre rag_index (índice de prosa autorizada derivada del dominio: subnodos, activos aprobados no restricted con ficha patrimonial y operativa públicas, KPIs — upsert idempotente por nodo_key+source_type+source_id + delete lógico; NUNCA restricted ni sensible ni PII, ADR-036/Ley 25.326); respuesta Dato–Interpretación–Sugerencia con plantillas autorizadas por dominio (patrimonial|productivo_rural|turistico|territorial — nada generado; sin fragmentos → null honesto R15), confidence derivado de la cobertura de fuentes y human_review pending (revisión humana habilitada); lectura pública anónima con filtros subnodo y n1; 404 nodo inexistente, 500 sanitizado. NODO-VIG VIG-007 (NVIG-R9 #193, épica #167): /api/showcase — recorrido federado de la demo final (Caucete → Capital → Valle de Iglesia): lectura pública anónima del estado REAL de cada nodo (counts derivados de las tablas de dominio con exclusión ADR-036 — las fichas patrimoniales cuentan también para restricted: la declaratoria es registro público, decisión DH VIG-004; un nodo sin snapshots → kpis 0 honesto, R15), guion ejecutable referenciado (docs/nodes/valle-de-iglesia/VIG-007-DEMO-FINAL.md: 13 pasos, 4 escenarios, 10 criterios con estado real); 500 sanitizado (AUD-06 #100). NODO-CAU R2 (#138/#147, ADR-035): /api/fuentes — catálogo público y anónimo de fuentes espaciales de procedencia (15 fuentes seed: organismo, URL estable cuando existe, tipo de acceso, licencia declarada, estado honesto de disponibilidad — verificación 2026-10-11, trazas en #147 — y cautela central; el catálogo es registro de procedencia, no de datos — R15) y /api/fuentes/{key} ficha pública; /api/ingestas — alta curada por admin (decisión DH 2026-10-15) con NC-EV-09: procedencia completa obligatoria (fuente del catálogo, capa/servicio, fecha de acceso y de corte, CRS origen/normalizado, escala/precisión, id externo y transformaciones opcionales; anti-PII server-side antes de persistir, idempotencia por hash único, sello ingesta.creada en events_raw con rollback) + lectura pública SOLO de lo publicado (?nodo= filtro); /api/ingestas/{id} — ficha pública de una ingesta publicada (en curso → 404 sin eco, R15); PATCH /api/ingestas/{id}/estado — pipeline admin solo hacia adelante: recibido → validado_tecnicamente → validado_territorialmente → publicado (salto inválido 400, mismo estado 409, sello ingesta.estado_cambiado en events_raw con rollback); FuenteLabelRealSchema (ADR-035 regla 1): nada real con label ilustrativo o sin Organismo · referencia CORE-005 R2 (#206, reportes ciudadanos): /api/reportes — alta ciudadana autenticada de reportes territoriales (autor = pseudónimo sha256(usuario_id) sin PII, Ley 25.326; anti-PII server-side antes de persistir; categoría validada contra el vocabulario del nodo — 404 nodo inexistente, 400 categoría ajena; idempotencia por hash único — reintento 200 idempotente; sello reporte.recibido en events_raw con rollback si falla). CORE-005 R3 (#206, ADR-038): PATCH /api/reportes/{id}/estado — moderación transparente del reporte: requireRole moderador|admin; justificación pública OBLIGATORIA por transición (>=10 caracteres — 400 sin justificación); matriz REPORTE_TRANSICIONES del ciclo received → evaluating → in_progress → resolved (+descartado lateral; resolved y descartado terminales en v1 — 400 salto inválido, 409 sin transición); anti-PII sobre la justificación antes de sellar (sin eco del valor); sello reporte.estado_cambiado con estado_anterior, estado_nuevo, justificacion y moderador_hash (pseudónimo sha256 truncado, sin PII) en events_raw con rollback si falla. CORE-005 R4 (#206, ADR-038): GET /api/reportes/mios — suscripción del reportero autenticada (requireJwt): los reportes del ciudadano por created_by_hash (pseudónimo sha256 truncado, sin PII — Ley 25.326, ADR-027) con estado y las justificaciones de cada transición derivadas 1:1 de los sellos reporte.estado_cambiado en events_raw (única fuente de verdad, ADR-032), incluido el descartado (su historial es del reportero: la transparencia del propio reclamo es suya); GET /api/reportes/{id}/historial — historial público anónimo del reporte derivado de los sellos reporte.estado_cambiado en events_raw (nunca una tabla mutable; 1:1 con los sellos en orden; descartado nunca publicable → 404; sin transiciones → lista vacía honesta R15; contrato ReporteHistorialSchema de R1 valida cada transición). CORE-005 R5 (#206, ADR-039): duplicados sugeridos por proximidad — la respuesta del POST /api/reportes (201 y reintento idempotente 200) incluye duplicados_sugeridos: reportes abiertos reales (received|evaluating|in_progress, is_synthetic = false) del mismo nodo dentro del radio (ST_DWithin sobre reportes.geom — pre-caja en grados por el índice GiST + distancia exacta en metros vía geography; REPORTES_DUPLICADOS_RADIO_M, default 100 m) con distancia_m; sugerencia de lectura, NUNCA fusión automática (la decisión de marcar duplicado es humana, con sello); duplicados_verificados: false honesto (R15) si la consulta de sugerencia falla tras un alta ya acreditada."
+    "version": "7.31.0",
+    "description": "Reconciliado CORE-004 (regla documental, #87): documenta todas las rutas montadas en apps/api/src/app.ts. R1: 11 rutas v7.7.0. R3 (ADR-031): /api/auth/* + system.* reservado (H-01). EV-031/EV-032. R4a (ADR-032): transporte Redis Streams (stream events:raw) — events_raw única fuente de verdad, publish fail-open. R5a (auditoría #99–#102): rate limiting 429 por IP+hash(email) en /api/auth/{register,login} (header Retry-After); 5xx sanitizados sin mensajes internos. R5b (dominio activos, #87): /api/activos — POST ciudadano autenticado con pseudónimo sha256 sin PII (Ley 25.326), GET público anónimo con recorte espacial bbox (PostGIS), PATCH /api/activos/{id}/estado para moderación moderador|admin; sellos activo.propuesto y activo.estado_cambiado en events_raw con rollback si el sello falla. NODO-CAPITAL NCAP-R6 (#158, Bloque 9 — Banco de Potencialidades): /api/oportunidades — registro ciudadano autenticado de capacidades, demandas, vacíos y vínculos del desarrollo local (evidencia obligatoria, actores nombrados con consentimiento confirmado, pseudónimo sha256 sin PII, anti-PII server-side, idempotencia por hash único, contexto territorial nodo+subnodo SIN geometría propia), GET público anónimo con filtros ('discarded' nunca se publica), PATCH /api/oportunidades/{id}/estado moderador|admin con matriz de transiciones del ciclo de vida (400 salto inválido, 409 sin transición); sellos oportunidad.propuesta y oportunidad.estado_cambiado en events_raw con rollback si fallan. NODO-VIG VIG-001 (#167/#171): /api/nodos/{key}/subnodos — jerarquía territorial del Valle de Iglesia (distrito → paraje → subparaje + localidad INDEC; primer lote de 34 entidades ratificado por la DH 2026-10-13), lectura pública con filtros ?type= y ?parent= (none = hijos directos del nodo); lat/lng solo con punto público BAHRA/Georef — null honesto (R15). NODO-VIG VIG-002 (NVIG-R2 #169, épica #167): /api/activos multimodal — tipos local|prestador|experiencia|observacion, contexto subnodo validado contra subnodos, clasificaciones N1→N3 de la taxonomía VIG-000 (filtro ?n1=), procedencia ADR-035, consentimiento granular Ley 25.326, visibilidad ADR-036 (restricted excluido de toda lectura pública — custodia VIG-004) y estado archivado (retira del catálogo vivo); semilla verificada de 6 activos del Valle de Iglesia. NODO-VIG VIG-003 (NVIG-R3 #182, épica #167): /api/nodos/{key}/kpis — KPIs materializados del nodo (kpi_snapshots): set honesto v1 de 9 KPIs agregados sin PII (Ley 25.326) re-computados desde el dominio por el consumidor vig003-kpi del worker (upsert idempotente por nodo_key+kpi_key, nunca incrementos); visibilidad restricted excluida del cálculo (ADR-036); cobertura v1 null honesto (R15); lectura pública anónima, 404 nodo inexistente, count 0 honesto. NODO-VIG VIG-004 (NVIG-R6 #173, épica #167): /api/patrimonio/{activoId} — ficha patrimonial pública (declaratoria, conservación, reglas de acceso con fuente, punto público de acceso, sensible_status honesto) NUNCA el campo `sensible` ni `sensible_nota` (ADR-036); custodia PATCH moderador|admin con transición de visibilidad ADR-036 y sello patrimonio.custodiado en events_raw con rollback; la ficha se publica también para restricted (la declaratoria es registro público) sin el punto propio del activo, NODO-VIG VIG-005 (NVIG-R7 #174, épica #167): /api/activos/{id}/productos — catálogo de productos del activo (tabla productos 1:N, slug único por activo): GET público anónimo y alta ciudadana autenticada que nace 'propuesto' (autor = pseudónimo sha256(usuario_id) sin PII, Ley 25.326; anti-PII server-side antes de persistir, ADR-020; sello producto.propuesto en events_raw con rollback si falla); PATCH /api/productos/{productoId}/estado — moderación moderador|admin (aprobado|rechazado|archivado; sello producto.estado_cambiado en events_raw con rollback si falla); GET /api/operativa/{activoId} — operativa pública del activo (horario, temporada de picos, capacidad honesta R15 — capacity_status unknown: distinguido ≠ habilitado; habilitación con verificación); filtros ?producto= y ?mes= en /api/activos (slug de producto aprobado; mes 1-12 por temporada del activo — operativa o producto aprobado); visibilidad restricted excluida de toda lectura y escritura (ADR-036). NODO-VIG VIG-006 (NVIG-R8 #188, épica #167): /api/nodos/{key}/ask — consulta territorial ética SIN LLM (decisión DH ratificada 2026-10-14): recuperación full-text nativa PostgreSQL en español sobre rag_index (índice de prosa autorizada derivada del dominio: subnodos, activos aprobados no restricted con ficha patrimonial y operativa públicas, KPIs — upsert idempotente por nodo_key+source_type+source_id + delete lógico; NUNCA restricted ni sensible ni PII, ADR-036/Ley 25.326); respuesta Dato–Interpretación–Sugerencia con plantillas autorizadas por dominio (patrimonial|productivo_rural|turistico|territorial — nada generado; sin fragmentos → null honesto R15), confidence derivado de la cobertura de fuentes y human_review pending (revisión humana habilitada); lectura pública anónima con filtros subnodo y n1; 404 nodo inexistente, 500 sanitizado. NODO-VIG VIG-007 (NVIG-R9 #193, épica #167): /api/showcase — recorrido federado de la demo final (Caucete → Capital → Valle de Iglesia): lectura pública anónima del estado REAL de cada nodo (counts derivados de las tablas de dominio con exclusión ADR-036 — las fichas patrimoniales cuentan también para restricted: la declaratoria es registro público, decisión DH VIG-004; un nodo sin snapshots → kpis 0 honesto, R15), guion ejecutable referenciado (docs/nodes/valle-de-iglesia/VIG-007-DEMO-FINAL.md: 13 pasos, 4 escenarios, 10 criterios con estado real); 500 sanitizado (AUD-06 #100). NODO-CAU R2 (#138/#147, ADR-035): /api/fuentes — catálogo público y anónimo de fuentes espaciales de procedencia (15 fuentes seed: organismo, URL estable cuando existe, tipo de acceso, licencia declarada, estado honesto de disponibilidad — verificación 2026-10-11, trazas en #147 — y cautela central; el catálogo es registro de procedencia, no de datos — R15) y /api/fuentes/{key} ficha pública; /api/ingestas — alta curada por admin (decisión DH 2026-10-15) con NC-EV-09: procedencia completa obligatoria (fuente del catálogo, capa/servicio, fecha de acceso y de corte, CRS origen/normalizado, escala/precisión, id externo y transformaciones opcionales; anti-PII server-side antes de persistir, idempotencia por hash único, sello ingesta.creada en events_raw con rollback) + lectura pública SOLO de lo publicado (?nodo= filtro); /api/ingestas/{id} — ficha pública de una ingesta publicada (en curso → 404 sin eco, R15); PATCH /api/ingestas/{id}/estado — pipeline admin solo hacia adelante: recibido → validado_tecnicamente → validado_territorialmente → publicado (salto inválido 400, mismo estado 409, sello ingesta.estado_cambiado en events_raw con rollback); FuenteLabelRealSchema (ADR-035 regla 1): nada real con label ilustrativo o sin Organismo · referencia CORE-005 R2 (#206, reportes ciudadanos): /api/reportes — alta ciudadana autenticada de reportes territoriales (autor = pseudónimo sha256(usuario_id) sin PII, Ley 25.326; anti-PII server-side antes de persistir; categoría validada contra el vocabulario del nodo — 404 nodo inexistente, 400 categoría ajena; idempotencia por hash único — reintento 200 idempotente; sello reporte.recibido en events_raw con rollback si falla). CORE-005 R3 (#206, ADR-038): PATCH /api/reportes/{id}/estado — moderación transparente del reporte: requireRole moderador|admin; justificación pública OBLIGATORIA por transición (>=10 caracteres — 400 sin justificación); matriz REPORTE_TRANSICIONES del ciclo received → evaluating → in_progress → resolved (+descartado lateral; resolved y descartado terminales en v1 — 400 salto inválido, 409 sin transición); anti-PII sobre la justificación antes de sellar (sin eco del valor); sello reporte.estado_cambiado con estado_anterior, estado_nuevo, justificacion y moderador_hash (pseudónimo sha256 truncado, sin PII) en events_raw con rollback si falla. CORE-005 R4 (#206, ADR-038): GET /api/reportes/mios — suscripción del reportero autenticada (requireJwt): los reportes del ciudadano por created_by_hash (pseudónimo sha256 truncado, sin PII — Ley 25.326, ADR-027) con estado y las justificaciones de cada transición derivadas 1:1 de los sellos reporte.estado_cambiado en events_raw (única fuente de verdad, ADR-032), incluido el descartado (su historial es del reportero: la transparencia del propio reclamo es suya); GET /api/reportes/{id}/historial — historial público anónimo del reporte derivado de los sellos reporte.estado_cambiado en events_raw (nunca una tabla mutable; 1:1 con los sellos en orden; descartado nunca publicable → 404; sin transiciones → lista vacía honesta R15; contrato ReporteHistorialSchema de R1 valida cada transición). CORE-005 R5 (#206, ADR-039): duplicados sugeridos por proximidad — la respuesta del POST /api/reportes (201 y reintento idempotente 200) incluye duplicados_sugeridos: reportes abiertos reales (received|evaluating|in_progress, is_synthetic = false) del mismo nodo dentro del radio (ST_DWithin sobre reportes.geom — pre-caja en grados por el índice GiST + distancia exacta en metros vía geography; REPORTES_DUPLICADOS_RADIO_M, default 100 m) con distancia_m; sugerencia de lectura, NUNCA fusión automática (la decisión de marcar duplicado es humana, con sello); duplicados_verificados: false honesto (R15) si la consulta de sugerencia falla tras un alta ya acreditada. MARKET-CAP MK-1 (#243, sub-épica #152 — Mercado de Proximidad del nodo Capital, diseño MK-0 ratificado por la DH): /api/comercios — GET público y anónimo con filtros rubro (canon de 11 categorías del lote 3A), subnodo, habilitación, nodo (multinodo desde día 1) y bbox PostGIS; SOLO lo aprobado se publica (moderación primero, R15) — y POST ciudadano autenticado (requireJwt) que nace propuesto con pseudónimo sha256 sin PII (Ley 25.326), anti-PII server-side e idempotencia por hash; /api/comercios/{id} — GET público de la ficha y PATCH de atributos SOLO por el titular verificado (403 sin eco del motivo, Ley 25.326); /api/comercios/{id}/estado — PATCH de moderación moderador|admin con matriz COMERCIO_TRANSICIONES (400 salto inválido, 409 ya en estado) y justificación pública anti-PII (ADR-038); /api/comercios/{id}/titular — POST de reclamo ciudadano o verificación de moderación: el identificador es PII POR DISEÑO, se hashea ANTES de persistir y nunca sale en claro (relay por plataforma, sin contacto en v1); sellos comercio.ingestado, comercio.estado_cambiado, comercio.atributos_editados, comercio.titularidad_reclamada y comercio.titularidad_verificada en events_raw (ADR-032: events_raw única fuente de verdad, rollback si el sello falla); 404 sin eco (ADR-036) y 500 sanitizado (AUD-06). MARKET-CAP MK-2 (#254, sub-épica #152 — confianza del Mercado de Proximidad, diseño MK2 ratificado por la DH): PATCH /api/comercios/{id}/habilitacion — habilitación COMERCIAL editable por el titular verificado o moderador|admin (403 sin eco del motivo, Ley 25.326) con justificación pública anti-PII (ADR-038, >= 10 caracteres, sin eco del valor) y sello comercio.habilitacion_actualizada en events_raw con rollback (409 ya en ese estado — sin transición no hay evento); GET /api/comercios/{id}/historial — bitácora pública (F-3) derivada 1:1 de los sellos comercio.* en events_raw (única fuente de verdad, ADR-032 — nunca una tabla mutable; lista blanca por sello de 7 variantes; identificador_hash JAMÁS expuesto, Ley 25.326; guard 404 idéntico al GET del comercio, ADR-036; ficha sin transiciones → lista vacía honesta R15; salida validada por ComercioHistorialSchema). AUD-08 (#103): reconciliador de transporte del worker — re-publica al stream events:raw las referencias faltantes de events_raw (los 3 consumer groups se reparan solos por idempotencia); grupos en 0 + bootstrap de despliegue SETID 0 UNA VEZ (checkpoint system.reconcile_bootstrap); pasada cada 60 s con ventana 24 h + completa al arranque; projection_lag público en GET /api/health (D4) y stream: true|false en POST /api/events (H2). M1 observabilidad (#288): logs JSON estructurados en API y worker — una línea JSON por request ({ts, level, msg, request_id, method, path, status, duration_ms}) y header X-Request-Id en toda respuesta; el handler de errores reutiliza el request_id (correlación AUD-06). Los logs son observabilidad efímera de operación: events_raw sigue siendo la única fuente de verdad (ADR-032)."
   },
   "paths": {
+    "/api/health/detailed": {
+      "get": {
+        "summary": "A1 observabilidad (#290, hoja M1, RUNBOOK seccion 6): salud detallada por componente — requireJwt + rol admin (ADR-031); expone internals operativos (latencias, XLEN del stream events:raw, XINFO GROUPS con lag/pending por consumer group, projection_lag non-system vs non-system y proceso). R15: sin base o sin Redis responde 200 con el estado parcial real (null declarado, status degraded), nunca OK silencioso; GET /api/health sigue siendo el health publico honesto (R5)",
+        "responses": {
+          "200": {
+            "description": "OK — {status: ok|degraded, db: {connected, latency_ms}, redis: {ping, latency_ms, stream, consumer_groups}, projection_lag: {events_raw_no_system, event_projections, lag}|null, process: {uptime_seconds, node_version, pid, memory_rss_mb}, timestamp}"
+          },
+          "401": {
+            "description": "Bearer token ausente o invalido"
+          },
+          "403": {
+            "description": "Rol insuficiente (requiere admin)"
+          },
+          "503": {
+            "description": "Sin JWT_SECRET (identidad cerrada, fail-closed)"
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "summary": "Honest Runtime Health (R5, mode resuelto desde events_raw — R7)",
         "responses": {
           "200": {
-            "description": "OK (mode: real) o estado declarado (synthetic | degraded); redis: ok|down — transporte Redis Streams (ADR-032, R4a)"
+            "description": "OK (mode: real) o estado declarado (synthetic | degraded); redis: ok|down — transporte Redis Streams (ADR-032, R4a); projection_lag: {events_raw_no_system, event_projections, lag} | null — lag de proyección non-system vs non-system (AUD-08 #103, D4; null honesto sin base, R15)"
           }
         }
       }
@@ -560,7 +579,7 @@
             "description": "Duplicate (re-ingesta idempotente: mismo hash, original intacto)"
           },
           "201": {
-            "description": "Created — persiste en events_raw (única verdad) y publica referencia al stream events:raw (transporte ADR-032, fail-open)"
+            "description": "Created — persiste en events_raw (única verdad) y publica referencia al stream events:raw (transporte ADR-032, fail-open); declara stream: true|false — false = hueco real que el reconciliador AUD-08 re-publica (H2, #103)"
           },
           "400": {
             "description": "Bad Request (type y occurred_at inválidos, o PII detectada — sin eco del valor)"
@@ -1260,6 +1279,358 @@
           },
           "404": {
             "description": "Reporte no encontrado o descartado (nunca publicable — honesto, R15)"
+          },
+          "500": {
+            "description": "Error interno sanitizado (R5a, #100)"
+          }
+        }
+      }
+    },
+    "/api/patrimonio/{activoId}/observaciones": {
+      "get": {
+        "summary": "NODO-VIG VIG-009 (#241, épica #239): bandeja pública append-only de observaciones de estado patrimonial — anónima; cada observación con fecha, checklist de 5 dimensiones (grietas, cornisas, techos, maderos, muros), evidencia con procedencia ADR-035 y observador como hash pseudónimo sha256 truncado sin PII (Ley 25.326, ADR-027); el estado de conservación global se declara SIEMPRE no verificado aquí — la observación es testimonio, jamás diagnóstico (R15): solo un informe técnico oficial acredita estado",
+        "parameters": [
+          {
+            "name": "activoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK — envelope {success, data, count, estado_conservacion_global (SIEMPRE null), estado_conservacion_nota}; data: observaciones (id, activo_id, fecha_observacion, checklist, nota, evidencia, created_by_hash, created_at)"
+          },
+          "404": {
+            "description": "Activo no encontrado"
+          },
+          "500": {
+            "description": "Error interno sanitizado (R5a, #100)"
+          }
+        }
+      },
+      "post": {
+        "summary": "NODO-VIG VIG-009 (#241, épica #239): alta ciudadana autenticada (requireJwt) de observación de estado patrimonial append-only, SOLO sobre activos con ficha patrimonial VIG-004; testimonio del EDIFICIO, nunca de personas — anti-PII sobre nota y evidencia (ADR-020 cond. 1, Ley 25.326); autor como hash pseudónimo sha256 truncado; idempotencia por hash único (autor|activo|fecha|checklist|nota) — la duplicada responde 200 duplicada:true sin nueva fila ni sello; sello patrimonio.observado en events_raw con rollback: sin sello no hay observación acreditada (ADR-032); el estado de conservación global de la ficha NO cambia por observaciones (R15)",
+        "parameters": [
+          {
+            "name": "activoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Observación duplicada (idempotencia por hash): duplicada:true, sin nueva fila ni sello"
+          },
+          "201": {
+            "description": "Observación registrada + sello patrimonio.observado (payload {activo_id, observacion_id, fecha_observacion, checklist, observador_hash} — sin PII)"
+          },
+          "400": {
+            "description": "Payload inválido (contrato Zod) o rechazado por anti-PII (ADR-020 cond. 1, Ley 25.326)"
+          },
+          "401": {
+            "description": "Bearer token ausente o inválido"
+          },
+          "404": {
+            "description": "Activo no encontrado o sin ficha patrimonial VIG-004"
+          },
+          "500": {
+            "description": "Error interno sanitizado (R5a, #100)"
+          },
+          "503": {
+            "description": "Sin JWT_SECRET (identidad cerrada, fail-closed)"
+          }
+        }
+      }
+    },
+    "/api/comercios": {
+      "get": {
+        "summary": "MARKET-CAP MK-1 (#243, sub-épica #152): lectura pública y anónima de comercios del Mercado de Proximidad — el comercio ES un activo (Opción A ratificada: tipo local|prestador) + ficha 1:1 comercio_ficha; filtros ?rubro= (canon de 11 categorías del lote 3A, NO las 4 legadas de agent.google) ?subnodo= ?habilitacion= ?nodo= (multinodo desde día 1) y ?bbox= (recorte espacial PostGIS, SRID=4326, índice GiST); SOLO lo aprobado se publica (moderación primero, R15); sin dato honesto: habilitación {estado: sin_dato}, titularidad {estado: sin_reclamo} sin revelar si hay reclamo (Ley 25.326)",
+        "parameters": [
+          {
+            "name": "rubro",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "subnodo",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "habilitacion",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "nodo",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "bbox",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK — envelope {success, data, count}; solo comercios aprobados"
+          },
+          "400": {
+            "description": "rubro/subnodo/habilitacion/nodo/bbox inválidos"
+          },
+          "500": {
+            "description": "Error interno sanitizado (R5a, #100)"
+          }
+        }
+      },
+      "post": {
+        "summary": "MARKET-CAP MK-1 (#243): propuesta ciudadana autenticada (requireJwt) — el comercio nace propuesto con pseudónimo sha256(usuario_id) sin PII (Ley 25.326, ADR-027); anti-PII server-side antes de persistir; subnodo validado contra los subnodos del nodo declarado (400 ajeno, 404 nodo inexistente); idempotencia por hash de alta; sello comercio.ingestado en events_raw con rollback si falla; frontera MK-0: la habilitación COMERCIAL vive en comercio_ficha (la de prestadores Ley 2400-T sigue en activos_operativa.habilitacion); v1 SIN pagos (MK-5 fase 2, ADR propio Ley 24.240/AFIP) y SIN PII de contacto (relay por plataforma, decisión DH)",
+        "responses": {
+          "200": {
+            "description": "Reintento idempotente del mismo alta (hash único) — envelope {success, data, idempotente: true}, sin sello nuevo"
+          },
+          "201": {
+            "description": "Comercio creado (estado: propuesto) + sello comercio.ingestado en events_raw"
+          },
+          "400": {
+            "description": "Datos inválidos (contrato Zod), PII detectada (sin eco del valor) o subnodo inexistente o ajeno al nodo declarado"
+          },
+          "401": {
+            "description": "Bearer token ausente o inválido"
+          },
+          "404": {
+            "description": "Nodo no encontrado"
+          },
+          "409": {
+            "description": "Colisión de hash de alta"
+          },
+          "500": {
+            "description": "Fallo al crear o sellar el alta"
+          },
+          "503": {
+            "description": "Sin JWT_SECRET (identidad cerrada, fail-closed)"
+          }
+        }
+      }
+    },
+    "/api/comercios/{id}": {
+      "get": {
+        "summary": "MARKET-CAP MK-1 (#243): ficha pública del comercio — dominio del mercado (rubro del canon de 11 categorías, atributos, habilitación COMERCIAL, titularidad) SIN PII: el identificador del reclamo nunca sale en claro (solo su hash vive en el sello) y el titular verificado edita vía PATCH; 404 honesto (R15)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK — envelope {success, data} con la ficha del comercio"
+          },
+          "404": {
+            "description": "Comercio no encontrado (honesto, R15)"
+          },
+          "500": {
+            "description": "Error interno sanitizado (R5a, #100)"
+          }
+        }
+      },
+      "patch": {
+        "summary": "MARKET-CAP MK-1 (#243): edición de atributos SOLO por el titular verificado (requireJwt) — 403 sin eco del motivo (Ley 25.326: no se revela si existe reclamo ni de quién); sello comercio.atributos_editados con rollback (extensión mínima documentada del MK-0 §2.4: toda escritura queda sellada)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Atributos actualizados + sello comercio.atributos_editados en events_raw"
+          },
+          "400": {
+            "description": "Datos inválidos (contrato Zod)"
+          },
+          "401": {
+            "description": "Bearer token ausente o inválido"
+          },
+          "403": {
+            "description": "Solo el titular verificado puede editar la ficha (sin eco del motivo, Ley 25.326)"
+          },
+          "404": {
+            "description": "Comercio no encontrado (honesto, R15)"
+          },
+          "500": {
+            "description": "Fallo al editar o sellar"
+          },
+          "503": {
+            "description": "Sin JWT_SECRET (identidad cerrada, fail-closed)"
+          }
+        }
+      }
+    },
+    "/api/comercios/{id}/estado": {
+      "patch": {
+        "summary": "MARKET-CAP MK-1 (#243, ADR-038): moderación del comercio — requireRole moderador|admin; justificación pública obligatoria por transición (>= 10 caracteres, 400 sin justificación); matriz COMERCIO_TRANSICIONES del ciclo (400 salto inválido, 409 ya en estado — sin transición no hay evento); anti-PII sobre la justificación antes de sellar (sin eco del valor); sello comercio.estado_cambiado con {estado_anterior, estado_nuevo, justificacion, moderador_hash} en events_raw con rollback si falla",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Estado actualizado + sello comercio.estado_cambiado en events_raw"
+          },
+          "400": {
+            "description": "Salto inválido (matriz COMERCIO_TRANSICIONES), contrato Zod o justificación < 10 caracteres — sin eco del valor"
+          },
+          "401": {
+            "description": "Bearer token ausente o inválido"
+          },
+          "403": {
+            "description": "Rol insuficiente (requiere moderador|admin)"
+          },
+          "404": {
+            "description": "Comercio no encontrado (honesto, R15)"
+          },
+          "409": {
+            "description": "El comercio ya está en ese estado (sin transición no hay evento)"
+          },
+          "500": {
+            "description": "Error interno sanitizado (R5a, #100)"
+          },
+          "503": {
+            "description": "Sin JWT_SECRET (identidad cerrada, fail-closed)"
+          }
+        }
+      }
+    },
+    "/api/comercios/{id}/titular": {
+      "post": {
+        "summary": "MARKET-CAP MK-1 (#243): reclamo de titularidad ciudadano (requireJwt — la titularidad nace reclamada con método declarado y pseudónimo del reclamante) o verificación de moderación (moderador|admin sobre un reclamo pendiente) — el identificador (expediente/cuit) es PII POR DISEÑO: no pasa el anti-PII de texto libre, se hashea ANTES de persistir y nunca sale en claro (Ley 25.326; solo su hash vive en el sello); relay por plataforma sin contacto en v1; sellos comercio.titularidad_reclamada y comercio.titularidad_verificada con rollback; la titularidad verificada habilita la edición del titular (PATCH /api/comercios/{id})",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Reclamo registrado (titularidad: reclamada) o verificación de moderación (titularidad: verificada) + sello comercio.titularidad_reclamada / comercio.titularidad_verificada en events_raw"
+          },
+          "400": {
+            "description": "Datos inválidos (contrato Zod)"
+          },
+          "401": {
+            "description": "Bearer token ausente o inválido"
+          },
+          "404": {
+            "description": "Comercio no encontrado (honesto, R15)"
+          },
+          "409": {
+            "description": "La titularidad ya está reclamada o verificada (reclamo) / no está reclamada (verificación)"
+          },
+          "500": {
+            "description": "Fallo al sellar el reclamo o la verificación"
+          },
+          "503": {
+            "description": "Sin JWT_SECRET (identidad cerrada, fail-closed)"
+          }
+        }
+      }
+    },
+    "/api/comercios/{id}/habilitacion": {
+      "patch": {
+        "summary": "MARKET-CAP MK-2 (#254, ADR-038): habilitación COMERCIAL del comercio — titular verificado o moderador|admin (403 sin eco del motivo, Ley 25.326); justificación pública obligatoria (>= 10 caracteres, 400 sin justificación); anti-PII sobre la justificación antes de sellar (sin eco del valor); sello comercio.habilitacion_actualizada con {estado_anterior, estado_nuevo, justificacion, autor_hash} en events_raw con rollback si falla; 409 ya en ese estado (sin transición no hay evento)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Habilitación actualizada + sello comercio.habilitacion_actualizada en events_raw"
+          },
+          "400": {
+            "description": "Contrato Zod o justificación < 10 caracteres — sin eco del valor"
+          },
+          "401": {
+            "description": "Bearer token ausente o inválido"
+          },
+          "403": {
+            "description": "Rol insuficiente o no titular verificado (sin eco del motivo, Ley 25.326)"
+          },
+          "404": {
+            "description": "Comercio no encontrado (honesto, R15)"
+          },
+          "409": {
+            "description": "El comercio ya tiene esa habilitación (sin transición no hay evento)"
+          },
+          "500": {
+            "description": "Error interno sanitizado (R5a, #100)"
+          },
+          "503": {
+            "description": "Sin JWT_SECRET (identidad cerrada, fail-closed)"
+          }
+        }
+      }
+    },
+    "/api/comercios/{id}/historial": {
+      "get": {
+        "summary": "MARKET-CAP MK-2 (#254): bitácora pública del comercio (F-3) — entradas derivadas 1:1 de los sellos comercio.* en events_raw (única fuente de verdad, ADR-032 — nunca una tabla mutable), lista blanca por sello (COMERCIO_SELLOS_HISTORIAL, 7 variantes); identificador_hash JAMÁS expuesto (Ley 25.326 — solo su hash vivió en el sello); guard 404 idéntico al GET del comercio (ADR-036); ficha sin transiciones → lista vacía honesta (R15); salida validada por ComercioHistorialSchema en @delocalsoy/contracts",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK — envelope {success, data, count}; data: {comercio_id, entradas[]: {tipo, occurred_at, sintetico y campos por variante de sello}}"
+          },
+          "404": {
+            "description": "Comercio no encontrado (honesto, R15)"
           },
           "500": {
             "description": "Error interno sanitizado (R5a, #100)"

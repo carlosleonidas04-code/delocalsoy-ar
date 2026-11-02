@@ -142,11 +142,27 @@ describe.skipIf(!dbUp)('KPIs del nodo VIG-003 (#182, épica #167)', () => {
     expect(res.body.success).toBe(false);
   });
 
-  it('recompute de caucete (sin subnodos) → 9 KPIs honestos', async () => {
+  it('recompute de caucete (base territorial activada, NODO-CAU R6 #145) → 9 KPIs honestos', async () => {
+    // caucete ya no está sin subnodos: NODO-CAU R6 (#145) sembró 10 entidades
+    // Georef/INDEC (1 district + 9 locality) — las aserciones se derivan del
+    // dominio vivo con el MISMO predicado del test de iglesia (R15).
+    const subnodosRes = await getJson('/api/nodos/caucete/subnodos');
+    const subnodos: any[] = subnodosRes.body.data ?? [];
+    expect(subnodos.length).toBe(10);
+
     const map = await kpisDe('caucete');
-    expect(map.get('subnodos_total')?.valor).toBe(0);
-    expect(map.get('subnodos_por_distrito')?.detalles).toEqual({});
-    expect(map.get('subnodos_con_punto')?.valor).toBe(0);
+    expect(map.get('subnodos_total')?.valor).toBe(subnodos.length);
+    const conPunto = subnodos.filter((s: any) => s.lat !== null && s.lng !== null).length;
+    expect(map.get('subnodos_con_punto')?.valor).toBe(conPunto);
+    // Por distrito: 1 district (localidad censal Caucete) + hijos directos
+    // del nodo → '_sin_distrito' — cada no-distrito cuenta exactamente 1 vez.
+    const porDistrito = map.get('subnodos_por_distrito')?.detalles ?? {};
+    const distritos = new Set(subnodos.filter((s: any) => s.type === 'district').map((s: any) => s.key));
+    const sumaDistrito = Object.values(porDistrito).reduce((a: number, b: number) => a + b, 0);
+    expect(sumaDistrito).toBe(subnodos.length - distritos.size);
+    for (const clave of Object.keys(porDistrito)) {
+      expect(clave === '_sin_distrito' || distritos.has(clave)).toBe(true);
+    }
     expect(map.get('cobertura_geometrica')?.valor).toBeNull();
   });
 

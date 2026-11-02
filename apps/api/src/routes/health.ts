@@ -79,6 +79,24 @@ router.get('/', async (_req: Request, res: Response) => {
   // ADR-032 (R4a): transporte Redis Streams — honesto como el resto del health.
   const redis = await pingRedis();
 
+  // AUD-08 (#103, D4): lag público de proyección. Comparación non-system vs
+  // non-system (H6): los sellos system.* (modo, sesiones, checkpoints del
+  // reconciliador) viven de ambos lados o de ninguno — el criterio de éxito
+  // de la auditoría es events_raw_no_system = event_projections. Sin base
+  // legible: null honesto (R15) — nunca un número inventado.
+  let projectionLag: { events_raw_no_system: number; event_projections: number; lag: number } | null = null;
+  if (db) {
+    try {
+      const [eventsRawNoSystem, eventProjections] = await Promise.all([
+        prisma.events_raw.count({ where: { NOT: { type: { startsWith: 'system.' } } } }),
+        prisma.event_projections.count({ where: { NOT: { event_type: { startsWith: 'system.' } } } }),
+      ]);
+      projectionLag = { events_raw_no_system: eventsRawNoSystem, event_projections: eventProjections, lag: eventsRawNoSystem - eventProjections };
+    } catch {
+      projectionLag = null;
+    }
+  }
+
   res.json({
     status: effectiveMode === 'real' ? 'ok' : effectiveMode,
     service: 'delocalsoy-ar-api',
@@ -89,6 +107,7 @@ router.get('/', async (_req: Request, res: Response) => {
     modeSource: declared.source, // events_raw | process (R7)
     dataSource: db ? 'postgres' : 'none',
     redis, // ok | down — transporte Redis Streams (ADR-032, R4a)
+    projection_lag: projectionLag, // AUD-08 (#103, D4): {events_raw_no_system, event_projections, lag} | null honesto sin base
     branchProtection: process.env.BRANCH_PROTECTION === 'true', // honesto: false hasta que exista la regla de rama (issue #25)
     evidencias: evidenciasCount,
     timestamp: new Date().toISOString(),

@@ -1,0 +1,74 @@
+/**
+ * design/tokens.css
+ * -----------------------------------------------------------------------------
+ * DELocalSoy.AR — Design Tokens Canónicos
+ * §3B: 43 Tokens Epistémicos Honestos (--honest-*)
+ * WCAG AA Conforme · Cuatro Señales Independientes: Color, Trazo, Glifo, Microcopia
+ * -----------------------------------------------------------------------------
+ */
+
+:root {
+  /* §3B.1 — ESTADO HONESTO: VALIDADO */
+  --honest-validado-color: #00A86B;
+  --honest-validado-color-rgb: 0, 168, 107;
+  --honest-validado-bg: rgba(0, 168, 107, 0.08);
+  --honest-validado-bg-hover: rgba(0, 168, 107, 0.14);
+  --honest-validado-border-color: #00A86B;
+  --honest-validado-border-style: solid;
+  --honest-validado-border-width: 2px;
+  --honest-validado-glyph: '●';
+  --honest-validado-text: #065F46;
+  --honest-validado-text-dark: #34D399;
+  --honest-validado-microcopy: 'Acreditado criptográficamente';
+
+  /* §3B.2 — ESTADO HONESTO: SINTETICO */
+  --honest-sintetico-color: #FFC72C;
+  --honest-sintetico-color-rgb: 255, 199, 44;
+  --honest-sintetico-bg: rgba(255, 199, 44, 0.12);
+  --honest-sintetico-bg-hover: rgba(255, 199, 44, 0.20);
+  --honest-sintetico-border-color: #D97706;
+  --honest-sintetico-border-style: dashed;
+  --honest-sintetico-border-width: 1.5px;
+  --honest-sintetico-glyph: '✦';
+  --honest-sintetico-text: #92400E;
+  --honest-sintetico-text-dark: #FBBF24;
+  --honest-sintetico-microcopy: 'Inferencia heurística / Estimación';
+
+  /* §3B.3 — ESTADO HONESTO: COMUNITARIO */
+  --honest-comunitario-color: #E06D53;
+  --honest-comunitario-color-rgb: 224, 109, 83;
+  --honest-comunitario-bg: rgba(224, 109, 83, 0.09);
+  --honest-comunitario-bg-hover: rgba(224, 109, 83, 0.16);
+  --honest-comunitario-border-color: #EA580C;
+  --honest-comunitario-border-style: dotted;
+  --honest-comunitario-border-width: 1.5px;
+  --honest-comunitario-border-radius: 0.44rem;
+  --honest-comunitario-glyph: '◈';
+  --honest-comunitario-text: #9A3412;
+  --honest-comunitario-text-dark: #FB923C;
+  --honest-comunitario-microcopy: 'Aporte territorial de asamblea';
+
+  /* §3B.4 — ESTADO HONESTO: PENDIENTE */
+  --honest-pendiente-color: #94A3B8;
+  --honest-pendiente-color-rgb: 148, 163, 184;
+  --honest-pendiente-bg: rgba(148, 163, 184, 0.09);
+  --honest-pendiente-bg-hover: rgba(148, 163, 184, 0.16);
+  --honest-pendiente-border-color: #64748B;
+  --honest-pendiente-border-style: dashed;
+  --honest-pendiente-border-width: 1px;
+  --honest-pendiente-glyph: '◐';
+  --honest-pendiente-text: #475569;
+  --honest-pendiente-text-dark: #CBD5E1;
+  --honest-pendiente-microcopy: 'Relevo en curso / Pendiente R9';
+
+  /* §3B.5 — TOKENS CARTOGRAFÍA (SRID 4326) */
+  --honest-map-centroid-ring: rgba(0, 168, 107, 0.35);
+  --honest-map-stroke-validado: #00A86B;
+  --honest-map-stroke-comunitario: #E06D53;
+  --honest-map-stroke-sintetico: #FFC72C;
+  --honest-map-stroke-pendiente: #94A3B8;
+  --honest-map-fill-opacity: 0.18;
+  --honest-transition-duration: 200ms;
+  --honest-focus-ring-width: 2px;
+  --honest-focus-ring-color: #FFC72C;
+}

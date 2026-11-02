@@ -51,10 +51,140 @@ export const UsuarioRegistroSchema = z.object({
   display_name: z.string().trim().min(1).max(80).optional(),
 });
 
+// MARKET-CAP MK-1 fase 1 (#243, PR #246): dominio del Mercado de Proximidad —
+// re-export del modulo comercios (conflict-neutral v2: zona prefijo común).
+export * from './comercios.js';
+
 export const UsuarioLoginSchema = z.object({
   email: z.string().trim().toLowerCase().email("Email inválido"),
   password: z.string().min(1, "La contraseña es requerida"),
 });
+
+// ─── Serie Contracts NCAP-R2 (PR #233): índice extendido [agent: vibe] ───
+// Decisión DH 2026-10-17: preservar TODOS los bindings inline de main (los consume
+// apps/api) y AÑADIR los 11 módulos canónicos + constantes NCAP-R2 (agent.google;
+// oportunidades.js eliminado por decisión DH 2026-10-17: dominio Bloque 9 canónico único).
+// Colisiones de nombres verificadas: 0 (76 exports de main vs exports de los módulos).
+// HONEST_EPISTEMIC_STATES_PALETTE armonizada al canon ADR-034 por decisión DH
+// 2026-10-17: validado #4ADE80, comunitario #75AADB, pendiente #F2A71B, sintético #FFC72C
+// (valores originales del agente: #00A86B / #E06D53 / #94A3B8 — ver traza del PR #233).
+// 1. Re-exportaciones Modulares Canónicas (Lote 1 + Lote Complementario NCAP-R2)
+export * from './nodoCapital.js';
+export * from './ncap.js';
+export * from './territorios.js';
+export * from './evidencias.js';
+export * from './health.js';
+export * from './openapi.js';
+export * from './plataformaTerritorial.js';
+export * from './activos.js';
+export * from './modeloFederado.js';
+export * from './territorialModel.js';
+export * from './directoryTaxonomy.js';
+export * from './caucete.js';
+// oportunidades.js ELIMINADO (decisión DH 2026-10-17, armonización de dominio #233):
+// duplicaba el dominio Bloque 9 canónico (Oportunidad* inline, PR #160). El vocabulario
+// de economía popular del agente queda documentado en la traza del PR como propuesta futura.
+
+// 2. Definiciones Canónicas Inline y Compatibilidad ADR-021
+export const PROTOCOLO_ACTUAL = 'NCAP-R2';
+export const SRID_CANONICO = 4326;
+export const VERSION_CONTRACTS = '0.6.0-ncap.r2';
+
+/**
+ * Constantes de Paleta de Estados Honestos (WCAG AA & 4 Señales Canónicas)
+ */
+export const HONEST_EPISTEMIC_STATES_PALETTE = {
+  validado: {
+    label: 'Acreditado / Terreno',
+    colorHex: '#4ADE80',
+    bgClass: 'bg-emerald-50 dark:bg-emerald-950/40',
+    borderClass: 'border-emerald-500 border-solid',
+    textClass: 'text-emerald-700 dark:text-emerald-300',
+    glyph: '●',
+    microcopy: 'Acreditado criptográficamente · R15',
+    strokeWidth: 2,
+    borderStyle: 'solid'
+  },
+  sintetico: {
+    label: 'Sintético / Inferencia',
+    colorHex: '#FFC72C',
+    contrastColorHex: '#D97706',
+    bgClass: 'bg-amber-50 dark:bg-amber-950/40',
+    borderClass: 'border-amber-400 border-dashed',
+    textClass: 'text-amber-800 dark:text-amber-300',
+    glyph: '✦',
+    microcopy: 'Inferencia heurística / Estimación',
+    strokeWidth: 1.5,
+    borderStyle: 'dashed'
+  },
+  comunitario: {
+    label: 'Comunitario / Vecinal',
+    colorHex: '#75AADB',
+    bgClass: 'bg-orange-50 dark:bg-orange-950/40',
+    borderClass: 'border-orange-500 border-dotted',
+    textClass: 'text-orange-700 dark:text-orange-300',
+    glyph: '◈',
+    microcopy: 'Aporte territorial de asamblea',
+    strokeWidth: 1.5,
+    borderStyle: 'dotted'
+  },
+  pendiente: {
+    label: 'Pendiente de Auditoría',
+    colorHex: '#F2A71B',
+    bgClass: 'bg-slate-50 dark:bg-slate-900/40',
+    borderClass: 'border-slate-400 border-dashed',
+    textClass: 'text-slate-700 dark:text-slate-300',
+    glyph: '◐',
+    microcopy: 'Relevo en curso · Acreditación R9',
+    strokeWidth: 1,
+    borderStyle: 'dashed'
+  }
+} as const;
+
+/**
+ * Los 3 Nodos Federados Canónicos de San Juan (ADR-021)
+ *
+ * subnodosCount con procedencia (armonización de divergencias #233, decisión DH
+ * 2026-10-17): capital = 6 (vocabulario ratificado R9 2026-10-17, traza #154 comment
+ * 6235922878: sj_capital_centro + sj_capital_desamparados en main + los 4 subnodos del
+ * lote 4; mapeo de nomenclaturas RESUELTO: SUBNODOS_CAPITAL_REGISTRO en nodoCapital.ts, 6 entidades distintas, decisión DH 2026-10-17); iglesia = 52 (VIG-001
+ * lotes 1+2 acreditados en main, EV-040/EV-041); caucete = 0 (R15 honesto: sin
+ * subnodos sembrados en main).
+ */
+export const NODOS_FEDERADOS_REGISTRO = [
+  {
+    id: 'nodo-capital-san-juan',
+    nombre: 'Nodo San Juan Capital',
+    region: 'Valle de Tulum',
+    lat: -31.5375,
+    lng: -68.5252,
+    descripcion: 'Centro cívico, administrativo, comercial y universitario de la provincia',
+    subnodosCount: 6, // ratificado DH 2026-10-17 (traza #154 comment 6235922878)
+    estadoHonesto: 'validado'
+  },
+  {
+    id: 'nodo-valle-de-iglesia',
+    nombre: 'Nodo Valle de Iglesia',
+    region: 'Cordillera Central / Valles Andinos',
+    lat: -30.3800,
+    lng: -69.2000,
+    descripcion: 'Agroecología de altura, cuenca del Río Blanco, termalismo Pismanta y patrimonio protegido',
+    subnodosCount: 52, // main (VIG-001 lotes 1+2, EV-040/EV-041)
+    estadoHonesto: 'validado'
+  },
+  {
+    id: 'nodo-caucete-este',
+    nombre: 'Nodo Caucete Este',
+    region: 'Valle Este & Oasis Irrigado',
+    lat: -31.6510,
+    lng: -68.2810,
+    descripcion: 'Vitivinicultura histórica, Santuario Difunta Correa y corredor biocéanico este',
+    subnodosCount: 0, // R15: sin subnodos sembrados en main
+    estadoHonesto: 'comunitario'
+  }
+] as const;
+
+export type NodoFederadoRegistro = (typeof NODOS_FEDERADOS_REGISTRO)[number];
 
 // ─── CORE-004 R5b (dominio activos, #87) ───
 
@@ -836,6 +966,183 @@ export const ReporteHistorialSchema = z.object({
   reporte_id: z.string(),
   transiciones: z.array(ReporteHistorialEntrySchema),
 });
+
+// ─── NODO-VIG VIG-008 (#240, épica #239): cooperativas — consentimiento institucional ───
+
+// Alcance granular del consentimiento institucional (persona jurídica):
+// cada uso de la identidad de la organización es opt-in explícito — el
+// catálogo y los contactos solo se publican tras asamblea ratificada.
+export const ConsentimientoOrganizacionAlcanceSchema = z.object({
+  ficha: z.boolean(),
+  productos: z.boolean(),
+  fotos: z.boolean(),
+  contacto: z.boolean(),
+});
+
+// Consentimiento de organización (VIG-008 R3): lo firma un ROL institucional
+// del consejo de administración — jamás un nombre civil (ADR-027, Ley
+// 25.326). declaracion: z.literal(true) hace imposible el consentimiento
+// pre-marcado: sin declaración explícita no hay alta ni enriquecimiento
+// (regla VIG-008 ratificada: NINGÚN dato enriquecido se siembra sin
+// consentimiento formal de la persona jurídica).
+export const ConsentimientoOrganizacionSchema = z.object({
+  organizacion_key: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9_]+$/, "organizacion_key: slug en minúsculas y guiones bajos")
+    .max(60),
+  organizacion_tipo: z.enum([
+    "cooperativa",
+    "asociacion_civil",
+    "federacion",
+    "mutual",
+    "otra",
+  ]),
+  firmante_rol: z.enum([
+    "presidente_consejo",
+    "vicepresidente_consejo",
+    "secretario",
+    "tesorero",
+    "sindico",
+    "representante_apoderado",
+  ]),
+  alcance: ConsentimientoOrganizacionAlcanceSchema,
+  vigencia_desde: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "vigencia_desde: YYYY-MM-DD"),
+  vigencia_hasta: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "vigencia_hasta: YYYY-MM-DD")
+    .nullable(),
+  declaracion: z.literal(true),
+});
+
+// Revocación del consentimiento institucional (VIG-008 R3): revocable en
+// cualquier momento por la propia organización, con el mismo rol firmante;
+// el motivo pasa el anti-PII de la API ANTES de sellarse (sin eco del valor).
+export const ConsentimientoOrganizacionRevocacionSchema = z.object({
+  organizacion_key: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9_]+$/, "organizacion_key: slug en minúsculas y guiones bajos")
+    .max(60),
+  firmante_rol: z.enum([
+    "presidente_consejo",
+    "vicepresidente_consejo",
+    "secretario",
+    "tesorero",
+    "sindico",
+    "representante_apoderado",
+  ]),
+  motivo: z.string().trim().min(10, "La revocación exige motivo (mínimo 10 caracteres)").max(500),
+});
+
+// Operativa institucional (VIG-008 R2, columna `institucional` de
+// activos_operativa): datos registrales públicos de la persona jurídica.
+// TODOS los campos de dato son nullable — vacío honesto (R15): sin dato no
+// se inventa; y `consentimiento_hash` es OBLIGATORIO: la ficha
+// institucional solo se llena tras consentimiento formal registrado —
+// sin él todo queda null. Cero PII: ni nombres de socios ni contactos
+// directos (Ley 25.326/ADR-027).
+export const OperativaInstitucionalSchema = z.object({
+  matricula_nacional: z.string().trim().max(20).nullable(),
+  matricula_provincial: z.string().trim().max(20).nullable(),
+  cuit: z
+    .string()
+    .trim()
+    .regex(/^\d{2}-\d{8}-\d$/, "cuit: formato XX-XXXXXXXX-X")
+    .nullable(),
+  fecha_constitucion: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "fecha_constitucion: YYYY-MM-DD")
+    .nullable(),
+  socios_activos_count: z.number().int().nonnegative().nullable(),
+  federacion_key: z.string().trim().max(60).nullable(),
+  domicilio_publicado: z.string().trim().max(200).nullable(),
+  consentimiento_hash: z.string().length(32),
+});
+
+export type ConsentimientoOrganizacionAlcance = z.infer<typeof ConsentimientoOrganizacionAlcanceSchema>;
+export type ConsentimientoOrganizacion = z.infer<typeof ConsentimientoOrganizacionSchema>;
+export type ConsentimientoOrganizacionRevocacion = z.infer<typeof ConsentimientoOrganizacionRevocacionSchema>;
+export type OperativaInstitucional = z.infer<typeof OperativaInstitucionalSchema>;
+
+// ─── NODO-VIG VIG-009 (#241, épica #239): Achango — observaciones y custodia ───
+
+// Checklist estructurado de la observación de estado patrimonial (VIG-009 R1):
+// cinco dimensiones del conjunto. true = el observador reporta el síntoma;
+// false = no lo observó — NO afirma "está sano": la observación es testimonio,
+// jamás diagnóstico (R15, diseño #241).
+export const PatrimonioObservacionChecklistSchema = z.object({
+  grietas: z.boolean(),
+  cornisas: z.boolean(),
+  techos: z.boolean(),
+  maderos: z.boolean(),
+  muros: z.boolean(),
+});
+
+// Evidencia del testimonio (mismo canon epistémico que oportunidades, ADR-035):
+// cada observación declara su fuente citable.
+export const PatrimonioObservacionEvidenciaSchema = z.object({
+  evidence_type: z.enum([
+    "community_input",
+    "survey",
+    "platform_data",
+    "field_observation",
+    "institutional_document",
+    "news_source",
+    "statistical_source",
+  ]),
+  descripcion: z.string().trim().min(3, "La evidencia requiere una descripción").max(1000),
+  reference_url: z.string().trim().url("URL de referencia inválida").max(500).optional(),
+});
+
+// Alta de observación de estado patrimonial (VIG-009 R1): ciudadano autenticado;
+// la fecha del testimonio es la del relevamiento, no la del alta en plataforma.
+export const PatrimonioObservacionAltaSchema = z.object({
+  fecha_observacion: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, "fecha_observacion: YYYY-MM-DD"),
+  checklist: PatrimonioObservacionChecklistSchema,
+  nota: z.string().trim().max(2000).optional(),
+  evidencia: PatrimonioObservacionEvidenciaSchema,
+});
+
+// Alcance granular del consentimiento de custodia (VIG-009 R3, patrón ficha de
+// tejedora del corpus VIG): cada campo es opt-in explícito — publicar el ROL sí;
+// nombre y contacto solo con consentimiento (Ley 25.326, ADR-027).
+export const CustodiaConsentimientoAlcanceSchema = z.object({
+  rol: z.boolean(),
+  nombre: z.boolean(),
+  contacto: z.boolean(),
+});
+
+// Consentimiento de custodia (VIG-009 R3): lo firma un ROL (guardián, cuidador
+// o familiar autorizado) — jamás un nombre civil (ADR-027). declaracion:
+// z.literal(true) hace imposible el consentimiento implícito; revocable en
+// cualquier momento por el mismo rol firmante.
+export const CustodiaConsentimientoSchema = z.object({
+  firmante_rol: z.enum(["guardian", "cuidador", "familiar_autorizado"]),
+  alcance: CustodiaConsentimientoAlcanceSchema,
+  vigencia_desde: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, "vigencia_desde: YYYY-MM-DD"),
+  vigencia_hasta: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, "vigencia_hasta: YYYY-MM-DD").nullable(),
+  declaracion: z.literal(true),
+});
+
+// Revocación del consentimiento de custodia (VIG-009 R3): el motivo pasa el
+// anti-PII de la API ANTES de sellarse (sin eco del valor).
+export const CustodiaConsentimientoRevocacionSchema = z.object({
+  firmante_rol: z.enum(["guardian", "cuidador", "familiar_autorizado"]),
+  motivo: z.string().trim().max(500).optional(),
+});
+
+export type PatrimonioObservacionChecklist = z.infer<typeof PatrimonioObservacionChecklistSchema>;
+export type PatrimonioObservacionEvidencia = z.infer<typeof PatrimonioObservacionEvidenciaSchema>;
+export type PatrimonioObservacionAlta = z.infer<typeof PatrimonioObservacionAltaSchema>;
+export type CustodiaConsentimientoAlcance = z.infer<typeof CustodiaConsentimientoAlcanceSchema>;
+export type CustodiaConsentimiento = z.infer<typeof CustodiaConsentimientoSchema>;
+export type CustodiaConsentimientoRevocacion = z.infer<typeof CustodiaConsentimientoRevocacionSchema>;
 
 // ─── CORE-005 R5 (#206, ADR-039): duplicados sugeridos por proximidad ───
 

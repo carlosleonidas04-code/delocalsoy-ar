@@ -1,12 +1,15 @@
 import express, { type Express, type Request, type Response, type NextFunction } from 'express';
 import { randomUUID } from 'node:crypto';
+import { levelForStatus, logJson } from './logger.js';
 import activosRouter from './routes/activos.js';
 import authRouter from './routes/auth.js';
+import comerciosRouter from './routes/comercios.js';
 import evidenciasRouter from './routes/evidencias.js';
 import eventsRouter from './routes/events.js';
 import fichasValoracionRouter from './routes/fichasValoracion.js';
 import fuentesRouter from './routes/fuentes.js';
 import healthRouter from './routes/health.js';
+import healthDetailedRouter from './routes/healthDetailed.js';
 import modeloFederadoRouter from './routes/modeloFederado.js';
 import nodosRouter from './routes/nodos.js';
 import oportunidadesRouter from './routes/oportunidades.js';
@@ -20,10 +23,38 @@ export function createApp(): Express {
   const app = express();
   app.use(express.json());
 
+  // M1 observabilidad (#288, D3 ratificado DH 2026-10-30): request_id por
+  // request + logs JSON estructurados. El id vive en res.locals, se expone
+  // como header X-Request-Id y el handler de errores lo REUTILIZA — AUD-06
+  // generaba otro distinto y perdia la correlacion. Anti-PII (ADR-027/Ley
+  // 25.326): solo metodo, path SIN query string, status y duracion.
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const requestId = randomUUID().slice(0, 8);
+    res.locals.requestId = requestId;
+    res.setHeader('X-Request-Id', requestId);
+    const start = process.hrtime.bigint();
+    res.on('finish', () => {
+      logJson(levelForStatus(res.statusCode), 'http_request', {
+        request_id: requestId,
+        method: req.method,
+        path: req.originalUrl.split('?')[0],
+        status: res.statusCode,
+        duration_ms: Number(process.hrtime.bigint() - start) / 1e6,
+      });
+    });
+    next();
+  });
+
   // Identidad por etapas (CORE-004 R3, ADR-031): registro/login/me con JWT
   // HS256 y roles. Fail-closed sin JWT_SECRET. La API key R8 subsiste para
   // operaciones de sistema (guard R8 intocado).
   app.use('/api/auth', authRouter);
+
+  // A1 observabilidad (#290, hoja M1, RUNBOOK seccion 6): salud detallada por
+  // componente (db, redis/streams, projection_lag, proceso) — acceso admin
+  // (ADR-031): expone internals operativos. El health publico honesto (R5)
+  // sigue siendo GET /api/health; este lo complementa, nunca lo reemplaza.
+  app.use('/api/health/detailed', healthDetailedRouter);
 
   // Salud honesta del sistema: mode real|synthetic|degraded, nunca OK silencioso (R5)
   // Aterrizaje PR 1 — issue #20
@@ -45,6 +76,11 @@ export function createApp(): Express {
   // en events_raw, moderación PATCH /:id/estado (moderador|admin) y GET
   // público anónimo con recorte espacial bbox sobre PostGIS.
   app.use('/api/activos', activosRouter);
+
+  // MARKET-CAP MK-1 (#243, sub-épica #152): Mercado de Proximidad — alta
+  // ciudadana de comercios con moderación (nace 'propuesto'), ficha 1:1
+  // comercio_ficha y lectura pública multinodo (facetas + bbox).
+  app.use('/api/comercios', comerciosRouter);
 
   // Dominio: fichas de valoración comunitaria del espacio público
   // (NODO-CAU R4, #149) — testimonio revisable anclado a features de la capa
@@ -127,9 +163,14 @@ export function createApp(): Express {
   // Manejo de errores centralizado
   // AUD-06 (#100): los mensajes internos (Prisma/driver) nunca salen al
   // cliente — quedan server-side con un request_id correlacionable.
+  // M1 (#288, D3): reutiliza el request_id del middleware (mismo id en el
+  // log de error y en la respuesta) — corrige la correlacion rota de AUD-06.
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-    const requestId = randomUUID().slice(0, 8);
-    console.error('[delocalsoy-ar-api] error ' + requestId + ':', err.message);
+    const requestId = (res.locals?.requestId as string | undefined) ?? randomUUID().slice(0, 8);
+    logJson('error', 'http_error', {
+      request_id: requestId,
+      error_message: err.message,
+    });
     res.status(500).json({ error: 'error interno', request_id: requestId });
   });
 

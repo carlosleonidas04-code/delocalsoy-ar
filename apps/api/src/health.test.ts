@@ -39,6 +39,13 @@ describe('GET /api/health — salud honesta sin base (R5, riesgo #59)', () => {
     expect(body.dataSource).toBe('none');
     expect(body.status).not.toBe('ok');
   });
+
+  it('declara projection_lag null sin base — honesto (AUD-08 D4, R15)', async () => {
+    const res = await fetch(base + '/api/health');
+    expect(res.status).toBe(200);
+    const body: any = await res.json();
+    expect(body.projection_lag).toBeNull();
+  });
 });
 
 describe('GET /health legado — retirado (riesgo #57, ADR-028)', () => {

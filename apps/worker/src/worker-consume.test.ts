@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 // CORE-004 R4b (ADR-032, #87): consumo del stream contra PostGIS + Redis
 // REALES. En CI, el job test levanta ambos servicios (workflows v15) con
@@ -7,6 +7,13 @@ import { beforeAll, describe, expect, it } from 'vitest';
 process.env.DATABASE_URL =
   process.env.TEST_DATABASE_URL ?? 'postgresql://delocalsoy:delocalsoy@localhost:5432/delocalsoy?schema=public';
 process.env.REDIS_URL = process.env.TEST_REDIS_URL ?? 'redis://localhost:6379';
+
+// AUD-08 (D2/H3): este archivo corre DESPUÉS de reconciliador.test.ts
+// (orden alfabético, fileParallelism false) y su bootstrap re-entrega la
+// historia completa a los grupos reales. Los tests de aquí absorben ese
+// sobrante con consumeOnce — el default de vitest (5 s por test) no
+// alcanza para esas pasadas.
+vi.setConfig({ testTimeout: 300_000, hookTimeout: 300_000 });
 
 const { prisma } = await import('@delocalsoy/db');
 const { pingRedis, redisCommand, xaddEventReference } = await import('@delocalsoy/redis');
@@ -50,11 +57,31 @@ async function pendingCount(): Promise<number> {
   return Array.isArray(reply) ? Number(reply[0]) : -1;
 }
 
+// AUD-08 (H3): drenaje con 4 consumidores en paralelo del backlog que
+// deja el bootstrap del reconciliador (XGROUP SETID 0, corrido por
+// reconciliador.test.ts antes que este archivo) — restaura la premisa
+// original de esta suite: cada test publica y consume LO SUYO desde un
+// estado drenado. La absorción idempotente (P2002 repeated) queda
+// acreditada en la suite del reconciliador y en los asserts de cada test.
+async function drenarTodo(consumer: string): Promise<void> {
+  await Promise.all(['-1', '-2', '-3', '-4'].map(async (sufijo) => {
+    for (let vuelta = 0; vuelta < 150; vuelta += 1) {
+      const r = await consumeOnce(consumer + sufijo);
+      if (r.acked === 0) break;
+    }
+  }));
+}
+
 describe.skipIf(!dbUp || !redisUp)('R4b — worker idempotente del stream (ADR-032, #87)', () => {
   beforeAll(async () => {
-    // El grupo arranca en '$': las entradas previas (suite de la API) no se
-    // entregan — cada test publica y consume lo suyo.
+    // Desde AUD-08 (D2) el grupo nace en '0': la historia previa (suite de
+    // la API) SE entrega y se absorbe idempotentemente (P2002 repeated) —
+    // cada test sigue publicando y consumiendo lo suyo.
     await ensureGroup();
+    // AUD-08 (H3): el bootstrap de reconciliador.test.ts (corre antes,
+    // orden alfabético) re-entregó la historia completa a este grupo —
+    // drenarla aquí para que cada test consuma solo lo suyo.
+    await drenarTodo('w-base');
   });
 
   it('consume exactamente una vez: proyecta el evento y deja XPENDING en 0', async () => {
