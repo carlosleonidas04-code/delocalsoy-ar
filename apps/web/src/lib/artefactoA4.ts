@@ -45,7 +45,10 @@
 import type { EstadoSesion, RolPlataforma, TransporteSesion } from './sesion';
 import { RATE_LIMIT_POR_ROL, RATE_LIMIT_VISITANTE } from './sesion';
 import type { EstadoComponente, KpiSnapshot, ReportePublico, TransicionReporte } from './artefactoA1';
+// Re-export de tipos compartidos: los paneles A4 consumen UNA sola fuente web de contratos.
+export type { EstadoComponente, KpiSnapshot, ReportePublico, TransicionReporte } from './artefactoA1';
 import type { FichaPatrimonio, FuenteEspacial, Ingesta } from './artefactoA3';
+export type { FichaPatrimonio, FuenteEspacial, Ingesta } from './artefactoA3';
 
 /* ------------------------------------------------------------------ */
 /* Componentes del artefacto (ARTEFACTO_A4_AUDITOR_DATOS_ABIERTOS v0.1) */
