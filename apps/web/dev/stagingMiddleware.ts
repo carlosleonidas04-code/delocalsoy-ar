@@ -398,7 +398,6 @@ export function montarStaging(server: ViteDevServer): void {
           verification_command: 'npm run verify:firestore-security',
           success_criteria: 'EXIT 0 en check [4/4] de CANONICAL_PRECEDENCE_RULE y Digest de Sincronización',
           main_sha: null,
-
           ci_run_url: null,
           safe_formulation: 'Firestore es espejo de sincronización offline-first; events_raw/PostGIS conserva la precedencia canónica y ADR-020 aguarda firma humana y merge en main.',
           human_review_required: true,
@@ -799,7 +798,6 @@ ${selectedTask.focus}
       const manifestFilesSpec = [
         { id: 'M01', phase: 'Fase 1 · Libs/Data/Services ( Autónomo sin @delocalsoy/contracts )', path: 'apps/web/src/data/federatedModel.ts', lang: 'ts' },
         { id: 'M02', phase: 'Fase 1 · Libs/Data/Services', path: 'apps/web/src/lib/ev007To018Audit.ts', lang: 'ts' },
-
         { id: 'M03', phase: 'Fase 1 · Libs/Data/Services', path: 'apps/web/src/lib/apiClient.ts', lang: 'ts' },
         { id: 'M04', phase: 'Fase 1 · Libs/Data/Services ( Autónomo sin ../../../../ )', path: 'apps/web/src/lib/firebaseConfig.ts', lang: 'ts' },
         { id: 'M05', phase: 'Fase 1 · Libs/Data/Services', path: 'apps/web/src/lib/auth.ts', lang: 'ts' },
@@ -1200,7 +1198,6 @@ ${selectedTask.focus}
       res.end(
         JSON.stringify({
           success: true,
-
           coherenceHash,
           verifiedAt: nowIso,
           prismaModelsValidated: 19,
@@ -1600,7 +1597,6 @@ npm run github:ensure-branch-protection`;
       } catch {
         // mantiene diagnóstico offline/privado
       }
-
 
       // Analizar salida opcional pegada desde el Codespace (Paso 0.B)
       const hasPr19Log =
@@ -2002,7 +1998,6 @@ npm run github:ensure-branch-protection`;
       eventsRaw.unshift({
         id: `ev-ai-${Math.random().toString(16).slice(2, 8)}`,
         type: 'EthicalAiCopilotConsultation',
-
         nodeId: targetNode.id,
         hash: sha256Hash,
         payload: {
@@ -2403,7 +2398,6 @@ npm run github:ensure-branch-protection`;
             sha256Hash,
             createdAt: nowIso,
           },
-
         }),
       );
       return;
@@ -2803,7 +2797,6 @@ npm run github:ensure-branch-protection`;
           isAlert,
           at: now,
         });
-
 
         station.lastValue = newValue;
         station.status = isAlert ? 'alerta_umbral_revision_humana' : 'normal';
@@ -3205,7 +3198,6 @@ npm run github:ensure-branch-protection`;
         }
         const wkt =
           geometryType === 'Polygon'
-
             ? `SRID=4326;POLYGON((${wktCoords.join(', ')}))`
             : `SRID=4326;LINESTRING(${wktCoords.join(', ')})`;
 
@@ -3606,7 +3598,6 @@ npm run github:ensure-branch-protection`;
         ingested_at: now,
         is_synthetic: true,
       };
-
       eventsRaw.unshift(newEvent);
 
       res.end(JSON.stringify({ success: true, data: target, event: newEvent }));
@@ -4007,7 +3998,6 @@ npm run github:ensure-branch-protection`;
 
       if (req.method === 'POST' && url.pathname === '/api/contrato-sistema/verificar') {
         const nowIso = new Date().toISOString();
-
         const parityHash = computeHash('FullStackContractParityVerified', 'nucleo-federado-ar', {
           nowIso,
           modelsCount: prismaModels.length,
@@ -4087,4 +4077,3 @@ npm run github:ensure-branch-protection`;
     }
   });
 }
-
