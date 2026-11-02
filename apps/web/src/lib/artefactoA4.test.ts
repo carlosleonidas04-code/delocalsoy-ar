@@ -533,7 +533,7 @@ describe('ART-R3 — el auditor no muta', () => {
       { status: 200, cuerpo: SALUD },
       { status: 200, cuerpo: { count: 0, evidencias: [] } },
       { status: 200, cuerpo: { success: true, data: [] } },
-      { status: 200, cuerpo: { success: true, data: [] } },
+      { status: 200, cuerpo: { success: true, data: { reporte_id: 'r1', transiciones: [] } } },
       { status: 200, cuerpo: { success: true, data: [] } },
       { status: 200, cuerpo: { success: true, data: [] } },
       { status: 200, cuerpo: { success: true, data: [] } },
