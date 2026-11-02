@@ -1,4 +1,4 @@
-/**
+successfully downloaded text file (SHA: d8d356717b664d5b51eab9e014f58c05e9efe637)/**
  * DELocalSoy.AR — Panel del Artefacto A3: gestor y admin de nodo
  * (ART-R2, #271, épica #268). Consume useSesion (ART-R0) y el cliente puro
  * lib/artefactoA3.ts contra las superficies REALES de moderación y gestión.
@@ -1138,7 +1138,7 @@ function FuentesEIngestas({ cliente, caps }: PropsSeccion) {
 /* Sección: KPIs del nodo (VIG-003)                                     */
 /* ------------------------------------------------------------------ */
 
-function KpisNodo({ cliente }: PropsSeccion) {
+function KpisNodo({ cliente }: { cliente: ClienteA3 }) {
   const [nodo, setNodo] = useState<string>('capital');
   const [kpis, setKpis] = useState<KpiSnapshot[] | null>(null);
   const [cargando, setCargando] = useState(false);
