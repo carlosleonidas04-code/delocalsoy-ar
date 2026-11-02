@@ -1,5 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { AdminSovereigntyDashboard } from './components/AdminSovereigntyDashboard';
+import { ArtefactosRoot } from './components/artefactos/ArtefactosRoot';
 import {
   BaseConsolidadaPrototype,
   DelocalSoyNetworkLogoSvg,
@@ -6363,6 +6364,8 @@ pnpm install && git status -sb`}
           </div>
         )}
 
+        {/* 9. Artefactos A1–A4 (épica #268): sesión + paneles por rol — montaje único vía ArtefactosRoot (ART-R5 #274, regla M0) */}
+        <ArtefactosRoot />
         <footer>
           <p>
             DELocalSoy.AR · Horizontes 1, 2, 3 y 4 Consolidados · Monorepo Track A v7.2 (Vite + React + Express + PostGIS ST_Intersects + Ed25519 + Offline-First + HITUB)
