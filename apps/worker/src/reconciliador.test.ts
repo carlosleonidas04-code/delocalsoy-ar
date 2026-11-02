@@ -103,6 +103,31 @@ async function drenar(group: string, consumer: string): Promise<string[]> {
   return ids;
 }
 
+// Drenaje en rondas: consumeOnce/consumeKpisOnce/consumeRagOnce procesan
+// a lo sumo BATCH_COUNT (20) entradas nuevas + reclamos por pasada. Desde
+// AUD-08 (D2) los grupos nacen en '0' y comparten la historia de las suites
+// previas del job; además la reconciliación república los sellos del seed
+// que nacieron sin referencia (hueco real del SQL directo) — una sola
+// pasada NO garantiza drenar. Rondas hasta ack 0: nada queda pending.
+async function consumirTodo(consumer: string): Promise<void> {
+  for (let vuelta = 0; vuelta < 100; vuelta += 1) {
+    const r = await consumeOnce(consumer);
+    if (r.acked === 0) break;
+  }
+}
+async function consumirKpisTodo(consumer: string): Promise<void> {
+  for (let vuelta = 0; vuelta < 100; vuelta += 1) {
+    const r = await consumeKpisOnce(consumer);
+    if (r.acked === 0) break;
+  }
+}
+async function consumirRagTodo(consumer: string): Promise<void> {
+  for (let vuelta = 0; vuelta < 100; vuelta += 1) {
+    const r = await consumeRagOnce(consumer);
+    if (r.acked === 0) break;
+  }
+}
+
 describe.skipIf(!dbUp || !redisUp)('AUD-08 (#103) — reconciliador del transporte (ADR-032, D1-D4)', () => {
   beforeAll(async () => {
     // Grupos reales del sistema — desde AUD-08 (D2) nacen en '0'.
@@ -115,7 +140,7 @@ describe.skipIf(!dbUp || !redisUp)('AUD-08 (#103) — reconciliador del transpor
     const pasada = await reconcileOnce(null);
     expect(pasada.republished).toBeGreaterThanOrEqual(1);
     expect(await referenciasDe(event.id)).toBe(1);
-    await consumeOnce('aud08-t1');
+    await consumirTodo('aud08-t1');
     expect(await prisma.event_projections.count({ where: { event_id: event.id } })).toBe(1);
   });
 
@@ -159,10 +184,10 @@ describe.skipIf(!dbUp || !redisUp)('AUD-08 (#103) — reconciliador del transpor
     }
     const primera = await reconcileOnce(null);
     expect(primera.republished).toBeGreaterThanOrEqual(3);
-    await consumeOnce('aud08-t4');
+    await consumirTodo('aud08-t4');
     const segunda = await reconcileOnce(null);
     expect(segunda.republished).toBe(0); // ya no hay faltantes
-    await consumeOnce('aud08-t4');
+    await consumirTodo('aud08-t4');
     for (const ev of eventos) {
       expect(await referenciasDe(ev.id)).toBe(1); // XLEN creció UNA vez, no más
       expect(await prisma.event_projections.count({ where: { event_id: ev.id } })).toBe(1);
@@ -174,12 +199,12 @@ describe.skipIf(!dbUp || !redisUp)('AUD-08 (#103) — reconciliador del transpor
     // el que deja la suite de la API con Redis caído) — el sistema drenado
     // cumple el criterio de éxito de la auditoría: lag 0.
     await reconcileOnce(null);
-    await consumeOnce('aud08-t5-base');
+    await consumirTodo('aud08-t5-base');
     expect(await lagLocal()).toBe(0);
     const event = await persistir('test.aud08.lag.' + marcador(), { etapa: 'lag' });
     expect(await lagLocal()).toBe(1);
     await reconcileOnce(null);
-    await consumeOnce('aud08-t5');
+    await consumirTodo('aud08-t5');
     expect(await lagLocal()).toBe(0);
   });
 
@@ -193,9 +218,9 @@ describe.skipIf(!dbUp || !redisUp)('AUD-08 (#103) — reconciliador del transpor
     await prisma.rag_index.deleteMany({ where: { nodo_key: 'iglesia' } });
     const pasada = await reconcileOnce(null);
     expect(pasada.republished).toBeGreaterThanOrEqual(1);
-    await consumeOnce('aud08-t6'); // event_projections (core004-worker)
-    await consumeKpisOnce('aud08-t6-k'); // kpi_snapshots (vig003-kpi)
-    await consumeRagOnce('aud08-t6-r'); // rag_index (vig006-rag-index)
+    await consumirTodo('aud08-t6'); // event_projections (core004-worker)
+    await consumirKpisTodo('aud08-t6-k'); // kpi_snapshots (vig003-kpi)
+    await consumirRagTodo('aud08-t6-r'); // rag_index (vig006-rag-index)
     expect(await prisma.event_projections.count({ where: { event_id: event.id } })).toBe(1);
     // KPIs regenerados y el propio evento computado (eventos_por_tipo):
     expect(await prisma.kpi_snapshots.count({ where: { nodo_key: 'iglesia' } })).toBeGreaterThan(0);
