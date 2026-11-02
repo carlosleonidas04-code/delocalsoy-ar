@@ -7,7 +7,7 @@ import { RAG_STREAM, RAG_GROUP } from './rag.js';
 
 /**
  * Reconciliador de transporte — AUD-08 (#103, ADR-032), diseño ratificado
- * D1-D4 (docs/AUD-08-RECONCILIADOR-DISENO.md).
+ * D1-D4 (PR #283, issue #103).
  *
  * events_raw es la única fuente de verdad; el stream 'events:raw' es SOLO
  * transporte. Cuando el transporte pierde una referencia (ingesta con Redis
@@ -68,25 +68,26 @@ async function streamEventIds(): Promise<Set<string>> {
 export async function reconcileOnce(windowMs: number | null): Promise<ReconcileResult> {
   const result: ReconcileResult = { scanned: 0, republished: 0, skipped: 0, errors: 0 };
 
-  // 1. GATE barato (D1): XLEN vs count(events_raw). XLEN >= count ⇒ estado
-  //    sano — las re-publicaciones solo suman y la API no duplica
-  //    referencias (el duplicado por hash responde 200 sin xadd).
-  let xlen = -1;
+  // Sin Redis: nada que reconciliar — se reintenta en la próxima pasada.
   try {
-    xlen = Number(await redisCommand(['XLEN', STREAM]));
+    await redisCommand(['XLEN', STREAM]);
   } catch {
-    // sin Redis: nada que reconciliar — se reintenta en la próxima pasada.
-    return result;
-  }
-  const dbTotal = await prisma.events_raw.count();
-  if (xlen >= dbTotal) {
-    result.scanned = dbTotal;
-    result.skipped = dbTotal;
     return result;
   }
 
-  // 2. DIFF fino (solo si el gate detecta hueco): referencias del stream
-  //    vs eventos persistidos (la ventana aplica al lado de la base).
+  // ENMIENDA al gate barato de D1 (evidencia: corrida 6 de CI de este PR,
+  // test «lag (D4)» — criterio de éxito #103). El gate original saltaba el
+  // diff fino cuando XLEN >= count(events_raw) («estado sano»), pero esa
+  // implicación es INSONORA: el stream puede llevar entradas SIN
+  // correspondencia 1:1 con events_raw — referencias huérfanas (se ackean
+  // sin proyectar) y re-entregas duplicadas que H3 absorbe por diseño — y
+  // cada una infla XLEN sin representar un evento. Con el stream inflado,
+  // el gate daba «sano» para siempre y ENMASCARABA huecos nuevos:
+  // persistir un evento sin referencia tras un estado drenado dejaba lag 1
+  // permanente. No existe gate barato sonoro (la 1:1 la rompe H3 por
+  // diseño), así que la pasada SIEMPRE hace el diff fino — mismo orden de
+  // costo que el XRANGE que el gate quería evitar (deuda de crecimiento ya
+  // declarada en §9: checkpoint + XTRIM v2).
   const streamIds = await streamEventIds();
   const cutoff = windowMs === null ? null : new Date(Date.now() - windowMs);
   const events = await prisma.events_raw.findMany({
@@ -94,7 +95,7 @@ export async function reconcileOnce(windowMs: number | null): Promise<ReconcileR
     select: { id: true, type: true, hash: true, occurred_at: true },
   });
 
-  // 3. RE-PUBLICAR los faltantes — mismos 4 campos que la API (R4a).
+  // RE-PUBLICAR los faltantes — mismos 4 campos que la API (R4a).
   for (const event of events) {
     result.scanned += 1;
     if (streamIds.has(event.id)) {
