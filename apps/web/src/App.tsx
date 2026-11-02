@@ -24,6 +24,7 @@ import { ServicioInformativoPanel } from './components/ServicioInformativoPanel'
 import { SyntheticModeWarningBanner } from './components/SyntheticModeWarningBanner';
 import { TerritoriosMap } from './components/TerritoriosMap';
 import { TerritorialPlatformHub } from './components/TerritorialPlatformHub';
+import { TokenEvolutionStrip } from './components/TokenEvolutionStrip';
 import { TraceabilityAndEvidenciasPanel } from './components/TraceabilityAndEvidenciasPanel';
 import { WorkspacePanel } from './components/WorkspacePanel';
 import {
@@ -910,62 +911,11 @@ export function App() {
         onToggleDemoNamespace={handleToggleDemoNamespace}
       />
 
-      {/* Barra de Evolución Visual ADR-034 (tokens.css · Issue #109 / #114): Identidad Mineral San Juan + Estados R5-UI + Selector de Tema */}
-      <div
-        data-testid="adr034-token-evolution-strip"
-        className="token-evolution-strip"
-      >
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-semibold">
-            Contrato Visual <code>tokens.css</code> (<code>ADR-034</code> · <code>#109</code>)
-          </span>
-          <span aria-hidden="true">·</span>
-          <span className="token-node-tag-capital">
-            Capital (Centro/Desamparados)
-          </span>
-          <span aria-hidden="true">·</span>
-          <span className="token-node-tag-caucete">
-            Caucete (Oasis Tulúm)
-          </span>
-          <span aria-hidden="true">·</span>
-          <span className="token-node-tag-iglesia">
-            Iglesia (Cordillera)
-          </span>
-          <span aria-hidden="true">·</span>
-          <span>
-            Estados <code>R5-UI</code>:{' '}
-            <span className="r5-status-pendiente">pendiente</span>
-            {' / '}
-            <span className="r5-status-aprobado">aprobado</span>
-            {' / '}
-            <span className="r5-status-rechazado">rechazado</span>
-          </span>
-        </div>
-
-        <div className="filter-group" role="group" aria-label="Selector de tema visual ADR-034">
-          <button
-            type="button"
-            className={themeMode === 'light' ? 'btn-filter active' : 'btn-filter'}
-            onClick={() => setThemeMode('light')}
-          >
-            Piedra Caliza (Claro)
-          </button>
-          <button
-            type="button"
-            className={themeMode === 'dark' ? 'btn-filter active' : 'btn-filter'}
-            onClick={() => setThemeMode('dark')}
-          >
-            Pizarra Andina (Oscuro)
-          </button>
-          <button
-            type="button"
-            className={themeMode === 'auto' ? 'btn-filter active' : 'btn-filter'}
-            onClick={() => setThemeMode('auto')}
-          >
-            Auto (Sistema)
-          </button>
-        </div>
-      </div>
+      {/* Barra de Evolución Visual ADR-034 (tokens.css · Issue #109 / #114): Identidad Mineral San Juan + Estados R5-UI + Selector de Tema — extraída 1:1 a TokenEvolutionStrip (FE-DEUDA-02 #293, corte 4) */}
+      <TokenEvolutionStrip
+        themeMode={themeMode}
+        onSelectThemeMode={setThemeMode}
+      />
 
       {/* Top Bar Contract: 3 zonas (Brand | 5 Nav links | 1 Primary Action) */}
       <header className="top-bar">
