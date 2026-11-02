@@ -16,6 +16,7 @@ import { HorizonOneArchitecturePanel } from './components/HorizonOneArchitecture
 import { HorizonThreeObservatoryPanel } from './components/HorizonThreeObservatoryPanel';
 import { HorizonTwoSpatialFederationPanel } from './components/HorizonTwoSpatialFederationPanel';
 import { HorizonFourFieldAndTelemetryPanel } from './components/HorizonFourFieldAndTelemetryPanel';
+import { OperationalOriginStrip } from './components/OperationalOriginStrip';
 import { QuarterlyTrendsSection } from './components/QuarterlyTrendsSection';
 import { RecursiveProspectiveContractPanel } from './components/RecursiveProspectiveContractPanel';
 import { ShowcaseRecorridoPanel } from './components/ShowcaseRecorridoPanel';
@@ -910,49 +911,15 @@ export function App() {
         </div>
       )}
 
-      {/* Barra de transparencia operativa R5 (#16, #17, #18): distingue sin ambigüedad los 4 orígenes y los 6 estados */}
-      <div
-        data-testid="operational-origin-strip"
-        className="origin-transparency-strip"
-      >
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="r5-status-aprobado">
-            Origen activo: {operationalOriginLabel}
-          </span>
-          <span>·</span>
-          <span>
-            Modo runtime (<code>/api/health</code>):{' '}
-            <strong className="uppercase">{runtimeMode}</strong> (fuente:{' '}
-            <code>{modeSourceLabel}</code>)
-          </span>
-          <span>·</span>
-          <span>
-            Estado UI:{' '}
-            <strong
-              data-testid="ui-operational-state"
-              className="uppercase token-node-tag-iglesia"
-            >
-              {uiOperationalState}
-            </strong>
-          </span>
-          <span>·</span>
-          <span className="font-mono">
-            main @ 1272e45 / d70cbc6 / e3616b5 (CORE-001 6/6 · CORE-002 6/6 · CORE-003 · ADR-034)
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleToggleDemoNamespace}
-            className="btn-toggle"
-            style={{ fontSize: '0.72rem', padding: '0.2rem 0.55rem' }}
-          >
-            {isDemoNamespace
-              ? '← Volver a Producción (/api/*)'
-              : 'Ir a Ruta Aislada /demo (#16–#18)'}
-          </button>
-        </div>
-      </div>
+      {/* Barra de transparencia operativa R5 (#16, #17, #18): distingue sin ambigüedad los 4 orígenes y los 6 estados — extraída 1:1 a OperationalOriginStrip (FE-DEUDA-02 #293, corte 2) */}
+      <OperationalOriginStrip
+        operationalOriginLabel={operationalOriginLabel}
+        runtimeMode={runtimeMode}
+        modeSourceLabel={modeSourceLabel}
+        uiOperationalState={uiOperationalState}
+        isDemoNamespace={isDemoNamespace}
+        onToggleDemoNamespace={handleToggleDemoNamespace}
+      />
 
       {/* Barra de Evolución Visual ADR-034 (tokens.css · Issue #109 / #114): Identidad Mineral San Juan + Estados R5-UI + Selector de Tema */}
       <div
