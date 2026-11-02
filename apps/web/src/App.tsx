@@ -2,6 +2,7 @@ import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { AdminSovereigntyDashboard } from './components/AdminSovereigntyDashboard';
 import { ArtefactosRoot } from './components/artefactos/ArtefactosRoot';
 import { BaseConsolidadaPrototype } from './components/BaseConsolidadaPrototype';
+import { CognitiveLensSelector, type DesignLensKey } from './components/CognitiveLensSelector';
 import { ComerciosPanel } from './components/ComerciosPanel';
 import { DemoDataSourceAuditSection } from './components/DemoDataSourceAuditSection';
 import { EthicalAiCopilotPanel } from './components/EthicalAiCopilotPanel';
@@ -170,13 +171,8 @@ export function App() {
   );
   const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'auto'>('dark');
   const [showFullPageCockpit, setShowFullPageCockpit] = useState<boolean>(false);
-  const [activeDesignLens, setActiveDesignLens] = useState<
-    | 'all'
-    | 'lens_atlas_coco_baba'
-    | 'lens_vertical_r5ui'
-    | 'lens_sovereignty_fcm'
-    | 'lens_epistemic_contracts'
-  >('lens_epistemic_contracts');
+  const [activeDesignLens, setActiveDesignLens] =
+    useState<DesignLensKey>('lens_epistemic_contracts');
   const [selectedRecursiveLinkIdx, setSelectedRecursiveLinkIdx] =
     useState<number>(4);
   const [activeInspectionStation, setActiveInspectionStation] =
@@ -987,58 +983,11 @@ export function App() {
             </div>
           </div>
 
-          {/* 1. Selector Ejecutivo de Lentes Cognitivas (H-TER-03: Reducción de fatiga lineal) */}
-          <div
-            className="cockpit-macro-tabs"
-            role="tablist"
-            aria-label="Lentes cognitivas de lectura territorial"
-          >
-            {(
-              [
-                {
-                  key: 'all',
-                  kicker: 'Lente 00 · Monorepo Completo',
-                  title: 'Vista Integral del Ecosistema',
-                },
-                {
-                  key: 'lens_atlas_coco_baba',
-                  kicker: 'Lente I · Demo Base + Cartografía',
-                  title: 'Atlas & Cockpit «Coco-Baba»',
-                },
-                {
-                  key: 'lens_vertical_r5ui',
-                  kicker: 'Lente II · 13 Módulos + 11 Eslabones',
-                  title: 'Flujo Vertical & Estados R5-UI',
-                },
-                {
-                  key: 'lens_sovereignty_fcm',
-                  kicker: 'Lente III · Admin + H2–H4 + Push FCM',
-                  title: 'Soberanía, PostGIS & Custodios',
-                },
-                {
-                  key: 'lens_epistemic_contracts',
-                  kicker: 'Lente IV · HITUB + C1–C5 + Copiloto IA',
-                  title: 'Epistemología & Contratos',
-                },
-              ] as const
-            ).map((lens) => (
-              <button
-                key={lens.key}
-                type="button"
-                role="tab"
-                aria-selected={activeDesignLens === lens.key}
-                className={
-                  activeDesignLens === lens.key
-                    ? 'cockpit-macro-tab active'
-                    : 'cockpit-macro-tab'
-                }
-                onClick={() => setActiveDesignLens(lens.key)}
-              >
-                <span className="tiny-label">{lens.kicker}</span>
-                <strong>{lens.title}</strong>
-              </button>
-            ))}
-          </div>
+          {/* 1. Selector Ejecutivo de Lentes Cognitivas (H-TER-03: Reducción de fatiga lineal) — extraída 1:1 a CognitiveLensSelector (FE-DEUDA-02 #293, corte 7) */}
+          <CognitiveLensSelector
+            activeDesignLens={activeDesignLens}
+            onSelectLens={setActiveDesignLens}
+          />
 
           {/* MESA OPERATIVA EN VIVO — LENTE I: ATLAS & COCKPIT «COCO-BABA» (DEMO BASE + CARTOGRAFÍA SRID=4326) */}
           {activeDesignLens === 'lens_atlas_coco_baba' && (
