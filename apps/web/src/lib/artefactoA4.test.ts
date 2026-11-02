@@ -10,9 +10,8 @@ import {
   ErrorA4,
   type CapacidadesA4,
   type ComponenteA4Id,
-  type TransporteSesion,
 } from './artefactoA4';
-import type { EstadoSesion, RolPlataforma } from './sesion';
+import type { EstadoSesion, RolPlataforma, TransporteSesion } from './sesion';
 
 /**
  * ART-R3 — Artefacto A4 auditoría y datos abiertos (#272, épica #268): suite

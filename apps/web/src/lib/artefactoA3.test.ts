@@ -16,10 +16,9 @@ import {
   INGESTA_TRANSICIONES_A3,
   ESTADOS_PRODUCTO_MODERABLES,
   ErrorA3,
-  type TransporteSesion,
   type NuevaIngesta,
 } from './artefactoA3';
-import type { EstadoSesion } from './sesion';
+import type { EstadoSesion, TransporteSesion } from './sesion';
 import { RATE_LIMIT_VISITANTE } from './sesion';
 
 /**
