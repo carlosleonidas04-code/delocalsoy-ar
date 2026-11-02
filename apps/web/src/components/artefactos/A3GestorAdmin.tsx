@@ -1,4 +1,4 @@
-successfully downloaded text file (SHA: d8d356717b664d5b51eab9e014f58c05e9efe637)/**
+/**
  * DELocalSoy.AR — Panel del Artefacto A3: gestor y admin de nodo
  * (ART-R2, #271, épica #268). Consume useSesion (ART-R0) y el cliente puro
  * lib/artefactoA3.ts contra las superficies REALES de moderación y gestión.
