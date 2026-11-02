@@ -1567,6 +1567,9 @@ export function App() {
                       onSelectCustodianFilter={setExternalCustodianFilter}
                       territoriosItems={territoriosItems}
                       spatialGeometries={spatialGeometries}
+                      layersByNode={layersByNode}
+                      features={features}
+                      reports={reports}
                       onFocusOnGoogleMap={handleFocusOnGoogleMap}
                     />
                   )}

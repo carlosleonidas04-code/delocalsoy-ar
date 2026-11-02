@@ -12,7 +12,12 @@
  * más territoriosItems, spatialGeometries y onFocusOnGoogleMap.
  */
 import type { Territorio } from '../App';
-import type { SpatialGeometryRecord } from '../data/federatedModel';
+import type {
+  SpatialGeometryRecord,
+  TerritorioFeature,
+  TerritorioLayer,
+  TerritorialReport,
+} from '../data/federatedModel';
 import type { CockpitMacroView } from './LensOneAtlasWorkbench';
 
 type CustodianFilter = 'all' | 'community' | 'institutions' | 'businesses';
@@ -26,6 +31,9 @@ export interface Station02CockpitWorkbenchProps {
   onSelectCustodianFilter: (filter: CustodianFilter) => void;
   territoriosItems: Territorio[];
   spatialGeometries: SpatialGeometryRecord[];
+  layersByNode: Record<string, TerritorioLayer[]>;
+  features: TerritorioFeature[];
+  reports: TerritorialReport[];
   onFocusOnGoogleMap: (territorioId: string) => void;
 }
 
@@ -38,6 +46,9 @@ export function Station02CockpitWorkbench({
   onSelectCustodianFilter,
   territoriosItems,
   spatialGeometries,
+  layersByNode,
+  features,
+  reports,
   onFocusOnGoogleMap,
 }: Station02CockpitWorkbenchProps) {
   return (
