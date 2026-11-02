@@ -1587,6 +1587,7 @@ export function App() {
                       onRunIdempotencyAndErrorProbe={handleRunIdempotencyAndErrorProbe}
                       idempotencyProbeResult={idempotencyProbeResult}
                       reports={reports}
+                      features={features}
                       evidenciasOkCount={evidenciasOkCount}
                       externalPlatformSection={externalPlatformSection}
                       onSelectPlatformSection={setExternalPlatformSection}

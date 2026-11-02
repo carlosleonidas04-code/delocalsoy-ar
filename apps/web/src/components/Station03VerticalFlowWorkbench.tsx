@@ -18,7 +18,10 @@ import type {
   DataSourceMode,
   UiOperationalState,
 } from '../lib/dataSource';
-import type { TerritorialReport } from '../data/federatedModel';
+import type {
+  TerritorialReport,
+  TerritorioFeature,
+} from '../data/federatedModel';
 
 type PlatformSection =
   | 'flujo-vertical'
@@ -44,6 +47,7 @@ export interface Station03VerticalFlowWorkbenchProps {
   onRunIdempotencyAndErrorProbe: () => void | Promise<void>;
   idempotencyProbeResult: string | null;
   reports: TerritorialReport[];
+  features: TerritorioFeature[];
   evidenciasOkCount: number;
   externalPlatformSection: PlatformSection;
   onSelectPlatformSection: (section: PlatformSection) => void;
@@ -61,6 +65,7 @@ export function Station03VerticalFlowWorkbench({
   onRunIdempotencyAndErrorProbe,
   idempotencyProbeResult,
   reports,
+  features,
   evidenciasOkCount,
   externalPlatformSection,
   onSelectPlatformSection,
