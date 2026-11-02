@@ -58,6 +58,9 @@ import type {
   TransicionReporte,
 } from './artefactoA1';
 
+// Re-export de tipos compartidos: los paneles A3 consumen UNA sola fuente web de contratos.
+export type { FichaPublica, KpiSnapshot, Oportunidad, ProductoCatalogo, ReportePublico, TransicionReporte } from './artefactoA1';
+
 /* ------------------------------------------------------------------ */
 /* Componentes del artefacto (serie docs/artefactos/ v0.1, PR #267)    */
 /* ------------------------------------------------------------------ */

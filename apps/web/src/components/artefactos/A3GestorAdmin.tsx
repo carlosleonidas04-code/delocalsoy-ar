@@ -38,6 +38,7 @@ import {
   type EstadoReporte,
   type EstadoOportunidad,
   type EstadoIngesta,
+  type CambioCustodia,
   type CorroboracionFicha,
   type FichaPatrimonio,
   type FuenteEspacial,
@@ -46,8 +47,11 @@ import {
   type FichaPublica,
   type Oportunidad,
   type ProductoCatalogo,
+  type ProteccionNivel,
+  type SensibleStatus,
   type ReportePublico,
   type TransicionReporte,
+  type VisibilidadActivo,
 } from '../../lib/artefactoA3';
 
 const NODOS = ['capital', 'caucete', 'iglesia'] as const;
