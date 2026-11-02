@@ -70,12 +70,14 @@ describe.skipIf(!dbUp || !redisUp)('VIG-003 (#182) — consumidor de KPIs vig003
     // ADR-032), pero el servicio PostGIS de CI los loguea a stderr con
     // STATEMENT completo y esa sección inunda el tail de 20000 chars del
     // auto-report — la salida de vitest quedaba FUERA del comentario
-    // (corridas 34cd6d4/cb417be: ciego ante el paso que falla). Silenciar
+    // (corridas 34cd6d4→da822f6: ciego ante el paso que falla). Silenciar
     // el LOG DEL SERVIDOR para esta corrida de CI: el cliente (Prisma)
     // sigue recibiendo cada P2002 y los tests siguen contando «repeated» —
-    // no se oculta comportamiento, solo el ruido del contenedor. Este
-    // archivo corre primero (fileParallelism false): las pools de los
-    // archivos siguientes heredan el setting al abrir sus conexiones.
+    // no se oculta comportamiento, solo el ruido del contenedor. Defensa
+    // SECUNDARIA: el silenciamiento primario vive en vitest.global-setup.ts
+    // (ALTER SYSTEM + pg_reload_conf, corre ANTES que cualquier archivo) —
+    // vitest ordena por TAMAÑO descendente, no alfabético: este archivo NO
+    // corre primero y el ALTER ROLE solía llegar tarde (corrida da822f6).
     try {
       const filas = (await prisma.$queryRawUnsafe(
         'SELECT CURRENT_USER AS nombre'
