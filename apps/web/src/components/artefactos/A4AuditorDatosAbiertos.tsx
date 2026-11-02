@@ -1,4 +1,4 @@
-/**
+successfully downloaded text file (SHA: aeec1de965c709a13387974b320f77861f424abb)/**
  * DELocalSoy.AR — Panel del Artefacto A4: auditor y datos abiertos
  * (ART-R3, #272, épica #268). Consume useSesion (ART-R0) y el cliente puro
  * lib/artefactoA4.ts contra las superficies REALES de lectura.
@@ -66,7 +66,6 @@ function mensajeError(e: unknown): string {
 
 interface PropsSeccion {
   cliente: ClienteA4;
-  caps: CapacidadesA4;
 }
 
 function A4AuditorDatosAbiertos() {
