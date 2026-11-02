@@ -1027,6 +1027,9 @@ export function App() {
               federalSovereignty={federalSovereignty}
               accreditedCustodians={accreditedCustodians}
               spatialGeometries={spatialGeometries}
+              spatialIntersections={spatialIntersections}
+              syncPacks={syncPacks}
+              multiScaleSyntheses={multiScaleSyntheses}
               offlineFieldQueue={offlineFieldQueue}
               lineageChainCount={lineageChain.length}
               telemetryWebhooksCount={telemetryWebhooks.length}

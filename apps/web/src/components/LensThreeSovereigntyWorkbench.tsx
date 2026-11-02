@@ -15,8 +15,11 @@ import { type CustodianSovereigntyAlertRecord } from '../lib/firestoreEthicalSto
 import type {
   AccreditedCustodianRecord,
   FederalSovereigntyRecord,
+  InterNodeSyncPack,
+  MultiScaleSynthesisItem,
   OfflineFieldQueueItem,
   SpatialGeometryRecord,
+  SpatialIntersectionResult,
 } from '../data/federatedModel';
 
 type PlatformTerritoryFilter =
@@ -29,6 +32,9 @@ export interface LensThreeSovereigntyWorkbenchProps {
   federalSovereignty: FederalSovereigntyRecord[];
   accreditedCustodians: AccreditedCustodianRecord[];
   spatialGeometries: SpatialGeometryRecord[];
+  spatialIntersections: SpatialIntersectionResult[];
+  syncPacks: InterNodeSyncPack[];
+  multiScaleSyntheses: MultiScaleSynthesisItem[];
   offlineFieldQueue: OfflineFieldQueueItem[];
   lineageChainCount: number;
   telemetryWebhooksCount: number;
@@ -56,6 +62,9 @@ export function LensThreeSovereigntyWorkbench({
   federalSovereignty,
   accreditedCustodians,
   spatialGeometries,
+  spatialIntersections,
+  syncPacks,
+  multiScaleSyntheses,
   offlineFieldQueue,
   lineageChainCount,
   telemetryWebhooksCount,
