@@ -9,6 +9,7 @@
  * registro. Los datos semilla viven en stagingSeeds.ts; la voz en tiempo real
  * (live-ws) vive en liveWsServer.ts con sus puertas en liveWsGate.ts.
  */
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import type { ViteDevServer } from 'vite';
