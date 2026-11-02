@@ -83,10 +83,10 @@ describe.skipIf(!dbUp || !redisUp)('VIG-003 (#182) — consumidor de KPIs vig003
       const usuario = filas[0]?.nombre;
       if (typeof usuario === 'string' && usuario.length > 0) {
         await prisma.$executeRawUnsafe(
-          'ALTER ROLE "' + usuario + '" SET log_min_messages = 'fatal''
+          `ALTER ROLE "${usuario}" SET log_min_messages = 'fatal'`
         );
         await prisma.$executeRawUnsafe(
-          'ALTER ROLE "' + usuario + '" SET log_min_error_statement = 'panic''
+          `ALTER ROLE "${usuario}" SET log_min_error_statement = 'panic'`
         );
       }
     } catch {
