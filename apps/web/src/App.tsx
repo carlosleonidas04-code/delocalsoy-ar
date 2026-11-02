@@ -1,11 +1,7 @@
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { AdminSovereigntyDashboard } from './components/AdminSovereigntyDashboard';
 import { ArtefactosRoot } from './components/artefactos/ArtefactosRoot';
-import {
-  BaseConsolidadaPrototype,
-  DelocalSoyNetworkLogoSvg,
-  DelocalSoyWordmark,
-} from './components/BaseConsolidadaPrototype';
+import { BaseConsolidadaPrototype } from './components/BaseConsolidadaPrototype';
 import { ComerciosPanel } from './components/ComerciosPanel';
 import { DemoDataSourceAuditSection } from './components/DemoDataSourceAuditSection';
 import { EthicalAiCopilotPanel } from './components/EthicalAiCopilotPanel';
@@ -26,6 +22,7 @@ import { SyntheticModeWarningBanner } from './components/SyntheticModeWarningBan
 import { TerritoriosMap } from './components/TerritoriosMap';
 import { TerritorialPlatformHub } from './components/TerritorialPlatformHub';
 import { TokenEvolutionStrip } from './components/TokenEvolutionStrip';
+import { TopBarHeader } from './components/TopBarHeader';
 import { TraceabilityAndEvidenciasPanel } from './components/TraceabilityAndEvidenciasPanel';
 import { WorkspacePanel } from './components/WorkspacePanel';
 import {
@@ -918,33 +915,8 @@ export function App() {
         onSelectThemeMode={setThemeMode}
       />
 
-      {/* Top Bar Contract: 3 zonas (Brand | 5 Nav links | 1 Primary Action) */}
-      <header className="top-bar">
-        <a href="#prototipo-base-consolidada" className="brand-wordmark">
-          <DelocalSoyNetworkLogoSvg size={28} />
-          <DelocalSoyWordmark fontSize="1.22rem" />
-        </a>
-
-        <nav className="top-nav" aria-label="Navegación principal">
-          <a href="#prototipo-base-consolidada" style={{ color: '#FFC72C', fontWeight: 700 }}>
-            Base Consolidada
-          </a>
-          <a href="#plataforma-territorial-real">Flujo Vertical</a>
-          <a href="#nodos-federados">Nodos San Juan</a>
-          <a href="#horizonte-2">Horizontes H2–H4</a>
-          <a href="#cartografia-workspace">Cartografía &amp; Docs</a>
-        </nav>
-
-        <div className="top-actions">
-          <button
-            type="button"
-            className="btn-confirm whitespace-nowrap"
-            onClick={() => void sincronizarTodo()}
-          >
-            Sincronizar núcleo
-          </button>
-        </div>
-      </header>
+      {/* Top Bar Contract: 3 zonas (Brand | 5 Nav links | 1 Primary Action) — extraída 1:1 a TopBarHeader (FE-DEUDA-02 #293, corte 6) */}
+      <TopBarHeader onSyncCore={sincronizarTodo} />
 
       {/* PROTOTIPO BASE CONSOLIDADA (3 de septiembre 2026) MONTADO SOBRE EL PROTOTIPO DE LA PÁGINA */}
       <BaseConsolidadaPrototype
