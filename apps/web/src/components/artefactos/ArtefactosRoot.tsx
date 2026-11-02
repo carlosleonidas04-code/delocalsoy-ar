@@ -4,7 +4,7 @@
  *
  * Regla M0: App.tsx ya está muy por encima de un componente sano — TODO lo
  * que App.tsx agrega por esta serie es 1 import + 1 mount. El cableado de
- * sesión (ART-R0), los paneles (ART-R1/R2/R3) y los gates por rol viven
+ * sesión (ART-R0), los paneles (ART-R1/R2/R3/R4) y los gates por rol viven
  * acá, no en App.tsx.
  *
  * Composición (serie docs/artefactos/ v0.1, PR #267):
@@ -12,12 +12,13 @@
  *     BarraSesion                  identidad del actor: el gate por rol del contexto R0 —
  *                                 sin esta pieza nadie puede asumir el rol que la API exige
  *     <A1VecinoCiudadano />        ART-R1 (#270): escritura ciudadana y lectura pública
+ *     <A2Comerciante />            ART-R4 (#273): comerciante y titular verificado — alta
+ *                                 ciudadana, reclamo de titularidad SOLO-hash, habilitación
+ *                                 SIIC (ADR-035) e historial F-3 del Mercado de Proximidad
+ *                                 (MK-1/MK-2 en main: sin superficie no se simulaba; con
+ *                                 superficie se cablea, R15 en ambos sentidos)
  *     <A3GestorAdmin />            ART-R2 (#271): moderación con justificación (ADR-038)
  *     <A4AuditorDatosAbiertos />   ART-R3 (#272): auditoría y datos abiertos (lectura pura)
- *
- * A2 (comerciante) SIN montar: MK-1 #246–#250 sigue en cola de merge y la
- * titularidad comercial no se simula (R15). Cuando exista en main se suma
- * ACÁ — App.tsx no vuelve a tocarse (regla M0).
  *
  * Reglas vivas: R15 (el alta pública solo crea 'ciudadano' — ADR-031; la
  * promoción a moderador/admin es operación de sistema, nunca simulada) ·
@@ -29,6 +30,7 @@ import { useState, type FormEvent } from 'react';
 import { SesionProvider, useSesion } from './SesionProvider';
 import { RATE_LIMIT_POR_ROL, RATE_LIMIT_VISITANTE } from '../../lib/sesion';
 import A1VecinoCiudadano from './A1VecinoCiudadano';
+import A2Comerciante from './A2Comerciante';
 import A3GestorAdmin from './A3GestorAdmin';
 import A4AuditorDatosAbiertos from './A4AuditorDatosAbiertos';
 
@@ -138,13 +140,15 @@ export function ArtefactosRoot() {
         <h2>Artefactos por rol (A1–A4)</h2>
         <p>
           Paneles por rol sobre las superficies reales de la API: A1 vecino/ciudadano/visitante
-          (escritura ciudadana y lectura pública), A3 gestor y admin (moderación con
-          justificación pública, ADR-038) y A4 auditoría y datos abiertos (el auditor no muta).
-          El artefacto A2 (comerciante) llega con MK-1 (#246–#250): sin superficie en main no se
-          simula (R15).
+          (escritura ciudadana y lectura pública), A2 comerciante y titular verificado (mercado
+          de proximidad: alta, reclamo de titularidad solo-hash, habilitación SIIC con estados
+          epistémicos e historial F-3), A3 gestor y admin (moderación con justificación pública,
+          ADR-038) y A4 auditoría y datos abiertos (el auditor no muta). La titularidad comercial
+          es estado de ficha, no rol: la API es la compuerta (403 real) — nada se simula (R15).
         </p>
         <BarraSesion />
         <A1VecinoCiudadano />
+        <A2Comerciante />
         <A3GestorAdmin />
         <A4AuditorDatosAbiertos />
       </section>
