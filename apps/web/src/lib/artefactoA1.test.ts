@@ -11,9 +11,8 @@ import {
   TIPOS_EVIDENCIA,
   type CategoriaNodo,
   type FichaRespuestasV1,
-  type TransporteSesion,
 } from './artefactoA1';
-import type { EstadoSesion } from './sesion';
+import type { EstadoSesion, TransporteSesion } from './sesion';
 import { RATE_LIMIT_VISITANTE } from './sesion';
 
 /**
