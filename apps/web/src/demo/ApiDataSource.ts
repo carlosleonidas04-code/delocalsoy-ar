@@ -1,4 +1,11 @@
 /**
+ * @deprecated ADR-040 (FE-DEUDA-01, #292): el contrato canónico del frontend
+ * es `lib/dataSource.ts` con el selector único `VITE_MOCK_API` ('1' = demo
+ * sintética explícita). Este árbol `demo/` (ADR-029) queda como fixtures de
+ * las suites `dataSource.contract.test.ts` y `apiDataSource.mapping.test.ts`:
+ * no se monta en la app ni admite importadores nuevos fuera de `demo/`.
+ */
+/**
  * Implementación API del contrato DataSource (DEMO-3 #18 → CORE-003 R3, #83).
  *
  * Consume los endpoints reales del backend a través del proxy de Vite

@@ -5,6 +5,9 @@
  * (ArtefactosRoot) — este archivo NO toca App.tsx ni main.tsx.
  *
  * Decision DH 2026-10-29: login JWT real + degradacion honesta a synthetic.
+ * ADR-040 (FE-DEUDA-01, #292): selector canonico unico VITE_MOCK_API ('1'
+ * activa synthetic; default JWT). VITE_DATA_SOURCE (demo/, ADR-029) queda
+ * deprecado como selector vivo — fixtures de suites nada mas.
  */
 import {
   createContext,
@@ -39,8 +42,12 @@ const almacenNavegador = {
 };
 
 function modoDesdeOrigen(): ModoSesion {
-  const origen: unknown = import.meta.env.VITE_DATA_SOURCE;
-  return origen === 'synthetic' ? 'synthetic' : 'jwt';
+  // ADR-040 (FE-DEUDA-01, #292): selector canonico unico — VITE_MOCK_API === '1'
+  // activa la degradacion honesta a synthetic; por defecto, login JWT real.
+  // Mantiene la semantica de lib/dataSource.ts (createDataSource): un solo
+  // selector para toda la app, sin VITE_DATA_SOURCE.
+  const mockApi: unknown = import.meta.env.VITE_MOCK_API;
+  return mockApi === '1' ? 'synthetic' : 'jwt';
 }
 
 export interface ValorSesion {
