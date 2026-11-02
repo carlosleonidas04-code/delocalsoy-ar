@@ -21,6 +21,7 @@ import { QuarterlyTrendsSection } from './components/QuarterlyTrendsSection';
 import { RecursiveProspectiveContractPanel } from './components/RecursiveProspectiveContractPanel';
 import { ShowcaseRecorridoPanel } from './components/ShowcaseRecorridoPanel';
 import { ServicioInformativoPanel } from './components/ServicioInformativoPanel';
+import { SyntheticModeWarningBanner } from './components/SyntheticModeWarningBanner';
 import { TerritoriosMap } from './components/TerritoriosMap';
 import { TerritorialPlatformHub } from './components/TerritorialPlatformHub';
 import { TraceabilityAndEvidenciasPanel } from './components/TraceabilityAndEvidenciasPanel';
@@ -31,7 +32,6 @@ import {
   DataSourceHttpError,
   resolveOperationalOriginLabel,
   resolveUiOperationalState,
-  SYNTHETIC_MODE_WARNING_TEXT,
   SyntheticDataSource,
   type DataSource,
   type DataSourceMode,
@@ -895,20 +895,9 @@ export function App() {
         </div>
       )}
 
-      {/* Banner obligatorio Paso 6 cuando opera la fuente sintética (VITE_MOCK_API=1 o modo synthetic) */}
+      {/* Banner obligatorio Paso 6 cuando opera la fuente sintética (VITE_MOCK_API=1 o modo synthetic) — extraída 1:1 a SyntheticModeWarningBanner (FE-DEUDA-02 #293, corte 3) */}
       {(runtimeMode === 'synthetic' || useSyntheticInDemo) && (
-        <div
-          role="alert"
-          data-testid="synthetic-mode-warning-banner"
-          className="bg-amber-950/90 border-b border-amber-500/60 px-4 py-2.5 text-amber-100 text-xs flex flex-wrap items-center justify-between gap-2"
-        >
-          <span className="font-semibold">
-            ⚠️ {SYNTHETIC_MODE_WARNING_TEXT}
-          </span>
-          <span className="font-mono text-[11px] text-amber-200">
-            DataSource={activeDataSource.name} · mode=&quot;synthetic&quot; · VITE_MOCK_API=1 opt-in
-          </span>
-        </div>
+        <SyntheticModeWarningBanner activeDataSourceName={activeDataSource.name} />
       )}
 
       {/* Barra de transparencia operativa R5 (#16, #17, #18): distingue sin ambigüedad los 4 orígenes y los 6 estados — extraída 1:1 a OperationalOriginStrip (FE-DEUDA-02 #293, corte 2) */}
