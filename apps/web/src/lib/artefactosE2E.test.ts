@@ -28,8 +28,7 @@ import { crearClienteA4, canonizar, huellaSha256 } from './artefactoA4';
  * Los tests son SECUENCIALES y comparten el servidor: el ciclo se acredita
  * de punta a punta, paso por rol.
  *
- * R15 declarado: CI en pausa (pre-activación #262) — la suite corre al
- * volver Actions.
+ * R15 declarado: la suite corre en el CI de cada PR.
  */
 
 /* ------------------------------------------------------------------ */
