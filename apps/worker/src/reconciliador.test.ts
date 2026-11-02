@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 // AUD-08 (#103, ADR-032) — reconciliador de transporte contra PostGIS +
 // Redis REALES. En CI el job test levanta ambos servicios con DATABASE_URL
@@ -16,6 +16,12 @@ import { beforeAll, describe, expect, it } from 'vitest';
 // false en vitest.config.ts): este suite comparte el consumer group
 // core004-worker con worker-consume.test.ts — las pasadas son
 // deterministas solo sin archivos concurrentes sobre el mismo stream.
+
+// Timeout de suite: el bootstrap del test 3 hace XGROUP SETID 0 a los 3
+// grupos REALES (D2) y la re-entrega completa (~90 entradas, con
+// recomputes KPI/RAG del dominio) se absorbe en los drenajes de los
+// tests siguientes — el default de 5 s por test de vitest no alcanza.
+vi.setConfig({ testTimeout: 300_000, hookTimeout: 300_000 });
 
 process.env.DATABASE_URL =
   process.env.TEST_DATABASE_URL ?? 'postgresql://delocalsoy:delocalsoy@localhost:5432/delocalsoy?schema=public';
