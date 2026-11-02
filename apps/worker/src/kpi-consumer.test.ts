@@ -62,9 +62,39 @@ function snapshot(nodoKey: string, kpiKey: string): Promise<any> {
 
 describe.skipIf(!dbUp || !redisUp)('VIG-003 (#182) — consumidor de KPIs vig003-kpi', () => {
   beforeAll(async () => {
-    // El grupo arranca en '$': las entradas previas no se entregan — cada
-    // test publica y consume lo suyo.
+    // Desde AUD-08 (D2) el grupo nace en '0': la historia previa SE entrega
+    // y se absorbe idempotentemente (recompute con upsert) — cada test
+    // sigue publicando y consumiendo lo suyo.
     await ensureKpiGroup();
+    // AUD-08 (R4): los P2002 «repeated» son esperados (idempotencia
+    // ADR-032), pero el servicio PostGIS de CI los loguea a stderr con
+    // STATEMENT completo y esa sección inunda el tail de 20000 chars del
+    // auto-report — la salida de vitest quedaba FUERA del comentario
+    // (corridas 34cd6d4→da822f6: ciego ante el paso que falla). Silenciar
+    // el LOG DEL SERVIDOR para esta corrida de CI: el cliente (Prisma)
+    // sigue recibiendo cada P2002 y los tests siguen contando «repeated» —
+    // no se oculta comportamiento, solo el ruido del contenedor. Defensa
+    // SECUNDARIA: el silenciamiento primario vive en vitest.global-setup.ts
+    // (ALTER SYSTEM + pg_reload_conf, corre ANTES que cualquier archivo) —
+    // vitest ordena por TAMAÑO descendente, no alfabético: este archivo NO
+    // corre primero y el ALTER ROLE solía llegar tarde (corrida da822f6).
+    try {
+      const filas = (await prisma.$queryRawUnsafe(
+        'SELECT CURRENT_USER AS nombre'
+      )) as Array<{ nombre: string }>;
+      const usuario = filas[0]?.nombre;
+      if (typeof usuario === 'string' && usuario.length > 0) {
+        await prisma.$executeRawUnsafe(
+          `ALTER ROLE "${usuario}" SET log_min_messages = 'fatal'`
+        );
+        await prisma.$executeRawUnsafe(
+          `ALTER ROLE "${usuario}" SET log_min_error_statement = 'panic'`
+        );
+      }
+    } catch {
+      // best-effort (higiene del log en CI): sin superusuario local, el
+      // ruido queda — no afecta la semántica de los tests.
+    }
   });
 
   it('un evento del nodo dispara el recompute: snapshot consistente con el dominio', async () => {

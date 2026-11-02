@@ -93,15 +93,18 @@ router.post('/', async (req: Request, res: Response) => {
       },
     });
 
-    // ADR-032 (R4a): transporte — referencia al stream events:raw (fail-open).
+    // ADR-032 (R4a) + AUD-08 (H2, #103): transporte — referencia al stream.
+    // xaddEventReference es fail-open (devuelve null si no publicó; nunca
+    // lanza): el 201 DECLARA si la referencia llegó — stream:false es el hueco
+    // real que el reconciliador del worker repara en su próxima pasada.
     // events_raw es la verdad; el stream solo avanza la proyección (worker R4b).
-    await xaddEventReference('events:raw', {
+    const published = await xaddEventReference('events:raw', {
       event_id: event.id,
       type: event.type,
       hash: event.hash,
       occurred_at: event.occurred_at.toISOString(),
     });
-    res.status(201).json({ status: 'creado', event });
+    res.status(201).json({ status: 'creado', event, stream: published !== null });
   } catch (err) {
     // AUD-06 (#100): el detalle queda en stdout del servidor, nunca en la respuesta.
     console.error('[events] persistir:', err instanceof Error ? err.message : String(err));
