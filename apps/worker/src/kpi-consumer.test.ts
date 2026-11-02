@@ -66,6 +66,33 @@ describe.skipIf(!dbUp || !redisUp)('VIG-003 (#182) — consumidor de KPIs vig003
     // y se absorbe idempotentemente (recompute con upsert) — cada test
     // sigue publicando y consumiendo lo suyo.
     await ensureKpiGroup();
+    // AUD-08 (R4): los P2002 «repeated» son esperados (idempotencia
+    // ADR-032), pero el servicio PostGIS de CI los loguea a stderr con
+    // STATEMENT completo y esa sección inunda el tail de 20000 chars del
+    // auto-report — la salida de vitest quedaba FUERA del comentario
+    // (corridas 34cd6d4/cb417be: ciego ante el paso que falla). Silenciar
+    // el LOG DEL SERVIDOR para esta corrida de CI: el cliente (Prisma)
+    // sigue recibiendo cada P2002 y los tests siguen contando «repeated» —
+    // no se oculta comportamiento, solo el ruido del contenedor. Este
+    // archivo corre primero (fileParallelism false): las pools de los
+    // archivos siguientes heredan el setting al abrir sus conexiones.
+    try {
+      const filas = (await prisma.$queryRawUnsafe(
+        'SELECT CURRENT_USER AS nombre'
+      )) as Array<{ nombre: string }>;
+      const usuario = filas[0]?.nombre;
+      if (typeof usuario === 'string' && usuario.length > 0) {
+        await prisma.$executeRawUnsafe(
+          'ALTER ROLE "' + usuario + '" SET log_min_messages = 'fatal''
+        );
+        await prisma.$executeRawUnsafe(
+          'ALTER ROLE "' + usuario + '" SET log_min_error_statement = 'panic''
+        );
+      }
+    } catch {
+      // best-effort (higiene del log en CI): sin superusuario local, el
+      // ruido queda — no afecta la semántica de los tests.
+    }
   });
 
   it('un evento del nodo dispara el recompute: snapshot consistente con el dominio', async () => {

@@ -18,10 +18,13 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 // deterministas solo sin archivos concurrentes sobre el mismo stream.
 
 // Timeout de suite: el bootstrap del test 3 hace XGROUP SETID 0 a los 3
-// grupos REALES (D2) y la re-entrega completa (~90 entradas, con
-// recomputes KPI/RAG del dominio) se absorbe en los drenajes de los
-// tests siguientes — el default de 5 s por test de vitest no alcanza.
-vi.setConfig({ testTimeout: 300_000, hookTimeout: 300_000 });
+// grupos REALES (D2) y la re-entrega completa (historia de las suites de
+// la API + sellos del seed re-publicados por el reconciliador + recomputes
+// KPI/RAG del dominio) se absorbe en los drenajes de los tests siguientes.
+// El default de vitest (5 s) no alcanza (cb417be: con 300 s los inserts de
+// la absorción seguían activos al morir el job) — margen 600 s + drenaje
+// en paralelo (consumirTodo, 4 consumidores).
+vi.setConfig({ testTimeout: 600_000, hookTimeout: 600_000 });
 
 process.env.DATABASE_URL =
   process.env.TEST_DATABASE_URL ?? 'postgresql://delocalsoy:delocalsoy@localhost:5432/delocalsoy?schema=public';
@@ -116,10 +119,18 @@ async function drenar(group: string, consumer: string): Promise<string[]> {
 // que nacieron sin referencia (hueco real del SQL directo) — una sola
 // pasada NO garantiza drenar. Rondas hasta ack 0: nada queda pending.
 async function consumirTodo(consumer: string): Promise<void> {
-  for (let vuelta = 0; vuelta < 100; vuelta += 1) {
-    const r = await consumeOnce(consumer);
-    if (r.acked === 0) break;
-  }
+  // Drenaje CON 4 CONSUMIDORES EN PARALELO: la absorción post-bootstrap
+  // (H3) sobre la historia completa excedió los 300 s de test con un solo
+  // consumidor (corrida cb417be — inserts de absorción activos al morir el
+  // job). Es INSERT puro: la unicidad de event_id (P2002 repeated)
+  // serializa la corrección y cada entrada se entrega a UN solo
+  // consumidor — el paralelismo es seguro y no cambia lo observado.
+  await Promise.all(['-1', '-2', '-3', '-4'].map(async (sufijo) => {
+    for (let vuelta = 0; vuelta < 100; vuelta += 1) {
+      const r = await consumeOnce(consumer + sufijo);
+      if (r.acked === 0) break;
+    }
+  }));
 }
 async function consumirKpisTodo(consumer: string): Promise<void> {
   for (let vuelta = 0; vuelta < 100; vuelta += 1) {
