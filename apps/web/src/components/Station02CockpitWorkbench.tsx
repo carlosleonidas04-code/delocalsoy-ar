@@ -316,7 +316,7 @@ export function Station02CockpitWorkbench({
                     (t) => t.key === selectedNodeKey,
                   );
                   if (nodeObj) {
-                    handleFocusOnGoogleMap(nodeObj.id);
+                    onFocusOnGoogleMap(nodeObj.id);
                   }
                 }}
               >
