@@ -5,6 +5,7 @@ import {
   DelocalSoyNetworkLogoSvg,
   DelocalSoyWordmark,
 } from './components/BaseConsolidadaPrototype';
+import { ComerciosPanel } from './components/ComerciosPanel';
 import { EthicalAiCopilotPanel } from './components/EthicalAiCopilotPanel';
 import { FederatedCompareView } from './components/FederatedCompareView';
 import { FederatedNodeDetailModal } from './components/FederatedNodeDetailModal';
@@ -6171,6 +6172,13 @@ pnpm install && git status -sb`}
             fuentes ADR-035 y ingestas publicadas (NC-EV-09) — acople por contrato DataSource (ADR-029) */}
         {(activeDesignLens === 'all' || activeDesignLens === 'lens_atlas_coco_baba') && (
           <ServicioInformativoPanel dataSource={defaultDataSource} />
+        )}
+
+        {/* 6d. Mercado de Proximidad (MARKET-CAP MK-1 #243, sub-épica #152): directorio de
+            comercios federado con estados epistémicos honestos — acople por contrato
+            DataSource (ADR-029), multinodo desde día 1 (decisión DH) */}
+        {(activeDesignLens === 'all' || activeDesignLens === 'lens_atlas_coco_baba') && (
+          <ComerciosPanel dataSource={defaultDataSource} />
         )}
 
         {/* 7. Estado de Integración API y Registro Maestro de Nodos Territoriales */}

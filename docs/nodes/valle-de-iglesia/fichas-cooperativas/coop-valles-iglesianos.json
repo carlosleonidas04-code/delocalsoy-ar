@@ -1,0 +1,96 @@
+{
+  "$schema": "https://delocalsoy.ar/schemas/v1/ficha-cooperativa-r9.json",
+  "protocolo": "R9-CANON-VIG-008",
+  "timestamp": "2026-10-18T14:45:00.000Z",
+  "nodoEmisor": "NODO-VALLE-DE-IGLESIA-VIG",
+  "entidad": {
+    "id": "coop-valles-iglesianos",
+    "razonSocial": "Cooperativa de Trabajo Valles Iglesianos Limitada",
+    "distritoSede": "Las Flores (El Jarillal), Departamento Iglesia",
+    "tipoEntidad": "Cooperativa de Trabajo (1er Grado)",
+    "sha256Hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "camposEpistemicos": {
+    "matriculaInaes": {
+      "valor": "11.463",
+      "estado": "validado",
+      "fuente": "Padrón Oficial INAES",
+      "fecha": "2024-06-15"
+    },
+    "matriculaProvincial": {
+      "valor": "170",
+      "estado": "validado",
+      "fuente": "Dirección Provincial de Cooperativas de San Juan",
+      "fecha": "2024-06-15"
+    },
+    "fechaConstitucion": {
+      "valor": "25-08-1987",
+      "estado": "validado",
+      "fuente": "Estatuto Constitutivo Registrado INAES",
+      "fecha": "1987-08-25"
+    },
+    "domicilioPublicado": {
+      "valor": "Calle El Jarillal s/n, Las Flores",
+      "estado": "validado",
+      "fuente": "Sede Social Pública Registrada",
+      "fecha": "2024-06-15",
+      "nota": "Dirección postal pública de Las Flores. Conforme ADR-036, sin punto GPS de viviendas asociadas."
+    },
+    "sociosActivos": {
+      "valor": 31,
+      "estado": "validado",
+      "fuente": "Acta de Asamblea General Ordinaria Pública",
+      "fecha": "2025-10-15"
+    },
+    "federacion": {
+      "valor": "FECOAGRO (Federación de Cooperativas Agropecuarias de San Juan)",
+      "estado": "validado",
+      "fuente": "Registro Fundacional FECOAGRO (Miembro Fundador)",
+      "fecha": "1992-12-18"
+    },
+    "fechaAfiliacionFederacion": {
+      "valor": "18-12-1992",
+      "estado": "validado",
+      "fuente": "Padrón Fundacional Federativo FECOAGRO",
+      "fecha": "1992-12-18"
+    },
+    "estadoVigenciaInaes": {
+      "valor": "sin consulta formal (reordenamiento nacional en curso)",
+      "estado": "pendiente",
+      "fuente": "Proceso de fiscalización y reordenamiento INAES 2024-2026",
+      "fecha": "2026-03-01",
+      "nota": "unknown_directo: En trámite de actualización formal de autoridades."
+    },
+    "habilitacionTuristica2400T": {
+      "valor": "padrón no encontrado — sin datos",
+      "estado": "sintetico",
+      "fuente": "Revisión padrón provincial prestadores Ley 2400-T",
+      "fecha": "2026-09-10",
+      "nota": "unknown honesto: Sin antecedente de registro en la categoría turismo agroecológico."
+    },
+    "productosPublicadosCount": {
+      "valor": 0,
+      "estado": "sintetico",
+      "fuente": "Inventario de catálogo con verificación de origen",
+      "fecha": "2026-10-17",
+      "nota": "vacío honesto: Cero productos publicados. Requiere consentimiento institucional formal."
+    }
+  },
+  "gobernanzaADR027": {
+    "regla": "Cero nombres civiles. Solo roles institucionales sin PII (Ley 25.326).",
+    "estructuraRoles": [
+      "Presidente del Consejo de Administración",
+      "Secretaria de Actas",
+      "Tesorero",
+      "Vocales de Obra y Producción (3)",
+      "Síndico Fiscalizador"
+    ],
+    "consentimientoInstitucional": "pendiente",
+    "estadoConsentimientoNota": "Requiere asamblea institucional ratificada de la cooperativa para publicar catálogo o contactos directos."
+  },
+  "integridadCriptografica": {
+    "algoritmo": "SHA-256",
+    "hashEsperado": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "inmutable": true
+  }
+}

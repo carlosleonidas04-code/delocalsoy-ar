@@ -228,16 +228,14 @@ describe.skipIf(!dbUp)('Subnodos territoriales VIG-001 (#171, épica #167)', () 
     expect(badParent.status).toBe(400);
   });
 
-  it('caucete sin subnodos sembrados: lectura honesta (200 + count 0), no error', async () => {
-    // capital tiene su propia semilla desde la activación territorial NCAP-R2
-    // (#154, épica #152): suite subnodos-capital-rutas.test.ts
-    for (const key of ['caucete']) {
-      const res = await fetch(base + '/api/nodos/' + key + '/subnodos');
-      expect(res.status).toBe(200);
-      const body: any = await res.json();
-      expect(body.success).toBe(true);
-      expect(body.count).toBe(0);
-    }
+  it('caucete con su base territorial activada: 10 entidades (NODO-CAU R6, #145)', async () => {
+    // caucete activó su base territorial (NODO-CAU R6, #145, épica #137):
+    // 1 district + 9 locality Georef — detalle en subnodos-caucete-rutas.test.ts
+    const res = await fetch(base + '/api/nodos/caucete/subnodos');
+    expect(res.status).toBe(200);
+    const body: any = await res.json();
+    expect(body.success).toBe(true);
+    expect(body.count).toBe(10);
   });
 
   it('db:seed re-ejecutado no duplica subnodos ni sellos (idempotencia total)', async () => {
