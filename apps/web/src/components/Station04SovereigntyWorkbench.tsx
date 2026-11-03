@@ -13,7 +13,6 @@
  */
 import type {
   AccreditedCustodianRecord,
-  CustodianSovereigntyAlertRecord,
   FederalSovereigntyRecord,
   InterNodeSyncPack,
   LineageChainStep,
@@ -22,6 +21,7 @@ import type {
   SpatialIntersectionResult,
   TelemetryWebhookRecord,
 } from '../data/federatedModel';
+import type { CustodianSovereigntyAlertRecord } from '../lib/firestoreEthicalStore';
 
 type SovereigntyFilter =
   | 'all'
