@@ -5,10 +5,12 @@ import { BaseConsolidadaPrototype } from './components/BaseConsolidadaPrototype'
 import { CognitiveLensSelector, type DesignLensKey } from './components/CognitiveLensSelector';
 import { ComerciosPanel } from './components/ComerciosPanel';
 import { DemoDataSourceAuditSection } from './components/DemoDataSourceAuditSection';
+import { DesignStudioHeader } from './components/DesignStudioHeader';
 import { EthicalAiCopilotPanel } from './components/EthicalAiCopilotPanel';
 import { FederatedCompareView } from './components/FederatedCompareView';
 import { FederatedNodeDetailModal } from './components/FederatedNodeDetailModal';
 import { FederatedNodeExplorer } from './components/FederatedNodeExplorer';
+import { GmpQuotaBanner } from './components/GmpQuotaBanner';
 import { HeroBannerSection } from './components/HeroBannerSection';
 import { HeuristicsAwardMatrix } from './components/HeuristicsAwardMatrix';
 import { HorizonOneArchitecturePanel } from './components/HorizonOneArchitecturePanel';
@@ -37,8 +39,6 @@ import { VibeAgentExportHandoffCenter } from './components/VibeAgentExportHandof
 import { WorkspacePanel } from './components/WorkspacePanel';
 import { useFederatedMutationHandlers } from './hooks/useFederatedMutationHandlers';
 import {
-  ApiDataSource,
-  createDataSource,
   DataSourceHttpError,
   resolveOperationalOriginLabel,
   resolveUiOperationalState,
@@ -51,6 +51,12 @@ import {
   recordCustodianSovereigntyAlertInFirestore,
   type CustodianSovereigntyAlertRecord,
 } from './lib/firestoreEthicalStore';
+import { runIdempotencyAndErrorProbe } from './lib/idempotencyProbe';
+import {
+  defaultDataSource,
+  fetchTerritorios,
+  type ModeloFederadoPayload,
+} from './lib/territorioTypes';
 import type {
   AccreditedCustodianRecord,
   EvidenciaRecord,
@@ -70,90 +76,16 @@ import type {
   TerritorioLayer,
 } from './data/federatedModel';
 
-export interface Territorio {
-  id: string;
-  key: string;
-  nombre: string;
-  subtitulo?: string;
-  provincia: string;
-  foco?: string;
-  focusLong?: string;
-  poblacion?: number;
-  color?: string;
-  activo: boolean;
-}
-
-interface ModeloFederadoPayload {
-  territorios: Territorio[];
-  layers: Record<string, TerritorioLayer[]>;
-  categories: Record<string, TerritorioCategory[]>;
-  features: TerritorioFeature[];
-  reports: TerritorialReport[];
-  eventsRaw: RawEventRecord[];
-  evidencias: EvidenciaRecord[];
-  spatialGeometries?: SpatialGeometryRecord[];
-  syncPacks?: InterNodeSyncPack[];
-  temporalSnapshots?: TemporalQuarterSnapshot[];
-  multiScaleSyntheses?: MultiScaleSynthesisItem[];
-  lineageChain?: LineageChainStep[];
-  federalSovereignty?: FederalSovereigntyRecord[];
-  spatialIntersections?: SpatialIntersectionResult[];
-  offlineFieldQueue?: OfflineFieldQueueItem[];
-  accreditedCustodians?: AccreditedCustodianRecord[];
-  telemetryWebhooks?: TelemetryWebhookRecord[];
-}
-
-export type HealthState =
-  | { status: 'checking' }
-  | { status: 'ok'; body: string }
-  | { status: 'error'; message: string };
-
-export type TerritoriosState =
-  | { status: 'loading' }
-  | { status: 'ok'; items: Territorio[] }
-  | { status: 'error'; message: string };
-
-export type FiltroActivo = 'todos' | 'activos' | 'inactivos';
-
-function normalizeTerritorio(
-  raw: Partial<Territorio> & { id: string; nombre: string; provincia: string; activo: boolean },
-): Territorio {
-  const fallbackKey = raw.nombre
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-');
-  return {
-    id: raw.id,
-    key: raw.key || fallbackKey,
-    nombre: raw.nombre,
-    subtitulo: raw.subtitulo ?? 'Nodo Federado',
-    provincia: raw.provincia,
-    foco: raw.foco ?? 'Relevamiento comunitario y activos locales',
-    focusLong:
-      raw.focusLong ??
-      `Nodo federado en ${raw.provincia} integrado al núcleo común de DELocalSoy.AR.`,
-    poblacion: raw.poblacion ?? 15000,
-    color: raw.color ?? '#2e9e5b',
-    activo: raw.activo,
-  };
-}
-
-const defaultDataSource: DataSource = createDataSource();
-
-/**
- * Obtiene la lista de territorios a través del contrato `DataSource` (`ApiDataSource` | `SyntheticDataSource`).
- * Cumple Paso 5 y Paso 7: no transforma errores HTTP (503, 401, 404, 422, 500) en `[]`.
- */
-export async function fetchTerritorios(
-  filtro: FiltroActivo = 'todos',
-  dataSource: DataSource = defaultDataSource,
-): Promise<Territorio[]> {
-  const activoParam =
-    filtro === 'activos' ? true : filtro === 'inactivos' ? false : undefined;
-  const rows = await dataSource.listTerritories({ activo: activoParam });
-  return rows.map((r) => normalizeTerritorio(r));
-}
+// Tipos y helpers de territorios — extraídos 1:1 a lib/territorioTypes
+// (FE-DEUDA-02 #293, corte 23). App re-exporta la API pública para no alterar
+// los imports existentes de los componentes ('../App').
+export { fetchTerritorios } from './lib/territorioTypes';
+export type {
+  Territorio,
+  HealthState,
+  TerritoriosState,
+  FiltroActivo,
+} from './lib/territorioTypes';
 
 /**
  * Plataforma DELocalSoy.AR — Horizontes 1, 2 y 3 Consolidados + Ciclo Post-CORE-002 (main @ e3616b5).
@@ -536,53 +468,15 @@ export function App() {
     }
   };
 
+  // Sonda de idempotencia y error (EV-005 / R5): lógica extraída 1:1 a
+  // lib/idempotencyProbe (corte 23); App solo retiene el estado del resultado.
   const handleRunIdempotencyAndErrorProbe = async () => {
-    const syn = new SyntheticDataSource();
-    const first = await syn.emitEvent({
-      type: 'demo.probe_ev005',
-      nodeId: 'capital',
-      payload: { check: 'idempotencia-ev005', cycle: 'post-core-002' },
-    });
-    const second = await syn.emitEvent({
-      type: 'demo.probe_ev005',
-      nodeId: 'capital',
-      payload: { check: 'idempotencia-ev005', cycle: 'post-core-002' },
-    });
-    const degradedApi = new ApiDataSource({
-      fetchImpl: async () =>
-        new Response(JSON.stringify({ error: '503 Base de datos desconectada' }), {
-          status: 503,
-          headers: { 'Content-Type': 'application/json' },
-        }),
-    });
-    let propagated503 = false;
-    try {
-      await degradedApi.listTerritories();
-    } catch (e) {
-      propagated503 = e instanceof DataSourceHttpError && e.status === 503;
-    }
-    setIdempotencyProbeResult(
-      `1er insert: ${first.status} (${first.id}) · 2do insert: ${second.status} (mismo id=${first.id === second.id}, hash=${first.hash.slice(0, 12)}…) · 503 propagado sin []: ${propagated503 ? 'SÍ (R5 OK)' : 'NO'}`,
-    );
+    setIdempotencyProbeResult(await runIdempotencyAndErrorProbe());
   };
 
   return (
     <>
-      {gmpQuotaExceeded && (
-        <div className="quota-banner">
-          <span>
-            Google Maps Platform quota reached. If you are the app owner, visit{' '}
-            <a
-              href="https://developers.google.com/maps/ai/ai-studio?utm_campaign=gmp_mcp_codeassist_v1_aistudio#quota_exceeded_errors"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              maps developer site
-            </a>{' '}
-            for instructions to update your account.
-          </span>
-        </div>
-      )}
+      {gmpQuotaExceeded && <GmpQuotaBanner />}
 
       {/* Banner obligatorio Paso 6 cuando opera la fuente sintética (VITE_MOCK_API=1 o modo synthetic) — extraída 1:1 a SyntheticModeWarningBanner (FE-DEUDA-02 #293, corte 3) */}
       {(runtimeMode === 'synthetic' || useSyntheticInDemo) && (
@@ -658,24 +552,8 @@ export function App() {
           className="card"
           data-state="ok"
         >
-          <div className="section-header">
-            <div>
-              <span className="kicker-text">
-                Arquitectura Visual &amp; Heurística Internacional · Proceso Recursivo Modelo Base → Píxel (ADR-034 · v7.7)
-              </span>
-              <h2>
-                Estudio Formal de Diseño Frontend y Lentes Cognitivas del Ecosistema
-              </h2>
-              <p className="section-caption">
-                Cada decisión estética y de interacción responde recursivamente a los{' '}
-                <strong>19 modelos Prisma</strong>, los{' '}
-                <strong>13 módulos de dominio</strong>, los contratos{' '}
-                <code>@delocalsoy/contracts</code> y la identidad de los{' '}
-                <strong>3 departamentos de San Juan</strong>. Usá las{' '}
-                <strong>Lentes Cognitivas</strong> para enfocar el área de trabajo o mantener la vista integral.
-              </p>
-            </div>
-          </div>
+          {/* Header del ESTUDIO — extraido 1:1 a DesignStudioHeader (FE-DEUDA-02 #293, corte 23) */}
+          <DesignStudioHeader />
 
           {/* 1. Selector Ejecutivo de Lentes Cognitivas (H-TER-03: Reducción de fatiga lineal) — extraída 1:1 a CognitiveLensSelector (FE-DEUDA-02 #293, corte 7) */}
           <CognitiveLensSelector
