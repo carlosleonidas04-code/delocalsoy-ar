@@ -1,12 +1,14 @@
+/**
+ * Exportación de reportes territoriales — DELocalSoy.AR
+ *
+ * GOOGLE DRIVE DESHABILITADO por decisión de la Dirección Humana (2026-11-03):
+ * los reportes territoriales no salen del territorio (soberanía del dato).
+ * Este módulo conserva las firmas exportadas y los formateadores puros (json/
+ * md/csv/gdoc) para la descarga local; toda operación de red contra Drive lanza
+ * un error explícito. Nada se simula (R15).
+ */
+
 import type { User } from 'firebase/auth';
-import firebaseConfig from '../lib/firebaseConfig';
-import {
-  SCOPES,
-  getAccessToken,
-  googleSignIn,
-  initAuth,
-  logout,
-} from '../lib/auth';
 import type { Territorio } from '../App';
 import {
   REPORT_STATUS_META,
@@ -14,7 +16,6 @@ import {
   type TerritorialReport,
   type TerritorioFeature,
 } from '../data/federatedModel';
-
 export interface FirebaseAppletDriveConfig {
   projectId: string;
   appId: string;
@@ -49,71 +50,55 @@ export interface DriveUploadResult {
   projectId: string;
 }
 
+
 /**
- * Obtiene y valida los metadatos de configuración provistos en `firebase-applet-config.json`
- * para la autenticación OAuth 2.0 con Google Drive API.
+ * Configuración de Drive DESHABILITADA (decisión DH 2026-11-03):
+ * `isConfigured: false` es la señal honesta para que las UI muestren la
+ * exportación como no disponible; no hay credenciales de Google.
  */
 export function getFirebaseAppletDriveConfig(): FirebaseAppletDriveConfig {
-  const projectId = firebaseConfig.projectId || '';
-  const appId = firebaseConfig.appId || '';
-  const authDomain = firebaseConfig.authDomain || '';
-  const storageBucket = firebaseConfig.storageBucket || '';
-  const oAuthClientId = firebaseConfig.oAuthClientId || '';
-
   return {
-    projectId,
-    appId,
-    authDomain,
-    storageBucket,
-    oAuthClientId,
-    scopes: SCOPES,
-    isConfigured: Boolean(projectId && appId && authDomain && oAuthClientId),
+    projectId: '',
+    appId: '',
+    authDomain: '',
+    storageBucket: '',
+    oAuthClientId: '',
+    scopes: [],
+    isConfigured: false,
   };
 }
 
 /**
- * Suscribe el estado de autenticación de Firebase Auth + Google Drive API
- * manteniendo el token OAuth únicamente en memoria (`cachedAccessToken`).
+ * @deprecated No-op: no hay sesión de Google. Invoca `onAuthFailure` (si existe)
+ * de inmediato y devuelve una desuscripción sin efecto.
  */
 export function subscribeToDriveAuth(
-  onAuthSuccess?: (user: User, token: string) => void,
+  _onAuthSuccess?: (user: User, token: string) => void,
   onAuthFailure?: () => void,
 ): () => void {
-  return initAuth(onAuthSuccess, onAuthFailure);
+  if (onAuthFailure) onAuthFailure();
+  return () => {};
 }
 
-/**
- * Inicia el flujo de autenticación con Google Drive API utilizando las credenciales
- * de `firebase-applet-config.json`.
- */
+/** @deprecated Deshabilitado (decisión DH 2026-11-03). Devuelve siempre `null`. */
 export async function authenticateWithGoogleDrive(): Promise<{
   user: User;
   accessToken: string;
   config: FirebaseAppletDriveConfig;
 } | null> {
-  const result = await googleSignIn();
-  if (!result) return null;
-  return {
-    user: result.user,
-    accessToken: result.accessToken,
-    config: getFirebaseAppletDriveConfig(),
-  };
+  return null;
 }
 
-/**
- * Obtiene el token de acceso OAuth en memoria para llamadas a Google Drive API.
- */
+/** @deprecated Deshabilitado. Devuelve siempre `null`. */
 export async function getDriveAccessToken(): Promise<string | null> {
-  return getAccessToken();
+  return null;
 }
 
-/**
- * Cierra la sesión de Firebase Auth y limpia el token OAuth en memoria.
- */
-export async function signOutFromGoogleDrive(): Promise<void> {
-  await logout();
-}
+/** @deprecated No-op: no hay sesión de Google que cerrar. */
+export async function signOutFromGoogleDrive(): Promise<void> {}
 
+const DRIVE_DISABLED_ERROR =
+  'Exportación a Google Drive deshabilitada en DELocalSoy.AR — decisión DH 2026-11-03 (soberanía del dato: los reportes territoriales no salen del territorio). Usá la descarga local.';
 /**
  * Resuelve el MIME type de origen y destino en Google Drive según el formato elegido.
  */
@@ -418,183 +403,30 @@ export function formatNodeTerritorialReportsBundle(
   ].join('\n');
 }
 
-/**
- * Sube y exporta un reporte territorial directamente a Google Drive API v3 (`multipart/related`),
- * utilizando el token OAuth obtenido mediante la configuración de `firebase-applet-config.json`.
- */
+/** @deprecated Deshabilitado (decisión DH 2026-11-03): lanza error explícito. */
 export async function exportTerritorialReportToDrive(
-  options: DriveUploadRequestOptions,
+  _options: DriveUploadRequestOptions,
 ): Promise<DriveUploadResult> {
-  const token = await getDriveAccessToken();
-  if (!token) {
-    throw new Error(
-      'No hay una sesión activa con Google Drive. Iniciá sesión con Google para autorizar la exportación.',
-    );
-  }
-
-  const config = getFirebaseAppletDriveConfig();
-  const formatMeta = resolveDriveFormatMeta(options.format);
-
-  const cleanBaseName = options.fileName
-    .replace(/\.(json|csv|md|gdoc|txt)$/i, '')
-    .trim();
-  const finalFileName =
-    options.format === 'gdoc'
-      ? cleanBaseName
-      : `${cleanBaseName}.${formatMeta.extension}`;
-
-  const metadata = {
-    name: finalFileName,
-    mimeType: formatMeta.driveTargetMimeType,
-    description:
-      options.description ||
-      `Reporte territorial exportado desde DELocalSoy.AR (Proyecto: ${config.projectId})`,
-  };
-
-  const boundary = 'delocalsoy_drive_service_boundary_2026';
-  const delimiter = `\r\n--${boundary}\r\n`;
-  const closeDelim = `\r\n--${boundary}--`;
-
-  const multipartBody =
-    delimiter +
-    'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
-    JSON.stringify(metadata) +
-    delimiter +
-    `Content-Type: ${formatMeta.contentMimeType}; charset=UTF-8\r\n\r\n` +
-    options.content +
-    closeDelim;
-
-  const uploadRes = await fetch(
-    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType,modifiedTime,webViewLink',
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': `multipart/related; boundary=${boundary}`,
-      },
-      body: multipartBody,
-    },
-  );
-
-  if (uploadRes.status === 401 || uploadRes.status === 403) {
-    throw new Error(
-      'Sesión expirada o permisos insuficientes en Google Drive API. Volvé a iniciar sesión con Google.',
-    );
-  }
-
-  if (!uploadRes.ok) {
-    throw new Error(
-      `Google Drive API respondió HTTP ${uploadRes.status} al exportar el reporte.`,
-    );
-  }
-
-  const uploadedFile = (await uploadRes.json()) as DriveFileRecord;
-  const webViewLink =
-    uploadedFile.webViewLink ||
-    (uploadedFile.mimeType === 'application/vnd.google-apps.document'
-      ? `https://docs.google.com/document/d/${uploadedFile.id}/edit`
-      : `https://drive.google.com/file/d/${uploadedFile.id}/view`);
-
-  return {
-    file: uploadedFile,
-    webViewLink,
-    exportedAt: new Date().toISOString(),
-    projectId: config.projectId,
-  };
+  throw new Error(DRIVE_DISABLED_ERROR);
 }
 
-/**
- * Lista archivos de la cuenta de Google Drive del usuario autenticado.
- */
+/** @deprecated Deshabilitado (decisión DH 2026-11-03): lanza error explícito. */
 export async function listDriveFiles(
-  searchQuery = '',
-  pageSize = 15,
+  _searchQuery = '',
+  _pageSize = 15,
 ): Promise<DriveFileRecord[]> {
-  const token = await getDriveAccessToken();
-  if (!token) {
-    throw new Error('Autenticación requerida para listar archivos de Google Drive.');
-  }
-
-  const qParts = ['trashed = false'];
-  if (searchQuery.trim()) {
-    const escaped = searchQuery.trim().replace(/'/g, "\\'");
-    qParts.push(`name contains '${escaped}'`);
-  }
-
-  const params = new URLSearchParams({
-    pageSize: String(pageSize),
-    fields: 'files(id,name,mimeType,modifiedTime,webViewLink)',
-    orderBy: 'modifiedTime desc',
-    q: qParts.join(' and '),
-  });
-
-  const res = await fetch(
-    `https://www.googleapis.com/drive/v3/files?${params.toString()}`,
-    {
-      headers: { Authorization: `Bearer ${token}` },
-    },
-  );
-
-  if (res.status === 401 || res.status === 403) {
-    throw new Error(
-      'Sesión expirada o permisos insuficientes. Volvé a iniciar sesión con Google.',
-    );
-  }
-
-  if (!res.ok) {
-    throw new Error(`Google Drive API respondió HTTP ${res.status}`);
-  }
-
-  const data = (await res.json()) as { files?: DriveFileRecord[] };
-  return data.files ?? [];
+  throw new Error(DRIVE_DISABLED_ERROR);
 }
 
-/**
- * Exporta un documento de Google Drive (por ejemplo un Google Doc) como Blob (PDF o TXT).
- */
+/** @deprecated Deshabilitado (decisión DH 2026-11-03): lanza error explícito. */
 export async function exportDriveFileAsBlob(
-  fileId: string,
-  exportMime: 'application/pdf' | 'text/plain',
+  _fileId: string,
+  _exportMime: 'application/pdf' | 'text/plain',
 ): Promise<Blob> {
-  const token = await getDriveAccessToken();
-  if (!token) {
-    throw new Error('Autenticación requerida para exportar desde Google Drive.');
-  }
-
-  const res = await fetch(
-    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/export?mimeType=${encodeURIComponent(exportMime)}`,
-    {
-      headers: { Authorization: `Bearer ${token}` },
-    },
-  );
-
-  if (!res.ok) {
-    throw new Error(
-      `No se pudo exportar el documento desde Google Drive (HTTP ${res.status})`,
-    );
-  }
-
-  return res.blob();
+  throw new Error(DRIVE_DISABLED_ERROR);
 }
 
-/**
- * Elimina un archivo de Google Drive previa confirmación explícita del usuario.
- */
-export async function deleteDriveFileById(fileId: string): Promise<void> {
-  const token = await getDriveAccessToken();
-  if (!token) {
-    throw new Error('Autenticación requerida para eliminar archivos en Google Drive.');
-  }
-
-  const res = await fetch(
-    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}`,
-    {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
-    },
-  );
-
-  if (!res.ok) {
-    throw new Error(`No se pudo eliminar el archivo de Google Drive (HTTP ${res.status})`);
-  }
+/** @deprecated Deshabilitado (decisión DH 2026-11-03): lanza error explícito. */
+export async function deleteDriveFileById(_fileId: string): Promise<void> {
+  throw new Error(DRIVE_DISABLED_ERROR);
 }
