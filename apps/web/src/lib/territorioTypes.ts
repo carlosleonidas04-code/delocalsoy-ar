@@ -38,7 +38,7 @@ export interface Territorio {
   activo: boolean;
 }
 
-interface ModeloFederadoPayload {
+export interface ModeloFederadoPayload {
   territorios: Territorio[];
   layers: Record<string, TerritorioLayer[]>;
   categories: Record<string, TerritorioCategory[]>;
@@ -94,7 +94,7 @@ function normalizeTerritorio(
   };
 }
 
-const defaultDataSource: DataSource = createDataSource();
+export const defaultDataSource: DataSource = createDataSource();
 
 /**
  * Obtiene la lista de territorios a través del contrato `DataSource` (`ApiDataSource` | `SyntheticDataSource`).

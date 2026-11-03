@@ -55,7 +55,11 @@ import { runIdempotencyAndErrorProbe } from './lib/idempotencyProbe';
 import {
   defaultDataSource,
   fetchTerritorios,
+  type FiltroActivo,
+  type HealthState,
   type ModeloFederadoPayload,
+  type Territorio,
+  type TerritoriosState,
 } from './lib/territorioTypes';
 import type {
   AccreditedCustodianRecord,
