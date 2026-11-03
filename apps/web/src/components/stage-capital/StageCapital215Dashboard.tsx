@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import {
   COMERCIOS_CAPITAL_215,
   ESPACIOS_PUBLICOS_CAPITAL,
-  ComercioBarrial,
-  EspacioPublicoCapital
+  ComercioBarrial
 } from './stageCapital215Data';
 import { Store, Trees, MapPin, Search } from 'lucide-react';
 

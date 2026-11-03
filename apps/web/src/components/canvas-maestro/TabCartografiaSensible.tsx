@@ -46,7 +46,7 @@ const CAPAS_INICIALES: CapaCarto[] = [
 ];
 
 export const TabCartografiaSensible: React.FC = () => {
-  const [capas, setCapas] = useState<CapaCarto[]>(CAPAS_INICIALES);
+  const [capas] = useState<CapaCarto[]>(CAPAS_INICIALES);
   const [capasVisibles, setCapasVisibles] = useState<Record<string, boolean>>({
     'capa-ejes-civicos': true,
     'capa-cuencas-hidricas': true,

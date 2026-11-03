@@ -52,7 +52,7 @@ const AUDIT_RECORDS: AuditRecord[] = [
 
 export const TabTrazabilidadCripto: React.FC = () => {
   const [verificando, setVerificando] = useState(false);
-  const [auditLog, setAuditLog] = useState<AuditRecord[]>(AUDIT_RECORDS);
+  const [auditLog] = useState<AuditRecord[]>(AUDIT_RECORDS);
 
   const revalidarHashes = () => {
     setVerificando(true);

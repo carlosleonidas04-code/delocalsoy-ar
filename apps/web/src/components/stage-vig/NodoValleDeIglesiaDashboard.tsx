@@ -11,7 +11,7 @@ interface Props {
   onNavigateToCapital?: () => void;
 }
 
-export const NodoValleDeIglesiaDashboard: React.FC<Props> = ({ onNavigateToCapital }) => {
+export const NodoValleDeIglesiaDashboard: React.FC<Props> = () => {
   const [selectedDistrito, setSelectedDistrito] = useState<DistritoVIG>(DISTRITOS_RATIFICADOS_IGLESIA[0]);
   const [vistaActiva, setVistaActiva] = useState<'distritos' | 'hidrico' | 'agro'>('distritos');
 
