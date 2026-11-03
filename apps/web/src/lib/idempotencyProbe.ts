@@ -31,6 +31,6 @@ export async function runIdempotencyAndErrorProbe(): Promise<string> {
     propagated503 = e instanceof DataSourceHttpError && e.status === 503;
   }
   return (
-    `1er insert: ${first.status} (${first.id}) · 2do insert: ${second.status} (mismo id=${first.id === second.id}, hash=${first.hash.slice(0, 12)}…) · 503 propagado sin []: ${propagated503 ? 'SÍ (R5 OK)' : 'NO'}`,
+    `1er insert: ${first.status} (${first.id}) · 2do insert: ${second.status} (mismo id=${first.id === second.id}, hash=${first.hash.slice(0, 12)}…) · 503 propagado sin []: ${propagated503 ? 'SÍ (R5 OK)' : 'NO'}`
   );
 }
