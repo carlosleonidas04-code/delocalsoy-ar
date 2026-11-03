@@ -1593,6 +1593,7 @@ export function App() {
                       onSelectPlatformSection={setExternalPlatformSection}
                       externalPlatformTerritoryFilter={externalPlatformTerritoryFilter}
                       onSelectPlatformTerritoryFilter={setExternalPlatformTerritoryFilter}
+                      onSelectNodeKey={setSelectedNodeKey}
                     />
                   )}
 

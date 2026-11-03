@@ -53,6 +53,7 @@ export interface Station03VerticalFlowWorkbenchProps {
   onSelectPlatformSection: (section: PlatformSection) => void;
   externalPlatformTerritoryFilter: PlatformTerritoryFilter;
   onSelectPlatformTerritoryFilter: (filter: PlatformTerritoryFilter) => void;
+  onSelectNodeKey: (nodeKey: string) => void;
 }
 
 export function Station03VerticalFlowWorkbench({
@@ -71,6 +72,7 @@ export function Station03VerticalFlowWorkbench({
   onSelectPlatformSection,
   externalPlatformTerritoryFilter,
   onSelectPlatformTerritoryFilter,
+  onSelectNodeKey,
 }: Station03VerticalFlowWorkbenchProps) {
   return (
     <div
@@ -245,7 +247,7 @@ export function Station03VerticalFlowWorkbench({
                   }
                   onClick={() => {
                     onSelectPlatformTerritoryFilter(tf.hubKey);
-                    setSelectedNodeKey(tf.nodeKey);
+                    onSelectNodeKey(tf.nodeKey);
                   }}
                 >
                   {tf.label}
