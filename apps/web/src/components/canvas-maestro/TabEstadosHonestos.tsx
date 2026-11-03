@@ -1,5 +1,59 @@
 import React, { useState } from 'react';
-import { HONEST_EPISTEMIC_STATES_PALETTE, HonestStateKey } from '../../../../design/BaseConsolidadaPrototype';
+import { HONEST_EPISTEMIC_STATES_PALETTE as CANON_PALETTE } from '@delocalsoy/contracts';
+
+// Stage (diseño, no producción) — etiqueta R15, decisión DH 2026-11-03: los atributos
+// canónicos (colorHex/glifo/microcopy/borderStyle) provienen del contrato federado
+// ADR-034 (@delocalsoy/contracts); este adaptador solo añade los atributos visuales
+// del prototipo web (bgRgba/contrasteHex/id/descripcion/borderWidth).
+export type HonestStateKey = keyof typeof CANON_PALETTE;
+
+const WEB_STATES_EXT: Record<
+  HonestStateKey,
+  { nombre: string; bgRgba: string; contrasteHex: string; id: string; descripcion: string; borderWidth: number }
+> = {
+  validado: {
+    nombre: 'Acreditado / Terreno',
+    bgRgba: '#4ADE8026',
+    contrasteHex: '#065F46',
+    id: 'validado',
+    descripcion: 'Dato acreditado criptográficamente conforme al procedimiento R9/R15.',
+    borderWidth: 2,
+  },
+  sintetico: {
+    nombre: 'Sintético / Inferencia',
+    bgRgba: '#FFC72C26',
+    contrasteHex: '#92400E',
+    id: 'sintetico',
+    descripcion: 'Inferencia heurística o estimación, declarada como tal (R15).',
+    borderWidth: 1.5,
+  },
+  comunitario: {
+    nombre: 'Comunitario / Vecinal',
+    bgRgba: '#75AADB26',
+    contrasteHex: '#1D4ED8',
+    id: 'comunitario',
+    descripcion: 'Aporte territorial de asamblea con procedencia comunitaria.',
+    borderWidth: 1.5,
+  },
+  pendiente: {
+    nombre: 'Pendiente de Auditoría',
+    bgRgba: '#F2A71B26',
+    contrasteHex: '#374151',
+    id: 'pendiente',
+    descripcion: 'Relevo en curso, pendiente de acreditación R9.',
+    borderWidth: 1,
+  },
+};
+
+const HONEST_EPISTEMIC_STATES_PALETTE: Record<
+  HonestStateKey,
+  typeof CANON_PALETTE[HonestStateKey] & (typeof WEB_STATES_EXT)[HonestStateKey]
+> = {
+  validado: { ...CANON_PALETTE.validado, ...WEB_STATES_EXT.validado },
+  sintetico: { ...CANON_PALETTE.sintetico, ...WEB_STATES_EXT.sintetico },
+  comunitario: { ...CANON_PALETTE.comunitario, ...WEB_STATES_EXT.comunitario },
+  pendiente: { ...CANON_PALETTE.pendiente, ...WEB_STATES_EXT.pendiente },
+};
 import { ShieldCheck, Sparkles, Users, Clock, CheckCircle2 } from 'lucide-react';
 
 export const TabEstadosHonestos: React.FC = () => {

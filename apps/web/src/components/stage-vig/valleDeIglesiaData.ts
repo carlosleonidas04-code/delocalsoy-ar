@@ -6,6 +6,14 @@
  * -----------------------------------------------------------------------------
  * Distritos Ratificados: Rodeo (inc. Colola), Villa Iglesia, Angualasto (Protegido),
  * Las Flores, Tudcum, Bella Vista. Pismanta clasificada como Localidad Termal.
+ *
+ * ─── ETIQUETA R15 · SINTÉTICO/ILUSTRATIVO (decisión DH 2026-11-03) ───
+ * Dataset de STAGE (diseño, no producción): coordenadas, altitudes,
+ * poblaciones, vocaciones y estados honestos de este archivo son
+ * ILUSTRATIVOS para el prototipo del nodo. El seed ratificado VIG-001
+ * tiene lat/lng NULL (R15); la fuente de dato real es la API.
+ * Angualasto es RESERVADO_SENSIBLE: solo acredita su punto aproximado
+ * y público, nunca geometría de custodia.
  */
 
 export interface DistritoVIG {

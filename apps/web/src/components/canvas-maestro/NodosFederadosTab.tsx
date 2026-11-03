@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { NODOS_FEDERADOS_REGISTRO, NodoFederadoRegistro } from '../../../packages/contracts/src/index';
+import { NODOS_FEDERADOS_REGISTRO, NodoFederadoRegistro } from '@delocalsoy/contracts';
 import { MapPin, Network, Activity, Shield, ArrowRight } from 'lucide-react';
 
 interface NodosFederadosTabProps {

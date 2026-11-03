@@ -7,6 +7,12 @@
  * -----------------------------------------------------------------------------
  * Corrección Epistémica: Las plazas del microcentro cuentan solo con respaldo de
  * fuentes secundarias, por lo que su estado honesto obligatorio es PENDIENTE (◐).
+ *
+ * ─── ETIQUETA R15 · SINTÉTICO/ILUSTRATIVO (decisión DH 2026-11-03) ───
+ * Dataset de STAGE (diseño, no producción): comercios, espacios públicos,
+ * distancias y coordenadas de este archivo son ILUSTRATIVOS para el
+ * prototipo del nodo Capital. La fuente de dato real es la API; nada
+ * de este dataset se persiste ni se publica.
  */
 
 export interface ComercioBarrial {

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { NODOS_FEDERADOS_REGISTRO, NodoFederadoRegistro } from '../../../../packages/contracts/src/index';
+import { NODOS_FEDERADOS_REGISTRO, NodoFederadoRegistro } from '@delocalsoy/contracts';
 import { ArrowLeftRight, Shield, Navigation } from 'lucide-react';
 
 interface Props {
