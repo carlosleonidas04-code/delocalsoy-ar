@@ -20,6 +20,7 @@ import { LensOneAtlasWorkbench, type CockpitMacroView } from './components/LensO
 import { LensTwoVerticalFlowWorkbench } from './components/LensTwoVerticalFlowWorkbench';
 import { LensThreeSovereigntyWorkbench } from './components/LensThreeSovereigntyWorkbench';
 import { LensFourEpistemicContractsWorkbench } from './components/LensFourEpistemicContractsWorkbench';
+import { MasterRegistrySection } from './components/MasterRegistrySection';
 import { OperationalOriginStrip } from './components/OperationalOriginStrip';
 import { QuarterlyTrendsSection } from './components/QuarterlyTrendsSection';
 import { RecursiveDesignChainSection } from './components/RecursiveDesignChainSection';
@@ -103,17 +104,17 @@ interface ModeloFederadoPayload {
   telemetryWebhooks?: TelemetryWebhookRecord[];
 }
 
-type HealthState =
+export type HealthState =
   | { status: 'checking' }
   | { status: 'ok'; body: string }
   | { status: 'error'; message: string };
 
-type TerritoriosState =
+export type TerritoriosState =
   | { status: 'loading' }
   | { status: 'ok'; items: Territorio[] }
   | { status: 'error'; message: string };
 
-type FiltroActivo = 'todos' | 'activos' | 'inactivos';
+export type FiltroActivo = 'todos' | 'activos' | 'inactivos';
 
 function normalizeTerritorio(
   raw: Partial<Territorio> & { id: string; nombre: string; provincia: string; activo: boolean },
@@ -1345,159 +1346,27 @@ export function App() {
           <ComerciosPanel dataSource={defaultDataSource} />
         )}
 
-        {/* 7. Estado de Integración API y Registro Maestro de Nodos Territoriales */}
+        {/* 7. Estado de Integración API y Registro Maestro de Nodos Territoriales — extraída 1:1 a MasterRegistrySection (FE-DEUDA-02 #293, corte 21) */}
         {(activeDesignLens === 'all' || activeDesignLens === 'lens_atlas_coco_baba') && (
-          <section
-            id="registro-maestro-nodos"
-            className="card"
-            data-state={
-              territorios.status === 'ok'
-                ? 'ok'
-                : territorios.status === 'error'
-                  ? 'error'
-                  : 'checking'
-            }
-          >
-          <div className="section-header">
-            <div>
-              <span className="kicker-text">04. Registro Maestro y Estado de API</span>
-              <h2>Nodos Territoriales Registrados (/api/territorios)</h2>
-              <p className="section-caption">
-                Estado de salud del servicio:{' '}
-                {health.status === 'ok' ? (
-                  <span className="ok">API conectada ({health.body})</span>
-                ) : health.status === 'checking' ? (
-                  <span>Consultando /api/health…</span>
-                ) : (
-                  <span className="error">Sin conexión ({health.message})</span>
-                )}
-              </p>
-            </div>
-            <div className="filter-group" role="group" aria-label="Filtrar territorios">
-              <button
-                type="button"
-                className={filtro === 'todos' ? 'btn-filter active' : 'btn-filter'}
-                onClick={() => setFiltro('todos')}
-              >
-                Todos
-              </button>
-              <button
-                type="button"
-                className={filtro === 'activos' ? 'btn-filter active' : 'btn-filter'}
-                onClick={() => setFiltro('activos')}
-              >
-                Activos
-              </button>
-              <button
-                type="button"
-                className={filtro === 'inactivos' ? 'btn-filter active' : 'btn-filter'}
-                onClick={() => setFiltro('inactivos')}
-              >
-                En vinculación / Inactivos
-              </button>
-              <button
-                type="button"
-                className="btn-filter"
-                onClick={() => void sincronizarTodo()}
-                title="Recargar territorios"
-              >
-                Recargar
-              </button>
-            </div>
-          </div>
-
-          {territorios.status === 'loading' && (
-            <p>Consultando <code>/api/territorios</code>…</p>
-          )}
-
-          {territorios.status === 'error' && (
-            <>
-              <p className="error">Error al cargar territorios</p>
-              <pre>{territorios.message}</pre>
-            </>
-          )}
-
-          {territorios.status === 'ok' && (
-            <>
-              {territorios.items.length === 0 ? (
-                <p className="empty-state">No hay territorios para el filtro seleccionado.</p>
-              ) : (
-                <ul className="territory-list">
-                  {territorios.items.map((t) => (
-                    <li key={t.id} className="territory-item">
-                      <div className="territory-info">
-                        <span className="territory-name">
-                          {t.nombre}{' '}
-                          <span className="node-subtitle">· {t.subtitulo || t.provincia}</span>
-                        </span>
-                        <span className="territory-meta tabular-nums">
-                          Provincia: <strong>{t.provincia}</strong> · Foco:{' '}
-                          <strong>{t.foco || 'General'}</strong> · Estado:{' '}
-                          <strong className={t.activo ? 'r5-status-aprobado' : 'r5-status-pendiente'}>
-                            {t.activo ? 'Activo' : 'Inactivo / En vinculación'}
-                          </strong>{' '}
-                          · ID: <code>{t.id}</code>
-                        </span>
-                      </div>
-                      <div className="territory-actions">
-                        <button
-                          type="button"
-                          className="btn-toggle"
-                          onClick={() => {
-                            setSelectedNodeKey(t.key);
-                            setInspectedNodeKey(t.key);
-                          }}
-                        >
-                          Explorar nodo
-                        </button>
-                        <button
-                          type="button"
-                          className="btn-toggle"
-                          onClick={() => handleFocusOnGoogleMap(t.id)}
-                        >
-                          Ver en mapa
-                        </button>
-                        <button
-                          type="button"
-                          className="btn-toggle"
-                          onClick={() => void handleToggleActivo(t)}
-                        >
-                          {t.activo ? 'Desactivar' : 'Activar'}
-                        </button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-
-              <form className="territory-form" onSubmit={(e) => void handleCrearTerritorio(e)}>
-                <input
-                  type="text"
-                  placeholder="Nombre del nodo (ej. Jáchal)"
-                  value={nombre}
-                  onChange={(e) => setNombre(e.target.value)}
-                  required
-                />
-                <input
-                  type="text"
-                  placeholder="Provincia (ej. San Juan)"
-                  value={provincia}
-                  onChange={(e) => setProvincia(e.target.value)}
-                  required
-                />
-                <input
-                  type="text"
-                  placeholder="Foco vocacional (ej. Agua y agricultura familiar)"
-                  value={focoNuevo}
-                  onChange={(e) => setFocoNuevo(e.target.value)}
-                />
-                <button type="submit" disabled={submitting}>
-                  {submitting ? 'Incorporando…' : '+ Federar nuevo nodo'}
-                </button>
-              </form>
-            </>
-          )}
-          </section>
+          <MasterRegistrySection
+            health={health}
+            territorios={territorios}
+            filtro={filtro}
+            onSetFiltro={setFiltro}
+            nombre={nombre}
+            onSetNombre={setNombre}
+            provincia={provincia}
+            onSetProvincia={setProvincia}
+            focoNuevo={focoNuevo}
+            onSetFocoNuevo={setFocoNuevo}
+            submitting={submitting}
+            onCreateTerritorio={handleCrearTerritorio}
+            onToggleActivo={handleToggleActivo}
+            onFocusOnGoogleMap={handleFocusOnGoogleMap}
+            onSelectNodeKey={setSelectedNodeKey}
+            onInspectNode={setInspectedNodeKey}
+            onSincronizarTodo={sincronizarTodo}
+          />
         )}
 
         {/* 8. Cartografía Real en Google Maps Platform y Exportación a Google Docs / Google Drive */}
