@@ -593,6 +593,22 @@ export function App() {
     setIdempotencyProbeResult(await runIdempotencyAndErrorProbe());
   };
 
+  // Montaje del laboratorio bajo ruta apartada #lab (refactor /lab PR-2): sin
+  // el hash el laboratorio no se renderiza y la lente efectiva es 'all', de
+  // modo que el ciudadano ve el producto completo; con #lab el estudio
+  // gobierna la lente cognitiva activa como hasta hoy.
+  const [isLabRoute, setIsLabRoute] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? window.location.hash === '#lab' : false,
+  );
+  useEffect(() => {
+    const onHashChange = () => setIsLabRoute(window.location.hash === '#lab');
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+  const effectiveDesignLens: DesignLensKey = isLabRoute
+    ? activeDesignLens
+    : 'all';
+
   return (
     <Suspense fallback={null}>
       {gmpQuotaExceeded && <GmpQuotaBanner />}
@@ -620,6 +636,9 @@ export function App() {
 
       {/* Top Bar Contract: 3 zonas (Brand | 5 Nav links | 1 Primary Action) — extraída 1:1 a TopBarHeader (FE-DEUDA-02 #293, corte 6) */}
       <TopBarHeader onSyncCore={sincronizarTodo} />
+
+      {isLabRoute && (
+        <>
 
       {/* PROTOTIPO BASE CONSOLIDADA (3 de septiembre 2026) MONTADO SOBRE EL PROTOTIPO DE LA PÁGINA */}
       <BaseConsolidadaPrototype
@@ -652,6 +671,10 @@ export function App() {
         }}
       />
 
+        </>
+      )}
+
+
       <main
         id="top"
         className="container"
@@ -666,6 +689,8 @@ export function App() {
         />
 
         {/* ESTUDIO DE DISEÑO HEURÍSTICO Y RECURSIVO FRONTEND (Nivel Premiación Internacional · ADR-034 + Modelos Base) */}
+        {isLabRoute && (
+          <>
         <section
           id="estudio-diseno-heuristico-frontend"
           className="card"
@@ -676,12 +701,12 @@ export function App() {
 
           {/* 1. Selector Ejecutivo de Lentes Cognitivas (H-TER-03: Reducción de fatiga lineal) — extraída 1:1 a CognitiveLensSelector (FE-DEUDA-02 #293, corte 7) */}
           <CognitiveLensSelector
-            activeDesignLens={activeDesignLens}
+            activeDesignLens={effectiveDesignLens}
             onSelectLens={setActiveDesignLens}
           />
 
           {/* MESA OPERATIVA EN VIVO — LENTE I: ATLAS & COCKPIT «COCO-BABA» (DEMO BASE + CARTOGRAFÍA SRID=4326) — extraída 1:1 a LensOneAtlasWorkbench (FE-DEUDA-02 #293, corte 8) */}
-          {activeDesignLens === 'lens_atlas_coco_baba' && (
+          {effectiveDesignLens === 'lens_atlas_coco_baba' && (
             <LensOneAtlasWorkbench
               selectedNodeKey={selectedNodeKey}
               externalCockpitMacroView={externalCockpitMacroView}
@@ -696,7 +721,7 @@ export function App() {
           )}
 
           {/* MESA OPERATIVA EN VIVO — LENTE II: FLUJO VERTICAL (13 MÓDULOS + 11 ESLABONES) Y ESTADOS R5-UI — extraída 1:1 a LensTwoVerticalFlowWorkbench (FE-DEUDA-02 #293, corte 9) */}
-          {activeDesignLens === 'lens_vertical_r5ui' && (
+          {effectiveDesignLens === 'lens_vertical_r5ui' && (
             <LensTwoVerticalFlowWorkbench
               externalPlatformTerritoryFilter={externalPlatformTerritoryFilter}
               externalPlatformSection={externalPlatformSection}
@@ -711,7 +736,7 @@ export function App() {
           )}
 
           {/* MESA OPERATIVA EN VIVO — LENTE III: SOBERANÍA DE NODOS, POSTGIS H2–H4 & ALERTAS PUSH FCM / FIRESTORE — extraída 1:1 a LensThreeSovereigntyWorkbench (FE-DEUDA-02 #293, corte 10) */}
-          {activeDesignLens === 'lens_sovereignty_fcm' && (
+          {effectiveDesignLens === 'lens_sovereignty_fcm' && (
             <LensThreeSovereigntyWorkbench
               federalSovereignty={federalSovereignty}
               accreditedCustodians={accreditedCustodians}
@@ -741,7 +766,7 @@ export function App() {
           )}
 
           {/* MESA OPERATIVA EN VIVO — LENTE IV: CONTRATOS EPISTÉMICOS (C1–C5 · 19 MODELOS PRISMA), COPILOTO IA ÉTICO TRIPARTITO Y EV-001..EV-018 — extraída 1:1 a LensFourEpistemicContractsWorkbench (FE-DEUDA-02 #293, corte 11) */}
-          {activeDesignLens === 'lens_epistemic_contracts' && (
+          {effectiveDesignLens === 'lens_epistemic_contracts' && (
             <LensFourEpistemicContractsWorkbench
               selectedNodeKey={selectedNodeKey}
               externalRecursiveTab={externalRecursiveTab}
@@ -861,9 +886,11 @@ export function App() {
             />
           </div>
         </section>
+          </>
+        )}
 
         {/* PLATAFORMA TERRITORIAL REAL DELOCALSOY.AR: 13 MÓDULOS DE DOMINIO Y PRIMER FLUJO VERTICAL (ACTIVO VERIFICADO E2E) */}
-        {(activeDesignLens === 'all' || activeDesignLens === 'lens_vertical_r5ui') && (
+        {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_vertical_r5ui') && (
           <TerritorialPlatformHub
             onFocusTerritoryOnMap={(territoryId) => {
               handleFocusOnGoogleMap(territoryId);
@@ -876,10 +903,13 @@ export function App() {
           />
         )}
 
+        {isLabRoute && (
+          <>
+
         {/* SECCIÓN AISLADA /demo (#16, #17, #18), CONTRATO DataSource Y AUDITORÍA EV-007 A EV-018 — extraída 1:1 a DemoDataSourceAuditSection (FE-DEUDA-02 #293, primer corte) */}
-        {(activeDesignLens === 'all' ||
-          activeDesignLens === 'lens_vertical_r5ui' ||
-          activeDesignLens === 'lens_epistemic_contracts') && (
+        {(effectiveDesignLens === 'all' ||
+          effectiveDesignLens === 'lens_vertical_r5ui' ||
+          effectiveDesignLens === 'lens_epistemic_contracts') && (
           <DemoDataSourceAuditSection
             useSyntheticInDemo={useSyntheticInDemo}
             onToggleSyntheticInDemo={() => setUseSyntheticInDemo((prev) => !prev)}
@@ -888,9 +918,12 @@ export function App() {
             operationalOriginLabel={operationalOriginLabel}
           />
         )}
+          </>
+        )}
+
 
         {/* 0. Consola Administrativa Consolidada: Salud de Nodos, Soberanía Federal y Actividad de Auditoría */}
-        {(activeDesignLens === 'all' || activeDesignLens === 'lens_sovereignty_fcm') &&
+        {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_sovereignty_fcm') &&
           federalSovereignty.length > 0 && (
             <AdminSovereigntyDashboard
               federalSovereignty={federalSovereignty}
@@ -925,7 +958,7 @@ export function App() {
           )}
 
         {/* Tendencia Trimestral Recharts (2026-Q1 a 2026-Q4): Registros Territoriales y Verificación de Evidencias */}
-        {(activeDesignLens === 'all' || activeDesignLens === 'lens_vertical_r5ui') && (
+        {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_vertical_r5ui') && (
           <div id="tendencias-trimestrales">
             <QuarterlyTrendsSection
               territorios={territoriosItems}
@@ -938,13 +971,16 @@ export function App() {
           </div>
         )}
 
+        {isLabRoute && (
+          <>
+
         {/* 1. Matriz del Modelo Territorial (Iterativo, Recursivo y Proyectivo) */}
-        {(activeDesignLens === 'all' || activeDesignLens === 'lens_epistemic_contracts') && (
+        {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_epistemic_contracts') && (
           <HorizonOneArchitecturePanel />
         )}
 
         {/* 1B. Análisis Recursivo (H1–H3), Paridad Backend ↔ Frontend ↔ Prisma y Hoja de Ruta Prospectiva (Horizonte 4) */}
-        {(activeDesignLens === 'all' || activeDesignLens === 'lens_epistemic_contracts') && (
+        {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_epistemic_contracts') && (
           <RecursiveProspectiveContractPanel
             onParityVerified={async () => {
               await cargarModeloFederado();
@@ -954,7 +990,7 @@ export function App() {
         )}
 
         {/* 1C. Copiloto IA Ético Tripartito (ADR-004), Search & Maps Grounding, Voz en Campo y Tablero SECI en Firestore */}
-        {(activeDesignLens === 'all' || activeDesignLens === 'lens_epistemic_contracts') && (
+        {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_epistemic_contracts') && (
           <EthicalAiCopilotPanel
             territorios={territoriosItems}
             selectedNodeKey={selectedNodeKey}
@@ -965,9 +1001,12 @@ export function App() {
             externalRolePersona={externalCopilotRole}
           />
         )}
+          </>
+        )}
+
 
         {/* 2. Horizonte 1: Explorador Exhaustivo de Nodos Federados (Cockpit Integrado Demo Base + Ecosistema General) */}
-        {(activeDesignLens === 'all' || activeDesignLens === 'lens_atlas_coco_baba') &&
+        {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') &&
           territoriosItems.length > 0 && (
             <FederatedNodeExplorer
               territorios={territoriosItems}
@@ -995,8 +1034,11 @@ export function App() {
             />
           )}
 
+        {isLabRoute && (
+          <>
+
         {/* 3. Horizonte 2: Geometrías PostGIS, Custodia Cruzada Inter-Nodos y Serie Multitemporal */}
-        {(activeDesignLens === 'all' || activeDesignLens === 'lens_sovereignty_fcm') &&
+        {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_sovereignty_fcm') &&
           territoriosItems.length > 0 && (
             <HorizonTwoSpatialFederationPanel
               territorios={territoriosItems}
@@ -1011,7 +1053,7 @@ export function App() {
           )}
 
         {/* 4. Horizonte 3: Síntesis Multi-Escala Bajo Contrato Ético, Linaje Criptográfico y Observatorio Federal */}
-        {(activeDesignLens === 'all' || activeDesignLens === 'lens_sovereignty_fcm') &&
+        {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_sovereignty_fcm') &&
           territoriosItems.length > 0 && (
             <HorizonThreeObservatoryPanel
               territorios={territoriosItems}
@@ -1026,7 +1068,7 @@ export function App() {
           )}
 
         {/* 5. Horizonte 4: Consultas Espaciales PostGIS ST_Intersects, Cola Offline-First, Firmas Ed25519 y Webhooks Hídricos */}
-        {(activeDesignLens === 'all' || activeDesignLens === 'lens_sovereignty_fcm') &&
+        {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_sovereignty_fcm') &&
           territoriosItems.length > 0 && (
             <HorizonFourFieldAndTelemetryPanel
               territorios={territoriosItems}
@@ -1045,9 +1087,12 @@ export function App() {
               onFocusGeometryOnGoogleMap={handleFocusGeometryOnGoogleMap}
             />
           )}
+          </>
+        )}
+
 
         {/* 5. Comparación Transversal Federada sin Homogeneización */}
-        {(activeDesignLens === 'all' || activeDesignLens === 'lens_atlas_coco_baba') &&
+        {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') &&
           territoriosItems.length >= 2 && (
             <FederatedCompareView
               territorios={territoriosItems}
@@ -1062,7 +1107,7 @@ export function App() {
           )}
 
         {/* 6. Trazabilidad Append-Only (events_raw) y Evidencias Ejecutables (EV-001 a EV-014) */}
-        {(activeDesignLens === 'all' || activeDesignLens === 'lens_epistemic_contracts') && (
+        {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_epistemic_contracts') && (
           <TraceabilityAndEvidenciasPanel
             eventsRaw={eventsRaw}
             evidencias={evidencias}
@@ -1072,25 +1117,25 @@ export function App() {
         )}
 
         {/* 6b. Recorrido del Showcase (VIG-007 — Demo final): Caucete → Capital → Valle de Iglesia con estado real (R15) */}
-        {(activeDesignLens === 'all' || activeDesignLens === 'lens_atlas_coco_baba') && (
+        {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') && (
           <ShowcaseRecorridoPanel />
         )}
 
         {/* 6c. Servicio informativo ciudadano del nodo Caucete (NC-R5 #142, NODO-CAU): capas v6,
             fuentes ADR-035 y ingestas publicadas (NC-EV-09) — acople por contrato DataSource (ADR-029) */}
-        {(activeDesignLens === 'all' || activeDesignLens === 'lens_atlas_coco_baba') && (
+        {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') && (
           <ServicioInformativoPanel dataSource={defaultDataSource} />
         )}
 
         {/* 6d. Mercado de Proximidad (MARKET-CAP MK-1 #243, sub-épica #152): directorio de
             comercios federado con estados epistémicos honestos — acople por contrato
             DataSource (ADR-029), multinodo desde día 1 (decisión DH) */}
-        {(activeDesignLens === 'all' || activeDesignLens === 'lens_atlas_coco_baba') && (
+        {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') && (
           <ComerciosPanel dataSource={defaultDataSource} />
         )}
 
         {/* 7. Estado de Integración API y Registro Maestro de Nodos Territoriales — extraída 1:1 a MasterRegistrySection (FE-DEUDA-02 #293, corte 21) */}
-        {(activeDesignLens === 'all' || activeDesignLens === 'lens_atlas_coco_baba') && (
+        {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') && (
           <MasterRegistrySection
             health={health}
             territorios={territorios}
@@ -1113,9 +1158,9 @@ export function App() {
         )}
 
         {/* 8. Cartografía Real en Google Maps Platform y Exportación a Google Docs / Google Drive */}
-        {(activeDesignLens === 'all' ||
-          activeDesignLens === 'lens_atlas_coco_baba' ||
-          activeDesignLens === 'lens_sovereignty_fcm') && (
+        {(effectiveDesignLens === 'all' ||
+          effectiveDesignLens === 'lens_atlas_coco_baba' ||
+          effectiveDesignLens === 'lens_sovereignty_fcm') && (
           <div id="cartografia-workspace">
             <TerritoriosMap
               territorios={territoriosItems}
