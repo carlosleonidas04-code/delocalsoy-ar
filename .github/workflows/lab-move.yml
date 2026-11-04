@@ -21,7 +21,8 @@ jobs:
       ISSUE_NUMBER: "356"
     steps:
       - name: "Reportar inicio en el issue de traza"
-        run: gh issue comment "$ISSUE_NUMBER" --body "Iniciado el lab-move (run $GITHUB_RUN_ID, commit ${GITHUB_SHA::7}): checkout, install, transform + move de 27 modulos lab, gate typecheck y push a chore/lab-moved." || true
+        run: |-
+          gh issue comment "$ISSUE_NUMBER" --body "Iniciado el lab-move (run $GITHUB_RUN_ID, commit ${GITHUB_SHA::7}): checkout, install, transform + move de 27 modulos lab, gate typecheck y push a chore/lab-moved." || true
         env:
           GH_TOKEN: ${{ github.token }}
       - uses: actions/checkout@v4
@@ -53,7 +54,8 @@ Refs: issue de traza #356, #352"
           git push --force origin HEAD:refs/heads/chore/lab-moved
       - name: "Reportar exito en el issue de traza"
         if: success()
-        run: gh issue comment "$ISSUE_NUMBER" --body "Lab-move exitoso (run $GITHUB_RUN_ID): rama chore/lab-moved actualizada con el arbol de main + refactor y typecheck verde. Listo para abrir el PR hacia main." || true
+        run: |-
+          gh issue comment "$ISSUE_NUMBER" --body "Lab-move exitoso (run $GITHUB_RUN_ID): rama chore/lab-moved actualizada con el arbol de main + refactor y typecheck verde. Listo para abrir el PR hacia main." || true
         env:
           GH_TOKEN: ${{ github.token }}
       - name: "Reportar fallo en el issue de traza"
