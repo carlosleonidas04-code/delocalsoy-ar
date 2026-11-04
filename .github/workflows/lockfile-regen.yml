@@ -11,6 +11,10 @@
 # v3 (2026-11-03): + trigger pull_request (eventos PR del conector probados
 # en CI), + issue de diagnostico #350 como canal observable: el workflow
 # comenta inicio/OK/fallo en #350. Borrar este workflow tras completar AUD-09.
+# v3.1 (2026-11-04): re-disparo tras el regreso de Actions (repo publico) y el
+# merge #353 - el sync "Update branch" (0e6e216) disparo CI pero NO el regen;
+# este push directo prueba el trigger push de la propia rama. El regen debe
+# reflejar @google/genai como devDependency.
 
 name: Lockfile regen
 
