@@ -22,16 +22,56 @@ const assertOne = (hay, needle, what) => {
   if (n !== 1) fail('esperaba 1 ocurrencia de [' + what + '], encontre ' + n);
 };
 
+// ── Escáner balanceado: strings, comentarios y bloques anidados (JSX incluido) ──
+const balance = (src, i) => {
+  let depth = 0;
+  let j = i;
+  while (j < src.length) {
+    const c = src[j];
+    if (c === "'" || c === '"' || c === '`') { j = skipString(src, j); continue; }
+    if (c === '/' && src[j + 1] === '/') { const n = src.indexOf('\n', j); j = n < 0 ? src.length : n; continue; }
+    if (c === '/' && src[j + 1] === '*') { const n = src.indexOf('*/', j); j = n < 0 ? src.length : n + 2; continue; }
+    if (c === '(' || c === '{' || c === '[') depth++;
+    else if (c === ')' || c === '}' || c === ']') { depth--; if (depth === 0) return j; }
+    j++;
+  }
+  return fail('bloque sin cerrar desde la posicion ' + i);
+};
+const skipString = (src, i) => {
+  const q = src[i];
+  let j = i + 1;
+  while (j < src.length) {
+    if (src[j] === '\\') { j += 2; continue; }
+    if (q === '`' && src[j] === '$' && src[j + 1] === '{') { j = balance(src, j + 1) + 1; continue; }
+    if (src[j] === q) return j + 1;
+    j++;
+  }
+  return fail('string sin cerrar desde la posicion ' + i);
+};
+
 // ── 1. Marca → lib/DelocalSoyBrand.tsx ──────────────────────────────────────
 const proto = readFileSync(WEB + '/components/BaseConsolidadaPrototype.tsx', 'utf8');
 const mColors = proto.match(/(?:export )?const COLORS = \{[\s\S]*?\} as const;/);
 if (!mColors) fail('no encontre COLORS en components/BaseConsolidadaPrototype.tsx');
+
 const grab = (name) => {
-  const re = new RegExp('^export function ' + name + '\\([\\s\\S]*?\\n\\}', 'm');
-  const m = proto.match(re);
-  if (!m) fail('no encontre export function ' + name + ' en BaseConsolidadaPrototype');
-  return m[0];
+  const sm = proto.match(new RegExp('(^|\\n)export function ' + name + '\\('));
+  if (!sm) fail('no encontre export function ' + name + ' en BaseConsolidadaPrototype');
+  const startIdx = sm.index + (sm[1] === '\n' ? 1 : 0);
+  const openParen = sm.index + sm[0].length - 1;
+  const closeParen = balance(proto, openParen); // cierre de la firma
+  let k = closeParen + 1;
+  while (proto[k] !== '{') {
+    k++;
+    if (k > closeParen + 400) fail('no encontre el cuerpo de ' + name);
+  }
+  const end = balance(proto, k); // cierre del cuerpo de la funcion
+  const fn = proto.slice(startIdx, end + 1);
+  if (!fn.startsWith('export function ' + name))
+    fail('extraccion de ' + name + ' no empieza en export');
+  return fn;
 };
+
 const logo = grab('DelocalSoyNetworkLogoSvg');
 const wordmark = grab('DelocalSoyWordmark');
 let colorsDecl = mColors[0];
@@ -51,7 +91,7 @@ const brand =
   (reactImports.length ? reactImports.join('\n') + '\n\n' : '') +
   brandBody;
 writeFileSync(WEB + '/lib/DelocalSoyBrand.tsx', brand);
-console.log('OK: lib/DelocalSoyBrand.tsx generado (' + brand.length + ' bytes)');
+console.log('OK: lib/DelocalSoyBrand.tsx generado (' + brand.length + ' bytes, logo=' + logo.length + ', wordmark=' + wordmark.length + ')');
 
 // ── 2. TopBarHeader → marca desde ../lib/DelocalSoyBrand ─────────────────────
 const tbPath = WEB + '/components/TopBarHeader.tsx';
@@ -151,7 +191,7 @@ const endOld = '    </>\n  );';
 assertOne(app, endOld, 'cierre del fragment raiz');
 app = app.replace(endOld, '    </Suspense>\n  );');
 
-// Sanity final: ningun import estatico residual hacia los 27
+// Sanity final: ningun import estatico residual hacia los 22
 for (const [name] of LAB) {
   if (app.includes("'./components/" + name + "'"))
     fail('import residual hacia ./components/' + name);
