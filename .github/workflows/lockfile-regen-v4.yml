@@ -25,11 +25,11 @@ concurrency:
   group: lockfile-regen-v4
   cancel-in-progress: false
 
-timeout-minutes: 20
 
 jobs:
   regen:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Reportar inicio (diagnostico #350)
         env:
