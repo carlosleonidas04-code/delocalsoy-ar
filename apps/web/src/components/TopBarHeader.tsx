@@ -9,6 +9,10 @@
  * Refactor /lab PR-2: el laboratorio se monta bajo la ruta apartada #lab y la
  * navegación de producto deja de referenciarlo — el wordmark apunta al inicio
  * del documento y se retira el link «Base Consolidada» del nav.
+ *
+ * Deuda menor del registro EV-075 (#361): el ancla #horizonte-2 quedó bajo el
+ * laboratorio (#lab) tras #359 — el link «Horizontes H2–H4» se retira de la
+ * navegación de producto en vez de referenciar la ruta apartada.
  */
 import { DelocalSoyNetworkLogoSvg, DelocalSoyWordmark } from '../lib/DelocalSoyBrand';
 
@@ -27,7 +31,6 @@ export function TopBarHeader({ onSyncCore }: TopBarHeaderProps) {
       <nav className="top-nav" aria-label="Navegación principal">
         <a href="#plataforma-territorial-real">Flujo Vertical</a>
         <a href="#nodos-federados">Nodos San Juan</a>
-        <a href="#horizonte-2">Horizontes H2–H4</a>
         <a href="#cartografia-workspace">Cartografía &amp; Docs</a>
       </nav>
 
