@@ -1,9 +1,13 @@
-# Workflow desechable (LOCKFILE-REGEN v4): path nuevo para que el
+# Workflow desechable (LOCKFILE-REGEN v4.1): path nuevo para que el
 # trigger se evalúe desde ESTA rama (el path lockfile-regen.yml existe en main
 # con solo workflow_dispatch y eso impedía el disparo — ver #350, commits
 # 0e6e216 y 3af9666 dispararon CI pero nunca el regen).
 # v4 (2026-11-04): tras el regreso de Actions (repo público) y el merge #353 —
-# el regen debe reflejar @google/genai como devDependency.
+#   el regen debe reflejar @google/genai como devDependency.
+# v4.1 (2026-11-04): FIX BUG RAIZ 3 — los pasos gh corrían ANTES del checkout,
+#   gh no podía resolver el repo (exit 1, run 41757532463) y el fallo del paso
+#   "Reportar inicio" saltaba TODO el regen (steps skipped). Fix: GH_REPO env
+#   en cada paso gh + "|| true" para que el reporte nunca tumbe el regen.
 
 name: Lockfile regen v4
 
@@ -25,7 +29,6 @@ concurrency:
   group: lockfile-regen-v4
   cancel-in-progress: false
 
-
 jobs:
   regen:
     runs-on: ubuntu-latest
@@ -34,8 +37,9 @@ jobs:
       - name: Reportar inicio (diagnostico #350)
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
-          gh issue comment 350 --body "**run iniciado (v4, path nuevo)** - evento: ${{ github.event_name }}, ref: ${{ github.ref_name }}, sha: ${{ github.sha }} ($(date -u +%FT%TZ))"
+          gh issue comment 350 --body "**run iniciado (v4.1)** - evento: ${{ github.event_name }}, ref: ${{ github.ref_name }}, sha: ${{ github.sha }} ($(date -u +%FT%TZ))" || true
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -71,16 +75,18 @@ jobs:
         if: success()
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
-          gh issue comment 350 --body "**regen OK (v4)** - chore/lockfile-regenado empujada en $(git rev-parse --short chore/lockfile-regenado)"
+          gh issue comment 350 --body "**regen OK (v4.1)** - chore/lockfile-regenado empujada en $(git rev-parse --short chore/lockfile-regenado)" || true
 
       - name: Reportar fallo con logs (#350)
         if: failure()
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           {
-            echo "**FALLO del regen (v4)** - evento: ${{ github.event_name }}, ref: ${{ github.ref_name }}"
+            echo "**FALLO del regen (v4.1)** - evento: ${{ github.event_name }}, ref: ${{ github.ref_name }}"
             echo ""
             echo '~~~'
             tail -n 60 regen.log 2>/dev/null || true
@@ -88,4 +94,4 @@ jobs:
             tail -n 60 verify.log 2>/dev/null || true
             echo '~~~'
           } > /tmp/fallo.md || true
-          gh issue comment 350 --body-file /tmp/fallo.md || gh issue comment 350 --body "**FALLO del regen (v4)** (sin logs disponibles)"
+          gh issue comment 350 --body-file /tmp/fallo.md || gh issue comment 350 --body "**FALLO del regen (v4.1)** (sin logs disponibles)" || true
