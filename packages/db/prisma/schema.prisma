@@ -283,10 +283,33 @@ model oportunidades {
   hash            String   @unique @map("hash") // idempotencia del alta
   created_at      DateTime @default(now()) @map("created_at")
   updated_at      DateTime @updatedAt @map("updated_at")
+  scoring              Json?    @map("scoring") // NCAP-R6-ext #165: interpretación con método (ADR-035) — null honesto
+  territorial_context  Json?    @map("territorial_context") // NCAP-R6-ext #165: cor_* v0.1 (hipótesis provisional #156)
 
   @@index([nodo_key])
   @@index([estado])
   @@map("oportunidades")
+}
+
+// ─── NCAP-R6-ext (#165): vínculos entre actores de una oportunidad ───
+
+/// Conexión oferta/demanda entre dos actores de UNA oportunidad (Bloque 9):
+/// consentimiento explícito obligatorio — el contrato Zod exige literal true
+/// (ADR-027, Ley 25.326): sin consentimiento confirmado no hay vínculo.
+/// hash único → idempotencia del vínculo (mismo autor + actores + tipo).
+model oportunidad_conexiones {
+  id                        String   @id @default(cuid())
+  oportunidad_id            String   @map("oportunidad_id")
+  actor_origen              Json     @map("actor_origen") // OportunidadActorSchema
+  actor_destino             Json     @map("actor_destino") // OportunidadActorSchema
+  tipo_vinculo              String   @map("tipo_vinculo") // oferta | demanda | colaboracion
+  consentimiento_confirmado Boolean  @map("consentimiento_confirmado") // siempre true — compuerta del contrato
+  created_by_hash           String   @map("created_by_hash") // pseudónimo del autor — sin PII
+  hash                      String   @unique @map("hash") // idempotencia del vínculo
+  created_at                DateTime @default(now()) @map("created_at")
+
+  @@index([oportunidad_id])
+  @@map("oportunidad_conexiones")
 }
 
 // ─── NODO-VIG VIG-001 (#171, épica #167): subnodos territoriales ───

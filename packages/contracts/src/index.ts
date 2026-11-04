@@ -424,6 +424,40 @@ export const OportunidadEstadoPublicoFiltroSchema = z.enum([
   "archived",
 ]);
 
+// ─── NODO-CAPITAL NCAP-R6-ext (#165): extensiones del dominio oportunidades ───
+// Aportes de diseño de la Sesión 5 (corroborados en #163) implementados como
+// extensiones del dominio canónico de #160. No-go de #165 honrado: la
+// versión en memoria con sellos fail-open NUNCA se aterriza.
+
+// Gate de evidencia (refuerzo de R15 sobre la matriz de transiciones): la
+// moderación corrobora o revisa la evidencia ANTES de que el ciclo avance a
+// estados acreditados. 'pending' es el estado honesto de todo alta
+// ciudadana — el autor nunca auto-corrobora su propia evidencia.
+export const OportunidadEvidenciaValidationStatusSchema = z.enum([
+  "pending",
+  "corroborated",
+  "reviewed",
+]);
+
+// Veredicto de moderación sobre la evidencia: solo corroborated|reviewed se
+// setean a mano — 'pending' es el default del alta, no un veredicto.
+export const OportunidadEvidenciaValidacionSchema = z.object({
+  validationStatus: z.enum(["corroborated", "reviewed"]),
+  motivo: z
+    .string()
+    .trim()
+    .min(3, "El motivo de la validación requiere detalle")
+    .max(500)
+    .optional(),
+});
+
+// Paginación del listado público (limit/offset, #165): el total viaja en el
+// header X-DELocalSoy-Total-Count — el body lista, el header cuenta.
+export const OportunidadListadoQuerySchema = z.object({
+  limit: z.number().int().min(1, "limit mínimo 1").max(100, "limit máximo 100").default(20),
+  offset: z.number().int().min(0, "offset mínimo 0").default(0),
+});
+
 // Evidencia obligatoria (criterio mínimo del Bloque 9: al menos una fuente o
 // evidencia por oportunidad — una búsqueda sin resultados es solo una señal).
 export const OportunidadEvidenciaSchema = z.object({
@@ -438,6 +472,9 @@ export const OportunidadEvidenciaSchema = z.object({
   ]),
   descripcion: z.string().trim().min(3, "La evidencia requiere una descripción").max(1000),
   reference_url: z.string().trim().url("URL de referencia inválida").max(500).optional(),
+  // NCAP-R6-ext #165: veredicto de la moderación sobre ESTA evidencia. Sin
+  // él, la evidencia es 'pending' — honesto: el autor nunca la auto-corrobora.
+  validationStatus: OportunidadEvidenciaValidationStatusSchema.optional(),
 });
 
 // Actor con consentimiento (Ley 25.326): si se nombra a una persona u
@@ -453,6 +490,51 @@ export const OportunidadActorSchema = z
     message: "un actor nombrado exige consentimiento confirmado",
     path: ["consent_confirmed"],
   });
+
+// Conexiones entre actores de una oportunidad (vínculos oferta/demanda del
+// Bloque 9, #165): consentimiento explícito OBLIGATORIO — el refine hace
+// imposible el default(true) del material de diseño (ADR-027, Ley 25.326).
+export const OportunidadConexionTipoSchema = z.enum(["oferta", "demanda", "colaboracion"]);
+export const OportunidadConexionSchema = z
+  .object({
+    actor_origen: OportunidadActorSchema,
+    actor_destino: OportunidadActorSchema,
+    tipo_vinculo: OportunidadConexionTipoSchema,
+    consentimiento_confirmado: z.boolean(),
+  })
+  .refine((conexion) => conexion.consentimiento_confirmado === true, {
+    message: "la conexión exige consentimiento explícito confirmado (ADR-027, Ley 25.326)",
+    path: ["consentimiento_confirmado"],
+  });
+
+// Scoring territorial (interpretación con método, ADR-035, #165): niveles
+// cualitativos honestos + método y fuente declarados — NUNCA un "dato del
+// territorio" ni un puntaje con precisión falsa.
+export const OportunidadScoringNivelSchema = z.enum(["baja", "media", "alta"]);
+export const OportunidadScoringSchema = z.object({
+  territorial_impact: OportunidadScoringNivelSchema,
+  feasibility: OportunidadScoringNivelSchema,
+  urgency: OportunidadScoringNivelSchema,
+  metodo: z
+    .string()
+    .trim()
+    .min(10, "El scoring exige declarar el método de interpretación (ADR-035)")
+    .max(500),
+  fuente: z.string().trim().min(1).max(120).optional(),
+});
+
+// Contexto territorial enriquecido (#165): corridor_id alineado con el
+// vocabulario cor_* v0.1 (hipótesis de diseño provisional, #156 — nunca traza
+// oficial); landmark_id y service_area_name opcionales. Sin corredor
+// declarado, null — no se inventa contexto.
+export const OportunidadTerritorialContextSchema = z.object({
+  corridor_id: z
+    .string()
+    .regex(/^cor_[a-z0-9_]+$/, "corridor_id: vocabulario cor_* v0.1 (p. ej. cor_centro_civico, #156)")
+    .max(60),
+  landmark_id: z.string().trim().min(1).max(80).optional(),
+  service_area_name: z.string().trim().min(1).max(120).optional(),
+});
 
 // Alta de oportunidad (NCAP-R6): contexto territorial por nodo + subnodo —
 // SIN geometría propia (criterio estructural #149/#158: la oportunidad se
@@ -472,6 +554,9 @@ export const OportunidadAltaSchema = z.object({
   evidencia: OportunidadEvidenciaSchema,
   actores: z.array(OportunidadActorSchema).max(10).optional(),
   tags: z.array(z.string().trim().min(1).max(30)).max(8).optional(),
+  // NCAP-R6-ext #165: contexto territorial enriquecido opcional (cor_* v0.1,
+  // hipótesis provisional #156) — null honesto, nunca contexto inventado.
+  territorial_context: OportunidadTerritorialContextSchema.optional(),
 });
 
 // Cambio de estado por moderación (NCAP-R6): moderador|admin según la matriz

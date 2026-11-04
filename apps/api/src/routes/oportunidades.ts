@@ -5,8 +5,12 @@ import { prisma } from '@delocalsoy/db';
 import { xaddEventReference } from '@delocalsoy/redis';
 import {
   OportunidadAltaSchema,
+  OportunidadConexionSchema,
+  OportunidadEvidenciaValidacionSchema,
   OportunidadEstadoCambioSchema,
   OportunidadEstadoPublicoFiltroSchema,
+  OportunidadListadoQuerySchema,
+  OportunidadScoringSchema,
   OportunidadTipoSchema,
   SanJuanNodeSlugSchema,
 } from '@delocalsoy/contracts';
@@ -32,6 +36,12 @@ import { requireJwt, requireRole } from '../lib/auth.js';
  * mismo criterio que activos/fichas. Sellos oportunidad.propuesta y
  * oportunidad.estado_cambiado en events_raw (R4/R15) con rollback —
  * nunca un estado persistido sin su evento.
+ *
+ * NCAP-R6-ext (#165): extensiones sobre la base canónica de #160 —
+ * paginación con total en header, resumen /stats/resumen, gate de evidencia
+ * (validated/active/implemented exigen evidencia corroborated|reviewed),
+ * conexiones entre actores con consentimiento explícito (ADR-027), scoring
+ * territorial con método (ADR-035) y territorial_context cor_* v0.1 (#156).
  */
 const router: Router = Router();
 
@@ -89,8 +99,24 @@ type OportunidadRow = {
   tags: Array<string>;
   created_by_hash: string;
   hash: string;
+  scoring: Record<string, unknown> | null;
+  territorial_context: Record<string, unknown> | null;
   created_at: Date;
   updated_at: Date;
+};
+
+// NCAP-R6-ext (#165): fila tipada del vínculo entre actores — mismo criterio
+// de lectura chequeada que OportunidadRow (el cliente prisma se exporta any).
+type ConexionRow = {
+  id: string;
+  oportunidad_id: string;
+  actor_origen: Record<string, unknown>;
+  actor_destino: Record<string, unknown>;
+  tipo_vinculo: string;
+  consentimiento_confirmado: boolean;
+  created_by_hash: string;
+  hash: string;
+  created_at: Date;
 };
 
 // POST /api/oportunidades — registro ciudadano autenticado (requireJwt):
@@ -151,6 +177,7 @@ router.post('/', requireJwt, async (req: Request, res: Response) => {
         evidencia: parsed.evidencia as object,
         actores: (parsed.actores ?? []) as object,
         tags: (parsed.tags ?? []) as object,
+        territorial_context: (parsed.territorial_context ?? null) as object | null,
         created_by_hash: autor,
         hash,
       },
@@ -238,22 +265,79 @@ router.get('/', async (req: Request, res: Response) => {
       return;
     }
 
-    const oportunidades = (await prisma.oportunidades.findMany({
-      where: {
-        estado: estado !== undefined ? estado : { not: 'discarded' },
-        ...(nodo !== undefined ? { nodo_key: nodo } : {}),
-        ...(tipo !== undefined ? { tipo } : {}),
-        ...(subnodoCrudo !== undefined ? { subnodo_key: subnodoCrudo } : {}),
-      },
-      orderBy: { created_at: 'desc' },
-      take: 100,
-    })) as OportunidadRow[];
+    // Paginación (NCAP-R6-ext #165): limit/offset — el body lista, el header
+    // cuenta (X-DELocalSoy-Total-Count). Coerce manual (Number) para que un
+    // ?limit=abc sea 400 por contrato, no un NaN silencioso.
+    const paginacion = OportunidadListadoQuerySchema.safeParse({
+      limit: typeof req.query.limit === 'string' && req.query.limit !== '' ? Number(req.query.limit) : undefined,
+      offset: typeof req.query.offset === 'string' && req.query.offset !== '' ? Number(req.query.offset) : undefined,
+    });
+    if (!paginacion.success) {
+      res.status(400).json({ success: false, error: 'paginación inválida (limit 1-100, offset ≥ 0)', details: paginacion.error.errors });
+      return;
+    }
+    const { limit, offset } = paginacion.data;
 
-    res.json({ success: true, data: oportunidades, count: oportunidades.length });
+    const where = {
+      estado: estado !== undefined ? estado : { not: 'discarded' },
+      ...(nodo !== undefined ? { nodo_key: nodo } : {}),
+      ...(tipo !== undefined ? { tipo } : {}),
+      ...(subnodoCrudo !== undefined ? { subnodo_key: subnodoCrudo } : {}),
+    };
+
+    const [oportunidades, total] = await Promise.all([
+      prisma.oportunidades.findMany({ where, orderBy: { created_at: 'desc' }, take: limit, skip: offset }),
+      prisma.oportunidades.count({ where }),
+    ]);
+    const filas = oportunidades as OportunidadRow[];
+
+    // NCAP-R6-ext #165: total de la consulta en el header.
+    res.setHeader('X-DELocalSoy-Total-Count', String(total));
+    res.json({ success: true, data: filas, count: filas.length, total });
   } catch (err) {
     // AUD-06 (#100): el detalle queda en stdout del servidor, nunca en la respuesta.
     console.error('[oportunidades] listar:', err instanceof Error ? err.message : String(err));
     res.status(500).json({ success: false, error: 'fallo al obtener oportunidades' });
+  }
+});
+
+// GET /api/oportunidades/stats/resumen — métricas de resumen del Banco de
+// Potencialidades (NCAP-R6-ext #165): totales por estado y por tipo sobre lo
+// PUBLICADO ('discarded' nunca entra) + tasa de corroboración de evidencia.
+// R5/ADR-035: la tasa es cobertura de registros corroborados sobre el total
+// publicado — NUNCA un "estado del territorio".
+// ORDEN: debe declararse ANTES de GET /:id o Express la captura como id.
+router.get('/stats/resumen', async (req: Request, res: Response) => {
+  try {
+    const dondePublicado = { estado: { not: 'discarded' } };
+    const [porEstadoRows, porTipoRows, total, corroboradas, revisadas] = await Promise.all([
+      prisma.oportunidades.groupBy({ by: ['estado'], where: dondePublicado, _count: { _all: true } }),
+      prisma.oportunidades.groupBy({ by: ['tipo'], where: dondePublicado, _count: { _all: true } }),
+      prisma.oportunidades.count({ where: dondePublicado }),
+      prisma.oportunidades.count({ where: { ...dondePublicado, evidencia: { path: ['validationStatus'], equals: 'corroborated' } } }),
+      prisma.oportunidades.count({ where: { ...dondePublicado, evidencia: { path: ['validationStatus'], equals: 'reviewed' } } }),
+    ]);
+    const porEstado: Record<string, number> = {};
+    for (const fila of porEstadoRows) porEstado[fila.estado] = fila._count._all;
+    const porTipo: Record<string, number> = {};
+    for (const fila of porTipoRows) porTipo[fila.tipo] = fila._count._all;
+    res.json({
+      success: true,
+      data: {
+        total_publicado: total,
+        por_estado: porEstado,
+        por_tipo: porTipo,
+        evidencia: {
+          corroboradas,
+          revisadas,
+          tasa_corroboracion: total > 0 ? (corroboradas + revisadas) / total : 0,
+        },
+      },
+    });
+  } catch (err) {
+    // AUD-06 (#100): el detalle queda en stdout del servidor, nunca en la respuesta.
+    console.error('[oportunidades] resumen:', err instanceof Error ? err.message : String(err));
+    res.status(500).json({ success: false, error: 'fallo al obtener el resumen' });
   }
 });
 
@@ -270,6 +354,254 @@ router.get('/:id', async (req: Request, res: Response) => {
   } catch (err) {
     console.error('[oportunidades] detalle:', err instanceof Error ? err.message : String(err));
     res.status(500).json({ success: false, error: 'fallo al obtener la oportunidad' });
+  }
+});
+
+// GET /api/oportunidades/:id/conexiones — vínculos públicos entre actores de
+// una oportunidad publicada ('discarded' no existe para la lectura pública).
+router.get('/:id/conexiones', async (req: Request, res: Response) => {
+  try {
+    const oportunidad = await prisma.oportunidades.findUnique({ where: { id: req.params.id } });
+    if (!oportunidad || oportunidad.estado === 'discarded') {
+      res.status(404).json({ success: false, error: 'oportunidad no encontrada' });
+      return;
+    }
+    const conexiones = (await prisma.oportunidad_conexiones.findMany({
+      where: { oportunidad_id: req.params.id },
+      orderBy: { created_at: 'desc' },
+    })) as ConexionRow[];
+    res.json({ success: true, data: conexiones, count: conexiones.length });
+  } catch (err) {
+    console.error('[oportunidades] listar conexiones:', err instanceof Error ? err.message : String(err));
+    res.status(500).json({ success: false, error: 'fallo al obtener las conexiones' });
+  }
+});
+
+// POST /api/oportunidades/:id/conexiones — vínculo oferta/demanda entre
+// actores de una oportunidad con consentimiento explícito obligatorio
+// (NCAP-R6-ext #165; ADR-027, Ley 25.326: el refine del contrato hace
+// imposible default(true) — sin consentimiento no hay vínculo). Sello
+// oportunidad.conexion_creada con rollback; idempotencia por hash.
+router.post('/:id/conexiones', requireJwt, async (req: Request, res: Response) => {
+  const id = req.params.id;
+
+  let parsed: z.infer<typeof OportunidadConexionSchema>;
+  try {
+    parsed = OportunidadConexionSchema.parse(req.body);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ success: false, error: 'datos inválidos', details: error.errors });
+      return;
+    }
+    throw error;
+  }
+
+  // Anti-PII sobre TODO el texto de autoría humana (ADR-020 cond. 1).
+  const pii = detectaPII(JSON.stringify(parsed));
+  if (pii) {
+    res.status(400).json({
+      error: 'payload rechazado: contiene datos personales identificables (' + pii + ') — ADR-020 cond. 1, Ley 25.326',
+    });
+    return;
+  }
+
+  const usuario = res.locals.usuario as { id: string };
+  const autor = seudonimo(usuario.id);
+  // Idempotencia (R6): mismo ciudadano + oportunidad + actores + tipo = un
+  // solo vínculo. El hash único es la compuerta.
+  const hash = createHash('sha256')
+    .update(id + '|' + parsed.actor_origen.role + '|' + (parsed.actor_origen.name ?? '') + '|' + parsed.actor_destino.role + '|' + (parsed.actor_destino.name ?? '') + '|' + parsed.tipo_vinculo + '|' + usuario.id)
+    .digest('hex');
+
+  try {
+    const oportunidad = await prisma.oportunidades.findUnique({ where: { id } });
+    if (!oportunidad || oportunidad.estado === 'discarded') {
+      res.status(404).json({ success: false, error: 'oportunidad no encontrada' });
+      return;
+    }
+
+    const existente = await prisma.oportunidad_conexiones.findUnique({ where: { hash } });
+    if (existente) {
+      res.status(200).json({ success: true, data: existente, idempotente: true });
+      return;
+    }
+
+    const conexion = await prisma.oportunidad_conexiones.create({
+      data: {
+        oportunidad_id: id,
+        actor_origen: parsed.actor_origen as object,
+        actor_destino: parsed.actor_destino as object,
+        tipo_vinculo: parsed.tipo_vinculo,
+        consentimiento_confirmado: true,
+        created_by_hash: autor,
+        hash,
+      },
+    });
+
+    try {
+      await sellarEvento('oportunidad.conexion_creada', {
+        conexion_id: conexion.id,
+        oportunidad_id: id,
+        tipo_vinculo: parsed.tipo_vinculo,
+        consentimiento_confirmado: true,
+        created_by_hash: autor,
+      });
+    } catch (err) {
+      // Rollback (R4/R15): sin sello no hay vínculo acreditado.
+      await prisma.oportunidad_conexiones.delete({ where: { id: conexion.id } }).catch(() => undefined);
+      console.error('[oportunidades] sellar conexión:', err instanceof Error ? err.message : String(err));
+      res.status(500).json({ success: false, error: 'fallo al sellar la conexión' });
+      return;
+    }
+
+    res.status(201).json({ success: true, data: conexion });
+  } catch (err) {
+    // Carrera de idempotencia (P2002): responder idempotente.
+    const code = (err as { code?: string } | null)?.code;
+    if (code === 'P2002') {
+      const existente = await prisma.oportunidad_conexiones.findUnique({ where: { hash } });
+      if (existente) {
+        res.status(200).json({ success: true, data: existente, idempotente: true });
+        return;
+      }
+    }
+    console.error('[oportunidades] crear conexión:', err instanceof Error ? err.message : String(err));
+    res.status(500).json({ success: false, error: 'fallo al crear la conexión' });
+  }
+});
+
+// PATCH /api/oportunidades/:id/evidencia — veredicto de moderación sobre la
+// evidencia (NCAP-R6-ext #165): corroborated|reviewed habilitan el gate de
+// estados acreditados. 'pending' es el default honesto del alta — el autor
+// nunca auto-corrobora (R15). Sello oportunidad.evidencia_validada con
+// rollback: sin sello no hay veredicto acreditado.
+router.patch('/:id/evidencia', requireJwt, requireRole('moderador', 'admin'), async (req: Request, res: Response) => {
+  const id = req.params.id;
+
+  let parsed: z.infer<typeof OportunidadEvidenciaValidacionSchema>;
+  try {
+    parsed = OportunidadEvidenciaValidacionSchema.parse(req.body);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ success: false, error: 'datos inválidos', details: error.errors });
+      return;
+    }
+    throw error;
+  }
+
+  // Anti-PII sobre el motivo (ADR-020 cond. 1): mismo criterio que el alta.
+  if (parsed.motivo != null) {
+    const pii = detectaPII(parsed.motivo);
+    if (pii) {
+      res.status(400).json({
+        error: 'payload rechazado: contiene datos personales identificables (' + pii + ') — ADR-020 cond. 1, Ley 25.326',
+      });
+      return;
+    }
+  }
+
+  try {
+    const existente = await prisma.oportunidades.findUnique({ where: { id } });
+    if (!existente || existente.estado === 'discarded') {
+      res.status(404).json({ success: false, error: 'oportunidad no encontrada' });
+      return;
+    }
+    const evidenciaPrevia = (existente.evidencia ?? {}) as Record<string, unknown>;
+    const evidenciaNueva = { ...evidenciaPrevia, validationStatus: parsed.validationStatus };
+
+    const actualizada = await prisma.oportunidades.update({
+      where: { id },
+      data: { evidencia: evidenciaNueva },
+    });
+
+    const moderadorHash = seudonimo((res.locals.usuario as { id: string }).id);
+    try {
+      await sellarEvento('oportunidad.evidencia_validada', {
+        oportunidad_id: id,
+        validation_status: parsed.validationStatus,
+        motivo: parsed.motivo ?? null,
+        moderador_hash: moderadorHash,
+      });
+    } catch (err) {
+      // Rollback (R4/R15): sin sello no hay veredicto acreditado.
+      await prisma.oportunidades
+        .update({ where: { id }, data: { evidencia: evidenciaPrevia as object } })
+        .catch(() => undefined);
+      console.error('[oportunidades] sellar validación de evidencia:', err instanceof Error ? err.message : String(err));
+      res.status(500).json({ success: false, error: 'fallo al sellar la validación de evidencia' });
+      return;
+    }
+
+    res.json({ success: true, data: actualizada });
+  } catch (err) {
+    console.error('[oportunidades] validar evidencia:', err instanceof Error ? err.message : String(err));
+    res.status(500).json({ success: false, error: 'fallo al validar la evidencia' });
+  }
+});
+
+// PATCH /api/oportunidades/:id/scoring — interpretación territorial declarada
+// por moderación (NCAP-R6-ext #165, ADR-035): niveles cualitativos CON método
+// y fuente — nunca un puntaje "del territorio". Sello
+// oportunidad.scoring_declarado con rollback.
+router.patch('/:id/scoring', requireJwt, requireRole('moderador', 'admin'), async (req: Request, res: Response) => {
+  const id = req.params.id;
+
+  let parsed: z.infer<typeof OportunidadScoringSchema>;
+  try {
+    parsed = OportunidadScoringSchema.parse(req.body);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ success: false, error: 'datos inválidos', details: error.errors });
+      return;
+    }
+    throw error;
+  }
+
+  // Anti-PII sobre TODO el payload (ADR-020 cond. 1).
+  const pii = detectaPII(JSON.stringify(parsed));
+  if (pii) {
+    res.status(400).json({
+      error: 'payload rechazado: contiene datos personales identificables (' + pii + ') — ADR-020 cond. 1, Ley 25.326',
+    });
+    return;
+  }
+
+  try {
+    const existente = await prisma.oportunidades.findUnique({ where: { id } });
+    if (!existente || existente.estado === 'discarded') {
+      res.status(404).json({ success: false, error: 'oportunidad no encontrada' });
+      return;
+    }
+    const scoringPrevio = (existente.scoring ?? null) as Record<string, unknown> | null;
+
+    const actualizada = await prisma.oportunidades.update({
+      where: { id },
+      data: { scoring: parsed as object },
+    });
+
+    const moderadorHash = seudonimo((res.locals.usuario as { id: string }).id);
+    try {
+      await sellarEvento('oportunidad.scoring_declarado', {
+        oportunidad_id: id,
+        territorial_impact: parsed.territorial_impact,
+        feasibility: parsed.feasibility,
+        urgency: parsed.urgency,
+        moderador_hash: moderadorHash,
+      });
+    } catch (err) {
+      // Rollback (R4/R15): sin sello no hay scoring acreditado.
+      await prisma.oportunidades
+        .update({ where: { id }, data: { scoring: scoringPrevio } })
+        .catch(() => undefined);
+      console.error('[oportunidades] sellar scoring:', err instanceof Error ? err.message : String(err));
+      res.status(500).json({ success: false, error: 'fallo al sellar el scoring' });
+      return;
+    }
+
+    res.json({ success: true, data: actualizada });
+  } catch (err) {
+    console.error('[oportunidades] declarar scoring:', err instanceof Error ? err.message : String(err));
+    res.status(500).json({ success: false, error: 'fallo al declarar el scoring' });
   }
 });
 
@@ -317,6 +649,24 @@ router.patch('/:id/estado', requireJwt, requireRole('moderador', 'admin'), async
         error: "transición inválida: '" + existente.estado + "' → '" + parsed.estado + "' (ciclo de vida Bloque 9)",
       });
       return;
+    }
+
+    // Gate de evidencia (NCAP-R6-ext #165, refuerzo de R15 sobre la matriz):
+    // avanzar a un estado acreditado exige evidencia corroborada o revisada
+    // por moderación — sin veredicto, el avance es un salto epistémico.
+    if (['validated', 'active', 'implemented'].includes(parsed.estado)) {
+      const evidencia = (existente.evidencia ?? {}) as Record<string, unknown>;
+      const validationStatus = typeof evidencia.validationStatus === 'string' ? evidencia.validationStatus : 'pending';
+      if (validationStatus !== 'corroborated' && validationStatus !== 'reviewed') {
+        res.status(400).json({
+          success: false,
+          error:
+            "gate de evidencia (Bloque 9): avanzar a '" + parsed.estado +
+            "' exige evidencia corroborated|reviewed — la evidencia está '" + validationStatus +
+            "'. Validar con PATCH /api/oportunidades/" + id + "/evidencia.",
+        });
+        return;
+      }
     }
 
     const actualizada = await prisma.oportunidades.update({
