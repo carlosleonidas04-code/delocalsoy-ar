@@ -44,13 +44,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -q -m "refactor(web): mover 27 modulos lab + canvas-maestro a src/lab/ (/lab PR-1)" \
-            -m "- App.tsx: 22 imports estaticos lab -> React.lazy + Suspense fallback null
-- TopBarHeader (producto): marca desde lib/DelocalSoyBrand (extraccion 1:1 del prototipo)
-- delete design/BaseConsolidadaPrototype.tsx (duplicado muerto, #352)
-- gate: pnpm --filter @delocalsoy/web typecheck verde
-
-Refs: issue de traza #356, #352"
+          git commit -q -m "refactor(web) lab-move PR-1 — 27 modulos lab + canvas-maestro a src/lab/, marca de producto extraida a lib/DelocalSoyBrand, delete del duplicado en design (refs #352, #356)"
           git push --force origin HEAD:refs/heads/chore/lab-moved
       - name: "Reportar exito en el issue de traza"
         if: success()
