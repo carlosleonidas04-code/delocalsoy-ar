@@ -40,7 +40,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: pnpm (packageManager: pnpm@9.0.0)
+      - name: "pnpm (packageManager: pnpm@9.0.0)"
         uses: pnpm/action-setup@v4
 
       - name: Node
