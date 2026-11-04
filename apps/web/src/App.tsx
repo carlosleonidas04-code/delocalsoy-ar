@@ -1,41 +1,19 @@
-import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import { type FormEvent, lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { AdminSovereigntyDashboard } from './components/AdminSovereigntyDashboard';
 import { ArtefactosRoot } from './components/artefactos/ArtefactosRoot';
-import { BaseConsolidadaPrototype } from './components/BaseConsolidadaPrototype';
-import { CognitiveLensSelector, type DesignLensKey } from './components/CognitiveLensSelector';
 import { ComerciosPanel } from './components/ComerciosPanel';
-import { DemoDataSourceAuditSection } from './components/DemoDataSourceAuditSection';
-import { DesignStudioHeader } from './components/DesignStudioHeader';
-import { EthicalAiCopilotPanel } from './components/EthicalAiCopilotPanel';
 import { FederatedCompareView } from './components/FederatedCompareView';
 import { FederatedNodeDetailModal } from './components/FederatedNodeDetailModal';
 import { FederatedNodeExplorer } from './components/FederatedNodeExplorer';
 import { GmpQuotaBanner } from './components/GmpQuotaBanner';
 import { HeroBannerSection } from './components/HeroBannerSection';
-import { HeuristicsAwardMatrix } from './components/HeuristicsAwardMatrix';
-import { HorizonOneArchitecturePanel } from './components/HorizonOneArchitecturePanel';
-import { HorizonThreeObservatoryPanel } from './components/HorizonThreeObservatoryPanel';
-import { HorizonTwoSpatialFederationPanel } from './components/HorizonTwoSpatialFederationPanel';
-import { HorizonFourFieldAndTelemetryPanel } from './components/HorizonFourFieldAndTelemetryPanel';
-import { InspectionStationsConsole } from './components/InspectionStationsConsole';
-import { LensOneAtlasWorkbench, type CockpitMacroView } from './components/LensOneAtlasWorkbench';
-import { LensTwoVerticalFlowWorkbench } from './components/LensTwoVerticalFlowWorkbench';
-import { LensThreeSovereigntyWorkbench } from './components/LensThreeSovereigntyWorkbench';
-import { LensFourEpistemicContractsWorkbench } from './components/LensFourEpistemicContractsWorkbench';
-import { MasterRegistrySection } from './components/MasterRegistrySection';
-import { OperationalOriginStrip } from './components/OperationalOriginStrip';
-import { QuarterlyTrendsSection } from './components/QuarterlyTrendsSection';
-import { RecursiveDesignChainSection } from './components/RecursiveDesignChainSection';
-import { RecursiveProspectiveContractPanel } from './components/RecursiveProspectiveContractPanel';
 import { ShowcaseRecorridoPanel } from './components/ShowcaseRecorridoPanel';
 import { ServicioInformativoPanel } from './components/ServicioInformativoPanel';
 import { SyntheticModeWarningBanner } from './components/SyntheticModeWarningBanner';
 import { TerritoriosMap } from './components/TerritoriosMap';
 import { TerritorialPlatformHub } from './components/TerritorialPlatformHub';
-import { TokenEvolutionStrip } from './components/TokenEvolutionStrip';
 import { TopBarHeader } from './components/TopBarHeader';
 import { TraceabilityAndEvidenciasPanel } from './components/TraceabilityAndEvidenciasPanel';
-import { VibeAgentExportHandoffCenter } from './components/VibeAgentExportHandoffCenter';
 import { WorkspacePanel } from './components/WorkspacePanel';
 import { useFederatedMutationHandlers } from './hooks/useFederatedMutationHandlers';
 import {
@@ -79,6 +57,143 @@ import type {
   TerritorioFeature,
   TerritorioLayer,
 } from './data/federatedModel';
+import type { DesignLensKey } from './lab/CognitiveLensSelector';
+import type { CockpitMacroView } from './lab/LensOneAtlasWorkbench';
+
+// Refactor /lab (PR-1): los 22 modulos de laboratorio cargan por demanda via
+// React.lazy — el chunk inicial del ciudadano deja de arrastrar ~800 KB de lab.
+const BaseConsolidadaPrototype = lazy(() =>
+  import('./lab/BaseConsolidadaPrototype').then((m) => ({
+    default: m.BaseConsolidadaPrototype,
+  })),
+);
+
+const CognitiveLensSelector = lazy(() =>
+  import('./lab/CognitiveLensSelector').then((m) => ({
+    default: m.CognitiveLensSelector,
+  })),
+);
+
+const DemoDataSourceAuditSection = lazy(() =>
+  import('./lab/DemoDataSourceAuditSection').then((m) => ({
+    default: m.DemoDataSourceAuditSection,
+  })),
+);
+
+const DesignStudioHeader = lazy(() =>
+  import('./lab/DesignStudioHeader').then((m) => ({
+    default: m.DesignStudioHeader,
+  })),
+);
+
+const EthicalAiCopilotPanel = lazy(() =>
+  import('./lab/EthicalAiCopilotPanel').then((m) => ({
+    default: m.EthicalAiCopilotPanel,
+  })),
+);
+
+const HeuristicsAwardMatrix = lazy(() =>
+  import('./lab/HeuristicsAwardMatrix').then((m) => ({
+    default: m.HeuristicsAwardMatrix,
+  })),
+);
+
+const HorizonOneArchitecturePanel = lazy(() =>
+  import('./lab/HorizonOneArchitecturePanel').then((m) => ({
+    default: m.HorizonOneArchitecturePanel,
+  })),
+);
+
+const HorizonThreeObservatoryPanel = lazy(() =>
+  import('./lab/HorizonThreeObservatoryPanel').then((m) => ({
+    default: m.HorizonThreeObservatoryPanel,
+  })),
+);
+
+const HorizonTwoSpatialFederationPanel = lazy(() =>
+  import('./lab/HorizonTwoSpatialFederationPanel').then((m) => ({
+    default: m.HorizonTwoSpatialFederationPanel,
+  })),
+);
+
+const HorizonFourFieldAndTelemetryPanel = lazy(() =>
+  import('./lab/HorizonFourFieldAndTelemetryPanel').then((m) => ({
+    default: m.HorizonFourFieldAndTelemetryPanel,
+  })),
+);
+
+const InspectionStationsConsole = lazy(() =>
+  import('./lab/InspectionStationsConsole').then((m) => ({
+    default: m.InspectionStationsConsole,
+  })),
+);
+
+const LensOneAtlasWorkbench = lazy(() =>
+  import('./lab/LensOneAtlasWorkbench').then((m) => ({
+    default: m.LensOneAtlasWorkbench,
+  })),
+);
+
+const LensTwoVerticalFlowWorkbench = lazy(() =>
+  import('./lab/LensTwoVerticalFlowWorkbench').then((m) => ({
+    default: m.LensTwoVerticalFlowWorkbench,
+  })),
+);
+
+const LensThreeSovereigntyWorkbench = lazy(() =>
+  import('./lab/LensThreeSovereigntyWorkbench').then((m) => ({
+    default: m.LensThreeSovereigntyWorkbench,
+  })),
+);
+
+const LensFourEpistemicContractsWorkbench = lazy(() =>
+  import('./lab/LensFourEpistemicContractsWorkbench').then((m) => ({
+    default: m.LensFourEpistemicContractsWorkbench,
+  })),
+);
+
+const MasterRegistrySection = lazy(() =>
+  import('./lab/MasterRegistrySection').then((m) => ({
+    default: m.MasterRegistrySection,
+  })),
+);
+
+const OperationalOriginStrip = lazy(() =>
+  import('./lab/OperationalOriginStrip').then((m) => ({
+    default: m.OperationalOriginStrip,
+  })),
+);
+
+const QuarterlyTrendsSection = lazy(() =>
+  import('./lab/QuarterlyTrendsSection').then((m) => ({
+    default: m.QuarterlyTrendsSection,
+  })),
+);
+
+const RecursiveDesignChainSection = lazy(() =>
+  import('./lab/RecursiveDesignChainSection').then((m) => ({
+    default: m.RecursiveDesignChainSection,
+  })),
+);
+
+const RecursiveProspectiveContractPanel = lazy(() =>
+  import('./lab/RecursiveProspectiveContractPanel').then((m) => ({
+    default: m.RecursiveProspectiveContractPanel,
+  })),
+);
+
+const TokenEvolutionStrip = lazy(() =>
+  import('./lab/TokenEvolutionStrip').then((m) => ({
+    default: m.TokenEvolutionStrip,
+  })),
+);
+
+const VibeAgentExportHandoffCenter = lazy(() =>
+  import('./lab/VibeAgentExportHandoffCenter').then((m) => ({
+    default: m.VibeAgentExportHandoffCenter,
+  })),
+);
+
 
 // Tipos y helpers de territorios — extraídos 1:1 a lib/territorioTypes
 // (FE-DEUDA-02 #293, corte 23). App re-exporta la API pública para no alterar
@@ -479,7 +594,7 @@ export function App() {
   };
 
   return (
-    <>
+    <Suspense fallback={null}>
       {gmpQuotaExceeded && <GmpQuotaBanner />}
 
       {/* Banner obligatorio Paso 6 cuando opera la fuente sintética (VITE_MOCK_API=1 o modo synthetic) — extraída 1:1 a SyntheticModeWarningBanner (FE-DEUDA-02 #293, corte 3) */}
@@ -1064,6 +1179,6 @@ export function App() {
           onExportVerified={handleWorkspaceExportVerified}
         />
       </main>
-    </>
+    </Suspense>
   );
 }
