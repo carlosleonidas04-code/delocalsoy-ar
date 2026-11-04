@@ -32,9 +32,13 @@ jobs:
           node-version: 22
           cache: pnpm
       - name: "Instalar dependencias (lockfile congelado)"
-        run: pnpm install --frozen-lockfile 2>&1 | tee install.log
+        run: |
+          set -o pipefail
+          pnpm install --frozen-lockfile 2>&1 | tee install.log
       - name: "Transformar, mover y verificar (gate typecheck)"
-        run: bash scripts/lab-move/move.sh 2>&1 | tee move.log
+        run: |
+          set -o pipefail
+          bash scripts/lab-move/move.sh 2>&1 | tee move.log
       - name: "Limpiar staging (scripts y este workflow no llegan a la rama final)"
         run: |
           git rm -r -q scripts/lab-move
