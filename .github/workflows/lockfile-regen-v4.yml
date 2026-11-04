@@ -1,0 +1,91 @@
+# Workflow desechable (LOCKFILE-REGEN v4): path nuevo para que el
+# trigger se evalúe desde ESTA rama (el path lockfile-regen.yml existe en main
+# con solo workflow_dispatch y eso impedía el disparo — ver #350, commits
+# 0e6e216 y 3af9666 dispararon CI pero nunca el regen).
+# v4 (2026-11-04): tras el regreso de Actions (repo público) y el merge #353 —
+# el regen debe reflejar @google/genai como devDependency.
+
+name: Lockfile regen v4
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - chore/lockfile-regen-auto
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: lockfile-regen-v4
+  cancel-in-progress: false
+
+timeout-minutes: 20
+
+jobs:
+  regen:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reportar inicio (diagnostico #350)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment 350 --body "**run iniciado (v4, path nuevo)** - evento: ${{ github.event_name }}, ref: ${{ github.ref_name }}, sha: ${{ github.sha }} ($(date -u +%FT%TZ))"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: pnpm (packageManager: pnpm@9.0.0)
+        uses: pnpm/action-setup@v4
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Regenerar pnpm-lock.yaml
+        run: |
+          set -o pipefail
+          pnpm install --lockfile-only --no-frozen-lockfile 2>&1 | tee regen.log
+
+      - name: Verificar frozen-lockfile (precondicion AUD-09 #235)
+        run: |
+          set -o pipefail
+          pnpm install --frozen-lockfile 2>&1 | tee verify.log
+
+      - name: Push a chore/lockfile-regenado
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B chore/lockfile-regenado
+          git add pnpm-lock.yaml
+          git commit -m "chore: pnpm-lock.yaml regenerado (apps/web post-#353: genai devDep, firebase, maps, recharts, ws, lucide-react)" || echo "Sin cambios: lockfile ya al dia"
+          git push origin chore/lockfile-regenado --force
+
+      - name: Reportar exito (#350)
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment 350 --body "**regen OK (v4)** - chore/lockfile-regenado empujada en $(git rev-parse --short chore/lockfile-regenado)"
+
+      - name: Reportar fallo con logs (#350)
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo "**FALLO del regen (v4)** - evento: ${{ github.event_name }}, ref: ${{ github.ref_name }}"
+            echo ""
+            echo '~~~'
+            tail -n 60 regen.log 2>/dev/null || true
+            echo "---"
+            tail -n 60 verify.log 2>/dev/null || true
+            echo '~~~'
+          } > /tmp/fallo.md || true
+          gh issue comment 350 --body-file /tmp/fallo.md || gh issue comment 350 --body "**FALLO del regen (v4)** (sin logs disponibles)"
