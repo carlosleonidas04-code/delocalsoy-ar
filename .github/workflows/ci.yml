@@ -1,5 +1,15 @@
 name: CI
 
+# v18 (AUD-09, #104/#235/#354): pnpm install --frozen-lockfile en los 3 jobs
+# (build/test/vertical). Precondicion acreditada: pnpm-lock.yaml regenerado
+# contra main post-#353 por el workflow desechable lockfile-regen v4.1 (#350,
+# rama chore/lockfile-regenado, PR #354 mergeado) y verificado con
+# --frozen-lockfile dentro del mismo job. Con frozen-lockfile, un lockfile
+# desincronizado rompe el CI en lugar de mutarlo silenciosamente en cada run:
+# el lockfile pasa a ser evidencia versionada (R4) y los runs reproducibles
+# (R15). Este PR elimina ademas lockfile-regen-v4.yml (desechable, cumplio su
+# mision; su trigger pull_request forzaria un regen en cada PR).
+
 # v17 (PRE-ACT 2026-10-28): hardening de spending — concurrency con
 # cancel-in-progress (un push nuevo cancela el run obsoleto de la misma ref; en
 # main el arbol final queda verificado por el ultimo run — cada PR ya acredito
@@ -69,7 +79,7 @@ jobs:
       - name: Install dependencies
         run: |
           set -o pipefail
-          pnpm install --no-frozen-lockfile 2>&1 | tee install.log
+          pnpm install --frozen-lockfile 2>&1 | tee install.log
       - name: Prisma generate (EV-003)
         run: |
           set -o pipefail
@@ -118,7 +128,7 @@ jobs:
       - name: Install dependencies
         run: |
           set -o pipefail
-          pnpm install --no-frozen-lockfile 2>&1 | tee install.log
+          pnpm install --frozen-lockfile 2>&1 | tee install.log
       - name: Prisma generate (EV-003)
         run: |
           set -o pipefail
@@ -189,7 +199,7 @@ jobs:
       - name: Install dependencies
         run: |
           set -o pipefail
-          pnpm install --no-frozen-lockfile 2>&1 | tee install.log
+          pnpm install --frozen-lockfile 2>&1 | tee install.log
       - name: Prisma generate (EV-003)
         run: |
           set -o pipefail
