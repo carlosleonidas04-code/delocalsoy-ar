@@ -7,10 +7,7 @@
  * primaria de sincronización del núcleo. El logo y el wordmark migran a este
  * módulo (solo se consumían aquí); el handler vive en App y se acopla por props.
  */
-import {
-  DelocalSoyNetworkLogoSvg,
-  DelocalSoyWordmark,
-} from './BaseConsolidadaPrototype';
+import { DelocalSoyNetworkLogoSvg, DelocalSoyWordmark } from '../lib/DelocalSoyBrand';
 
 export interface TopBarHeaderProps {
   onSyncCore: () => void | Promise<void>;

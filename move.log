@@ -1,0 +1,14 @@
+== [1/4] Transform determinista (App lazy + TopBarHeader + marca)
+OK: lib/DelocalSoyBrand.tsx generado (3136 bytes, logo=1925, wordmark=601)
+OK: TopBarHeader importa la marca desde ../lib/DelocalSoyBrand
+OK: App.tsx transformado (51680 bytes, 22 lazy + Suspense)
+TRANSFORM OK
+== [2/4] git mv: 27 módulos lab + canvas-maestro
+movidos: 27 módulos + canvas-maestro
+== [3/4] delete del duplicado muerto (design/, sin importadores — #352)
+== [4/4] Gate R15: typecheck del workspace web
+
+> @delocalsoy/web@0.1.0 typecheck /home/runner/work/delocalsoy-ar/delocalsoy-ar/apps/web
+> tsc -b --noEmit
+
+MOVE OK: refactor aplicado y typecheck verde.
