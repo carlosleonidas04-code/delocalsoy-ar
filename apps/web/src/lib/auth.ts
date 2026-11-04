@@ -1,101 +1,62 @@
-import { initializeApp, getApps } from 'firebase/app';
-import {
-  getAuth,
-  signInWithPopup,
-  GoogleAuthProvider,
-  onAuthStateChanged,
-  type User,
-} from 'firebase/auth';
-import {
-  getFirestore,
-  doc,
-  getDocFromServer,
-} from 'firebase/firestore';
-import firebaseConfig from './firebaseConfig';
+/**
+ * Autenticación — DELocalSoy.AR
+ *
+ * Firebase Auth / Google Sign-In DESHABILITADOS por decisión de la Dirección
+ * Humana (2026-11-03): la identidad real del producto es la sesión JWT del
+ * backend propio (`lib/sesion.ts`). Este módulo conserva las firmas exportadas
+ * para no romper consumidores, pero no inicializa Firebase ni autentica contra
+ * Google: `auth.currentUser` es siempre `null` y `googleSignIn()` devuelve
+ * `null`. Nada se simula (R15): los flujos que exigían sesión de Google
+ * muestran su camino de «sin sesión» existente.
+ */
 
-export const SCOPES = [
-  'https://www.googleapis.com/auth/drive',
-  'https://www.googleapis.com/auth/drive.activity',
-  'https://www.googleapis.com/auth/drive.activity.readonly',
-  'https://www.googleapis.com/auth/drive.appdata',
-  'https://www.googleapis.com/auth/drive.apps.readonly',
-  'https://www.googleapis.com/auth/drive.file',
-  'https://www.googleapis.com/auth/drive.install',
-  'https://www.googleapis.com/auth/drive.meet.readonly',
-  'https://www.googleapis.com/auth/drive.metadata',
-  'https://www.googleapis.com/auth/drive.metadata.readonly',
-  'https://www.googleapis.com/auth/drive.photos.readonly',
-  'https://www.googleapis.com/auth/drive.readonly',
-  'https://www.googleapis.com/auth/drive.scripts',
-  'https://www.googleapis.com/auth/documents',
-  'https://www.googleapis.com/auth/documents.readonly',
-];
+import type { User } from 'firebase/auth';
 
-export const firebaseProjectId = firebaseConfig.projectId;
-export const firebaseDatabaseId = firebaseConfig.firestoreDatabaseId;
-export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
-export const auth = getAuth(app);
+/** @deprecated Deshabilitado (decisión DH 2026-11-03): sin scopes OAuth de Google. */
+export const SCOPES: string[] = [];
 
-// Validación obligatoria de conexión inicial a Firestore (Skill firebase-integration-rpc)
-async function testConnection() {
-  try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.error('Please check your Firebase configuration.');
-    }
-  }
-}
-void testConnection();
+/** @deprecated Deshabilitado: sin proyecto Firebase. */
+export const firebaseProjectId = '';
 
-const provider = new GoogleAuthProvider();
-for (const scope of SCOPES) {
-  provider.addScope(scope);
-}
+/** @deprecated Deshabilitado: sin base Firestore. */
+export const firebaseDatabaseId = '';
 
-let isSigningIn = false;
-let cachedAccessToken: string | null = null;
+/** @deprecated Siempre `null`: la app de Firebase ya no se inicializa. */
+export const app = null;
 
+/** @deprecated Siempre `null`: Firestore ya no se inicializa. */
+export const db = null;
+
+/**
+ * Estado de autenticación local (stub): `currentUser` es siempre `null`.
+ * La sesión real del producto vive en `lib/sesion.ts` (JWT del backend propio).
+ */
+export const auth = {
+  currentUser: null as User | null,
+};
+
+/**
+ * @deprecated No-op: no hay observable de autenticación de Google. Invoca
+ * `onAuthFailure` (si existe) de inmediato y devuelve una desuscripción sin
+ * efecto.
+ */
 export const initAuth = (
-  onAuthSuccess?: (user: User, token: string) => void,
+  _onAuthSuccess?: (user: User, token: string) => void,
   onAuthFailure?: () => void,
 ) => {
-  return onAuthStateChanged(auth, async (user: User | null) => {
-    if (user) {
-      if (cachedAccessToken) {
-        if (onAuthSuccess) onAuthSuccess(user, cachedAccessToken);
-      } else if (!isSigningIn) {
-        // Incluso sin token OAuth de Drive en caché, el usuario de Firebase Auth está autenticado para Firestore
-        if (onAuthSuccess) onAuthSuccess(user, '');
-      }
-    } else {
-      cachedAccessToken = null;
-      if (onAuthFailure) onAuthFailure();
-    }
-  });
+  if (onAuthFailure) onAuthFailure();
+  return () => {};
 };
 
+/** @deprecated Deshabilitado (decisión DH 2026-11-03). Devuelve siempre `null`. */
 export const googleSignIn = async (): Promise<{ user: User; accessToken: string } | null> => {
-  try {
-    isSigningIn = true;
-    const result = await signInWithPopup(auth, provider);
-    const credential = GoogleAuthProvider.credentialFromResult(result);
-    cachedAccessToken = credential?.accessToken ?? '';
-    return { user: result.user, accessToken: cachedAccessToken };
-  } catch (error) {
-    console.error('Sign in error:', error);
-    throw error;
-  } finally {
-    isSigningIn = false;
-  }
+  return null;
 };
 
+/** @deprecated Deshabilitado. Devuelve siempre `null`. */
 export const getAccessToken = async (): Promise<string | null> => {
-  return cachedAccessToken;
+  return null;
 };
 
-export const logout = async () => {
-  await auth.signOut();
-  cachedAccessToken = null;
-};
+/** @deprecated No-op: no hay sesión de Google que cerrar. */
+export const logout = async () => {};
