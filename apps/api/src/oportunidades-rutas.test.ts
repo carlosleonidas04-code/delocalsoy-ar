@@ -13,6 +13,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 // - PATCH /api/oportunidades/:id/estado: 403 ciudadano, transición inválida
 //   400 (matriz del ciclo de vida), moderador 200 con sello, repetido 409,
 //   descartada desaparece de la lectura pública
+// - NCAP-R6-ext (#165) gate de evidencia: antes de validated, la
+//   moderación corrobora la evidencia vía PATCH /:id/evidencia
 // Requiere Postgres/PostGIS real (job test de CI); sin base el suite se
 // salta (honesto, R5).
 process.env.DATABASE_URL =
@@ -251,7 +253,18 @@ describe.skipIf(!dbUp)('oportunidades (NODO-CAPITAL R6 — Banco de Potencialida
     expect((sello?.payload as any).estado_anterior).toBe('detected');
     expect((sello?.payload as any).estado).toBe('under_review');
 
-    // Continuidad del ciclo: under_review → validated.
+    // NCAP-R6-ext (#165) gate de evidencia: la moderación corrobora la
+    // evidencia ANTES de validar — sin veredicto, el avance es 400 (R15:
+    // veredicto de moderación antes que salto epistémico).
+    const corroborar = await fetch(base + '/api/oportunidades/' + oportunidadId + '/evidencia', {
+      method: 'PATCH',
+      headers: { ...jsonHeaders, authorization: 'Bearer ' + tokenModerador },
+      body: JSON.stringify({ validationStatus: 'corroborated', motivo: 'contraste con el acta de la reunión vecinal' }),
+    });
+    expect(corroborar.status).toBe(200);
+    await corroborar.arrayBuffer();
+
+    // Continuidad del ciclo: under_review → validated (evidencia corroborada).
     const validar = await fetch(base + '/api/oportunidades/' + oportunidadId + '/estado', {
       method: 'PATCH',
       headers: { ...jsonHeaders, authorization: 'Bearer ' + tokenModerador },
