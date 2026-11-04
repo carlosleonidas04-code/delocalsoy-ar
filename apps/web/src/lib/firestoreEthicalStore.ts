@@ -1,17 +1,56 @@
-import {
-  collection,
-  doc,
-  getDocs,
-  setDoc,
-  updateDoc,
-  onSnapshot,
-  query,
-  where,
-  serverTimestamp,
-  type Unsubscribe,
-} from 'firebase/firestore';
-import { auth, db, firebaseDatabaseId, firebaseProjectId } from './auth';
+/**
+ * Almacén territorial ético — DELocalSoy.AR
+ *
+ * PERSISTENCIA LOCAL (decisión de la Dirección Humana, 2026-11-03):
+ * Firebase/Firestore/FCM SALIERON del producto web (soberanía del dato: los
+ * registros territoriales no salen del territorio). Este módulo conserva las
+ * firmas exportadas para no romper consumidores, pero ahora persiste en el
+ * `localStorage` del dispositivo del custodio (prefijo `delocalsoy_local_store_`,
+ * tope de retención 200 entradas por colección). La verdad canónica sigue
+ * siendo `events_raw`/PostGIS vía la API propia (ADR-020); nada se simula (R15).
+ */
 
+const LOCAL_STORE_PREFIX = 'delocalsoy_local_store_';
+const LOCAL_STORE_MAX_ENTRIES = 200;
+const LOCAL_STORE_OWNER = 'custodio-local';
+
+interface LocalStoreRecord {
+  id: string;
+}
+
+function readLocalCollection<T extends LocalStoreRecord>(collectionName: string): T[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(LOCAL_STORE_PREFIX + collectionName);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as T[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeLocalCollection<T extends LocalStoreRecord>(
+  collectionName: string,
+  items: T[],
+): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(
+      LOCAL_STORE_PREFIX + collectionName,
+      JSON.stringify(items.slice(-LOCAL_STORE_MAX_ENTRIES)),
+    );
+  } catch {
+    // Cuota excedida o localStorage bloqueado: el registro vive en el flujo del
+    // llamador; events_raw/PostGIS sigue siendo la verdad canónica (ADR-020).
+  }
+}
+
+function upsertLocalRecord<T extends LocalStoreRecord>(collectionName: string, record: T): void {
+  const items = readLocalCollection<T>(collectionName).filter((item) => item.id !== record.id);
+  items.push(record);
+  writeLocalCollection(collectionName, items);
+}
 export enum OperationType {
   CREATE = 'create',
   UPDATE = 'update',
@@ -38,6 +77,10 @@ export interface FirestoreErrorInfo {
   };
 }
 
+/**
+ * Reporta un error de persistencia local con la misma estructura de telemetría
+ * (sin `authInfo` de Google: la autenticación de Firebase está deshabilitada).
+ */
 export function handleFirestoreError(
   error: unknown,
   operationType: OperationType,
@@ -45,22 +88,11 @@ export function handleFirestoreError(
 ): never {
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth.currentUser?.uid,
-      email: auth.currentUser?.email,
-      emailVerified: auth.currentUser?.emailVerified,
-      isAnonymous: auth.currentUser?.isAnonymous,
-      tenantId: auth.currentUser?.tenantId,
-      providerInfo:
-        auth.currentUser?.providerData?.map((provider) => ({
-          providerId: provider.providerId,
-          email: provider.email,
-        })) || [],
-    },
+    authInfo: {},
     operationType,
     path,
   };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  console.error('Error de persistencia local: ', JSON.stringify(errInfo));
   throw new Error(JSON.stringify(errInfo));
 }
 
@@ -128,7 +160,6 @@ export function ackCanonicalIngestAndPurgeOutbox(sha256Hash: string): void {
     // No-op
   }
 }
-
 export interface PersistedAiConsultation {
   id: string;
   ownerId: string;
@@ -203,12 +234,17 @@ export interface FirestoreSyncTelemetry {
   errorMessage?: string;
 }
 
-export const FIRESTORE_INSTANCE_METADATA = {
-  projectId: firebaseProjectId,
-  databaseId: firebaseDatabaseId,
-  securityPolicy: 'Lecturas públicas (sin PII, verificadas por CI) + Escrituras restringidas (Firebase Auth verificado)',
-};
 
+/**
+ * Metadatos de la instancia de persistencia: honesta tras la decisión DH
+ * 2026-11-03 — ya no hay instancia Firestore; el store es local al dispositivo.
+ */
+export const FIRESTORE_INSTANCE_METADATA = {
+  projectId: 'deshabilitado',
+  databaseId: 'deshabilitado',
+  securityPolicy:
+    'Deshabilitado por decisión DH 2026-11-03: persistencia local (localStorage) sin nube. Verdad canónica: events_raw/PostGIS (ADR-020).',
+};
 /**
  * Regla de Precedencia Canónica ADR-020 (Issue #32):
  * Firestore opera exclusivamente como capa de sincronización y cola offline-first (espejo H4).
@@ -263,6 +299,12 @@ function sanitizeHexHash(raw: string): string {
   return cleaned.length >= 8 ? cleaned : 'a1b2c3d4e5f60718';
 }
 
+// ---------------------------------------------------------------------------
+// Persistencia local (decisión DH 2026-11-03: sin Firestore/FCM). Cada función
+// conserva la firma original; el registro queda en el dispositivo del custodio.
+// ---------------------------------------------------------------------------
+
+// Persistencia local de consultas IA Éticas (esquema sin PII · Pilar 6 + ADR-020 #32)
 export async function saveAiConsultationToFirestore(input: {
   id?: string;
   nodeKey: SanJuanNodeKey;
@@ -276,23 +318,18 @@ export async function saveAiConsultationToFirestore(input: {
   sha256Hash: string;
   groundingLinksCount: number;
 }): Promise<string> {
-  const currentUser = auth.currentUser;
-  if (!currentUser) {
-    throw new Error('Autenticación con Google requerida para escribir en Firestore');
-  }
-
   const docId = sanitizeId(input.id || `ai-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`);
-  const path = `territorial_ai_consultations/${docId}`;
-
-  // Esquema sin PII (Pilar 6 + ADR-020 #32) para permitir lectura pública segura y escritura restringida
-  const payload = {
-    ownerId: currentUser.uid.slice(0, 128),
+  const record: PersistedAiConsultation = {
+    id: docId,
+    ownerId: LOCAL_STORE_OWNER,
     nodeKey: input.nodeKey,
     modality: input.modality,
     modelUsed: (input.modelUsed || 'gemini-3.8-flash').slice(0, 80),
     rolePersona: input.rolePersona,
     prompt: scrubAndAssertNoPii(input.prompt || 'Consulta territorial').slice(0, 2000),
-    datoempirico: scrubAndAssertNoPii(input.datoempirico || 'Dato empírico territorial relevado').slice(0, 4000),
+    datoempirico: scrubAndAssertNoPii(
+      input.datoempirico || 'Dato empírico territorial relevado',
+    ).slice(0, 4000),
     interpretacionContextual: scrubAndAssertNoPii(
       input.interpretacionContextual || 'Interpretación contextual bajo gobernanza HITUB',
     ).slice(0, 4000),
@@ -300,21 +337,13 @@ export async function saveAiConsultationToFirestore(input: {
       input.sugerenciaAccionable || 'Sugerencia sujeta a revisión humana colegiada',
     ).slice(0, 4000),
     requiresHumanReview: true,
-    humanReviewStatus: 'pending_review' as const,
+    humanReviewStatus: 'pending_review',
     sha256Hash: sanitizeHexHash(input.sha256Hash),
     groundingLinksCount: Math.max(0, Math.min(50, Math.floor(input.groundingLinksCount || 0))),
-    schemaVersion: CURRENT_SCHEMA_VERSION,
-    syncLifecycleState: 'espejado_firestore_sin_verificar' as const,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
+    createdAtIso: new Date().toISOString(),
   };
-
-  try {
-    await setDoc(doc(db, 'territorial_ai_consultations', docId), payload);
-    return docId;
-  } catch (error) {
-    handleFirestoreError(error, OperationType.CREATE, path);
-  }
+  upsertLocalRecord('territorial_ai_consultations', record);
+  return docId;
 }
 
 export async function updateAiConsultationReviewInFirestore(
@@ -322,15 +351,10 @@ export async function updateAiConsultationReviewInFirestore(
   nextStatus: 'ratified' | 'contested',
 ): Promise<void> {
   const docId = sanitizeId(consultationId);
-  const path = `territorial_ai_consultations/${docId}`;
-  try {
-    await updateDoc(doc(db, 'territorial_ai_consultations', docId), {
-      humanReviewStatus: nextStatus,
-      updatedAt: serverTimestamp(),
-    });
-  } catch (error) {
-    handleFirestoreError(error, OperationType.UPDATE, path);
-  }
+  const items = readLocalCollection<PersistedAiConsultation>(
+    'territorial_ai_consultations',
+  ).map((item) => (item.id === docId ? { ...item, humanReviewStatus: nextStatus } : item));
+  writeLocalCollection('territorial_ai_consultations', items);
 }
 
 export async function saveSeciRecordToFirestore(input: {
@@ -346,16 +370,13 @@ export async function saveSeciRecordToFirestore(input: {
   linkedEvCode: string;
   sha256Hash: string;
 }): Promise<string> {
-  const currentUser = auth.currentUser;
-  if (!currentUser) {
-    throw new Error('Autenticación con Google requerida para escribir en Firestore');
-  }
-
   const docId = sanitizeId(input.id || `seci-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`);
-  const path = `territorial_seci_records/${docId}`;
 
   // En territorial_seci_records exigimos validación anti-PII estricta (Riesgo 3 · ADR-020 / Issue #32)
-  const cleanTitle = scrubAndAssertNoPii(input.title || 'Relevamiento territorial SECI', true).slice(0, 240);
+  const cleanTitle = scrubAndAssertNoPii(input.title || 'Relevamiento territorial SECI', true).slice(
+    0,
+    240,
+  );
   const cleanObservation = scrubAndAssertNoPii(
     input.fieldObservation || 'Observación de campo registrada por custodio territorial',
     true,
@@ -373,26 +394,19 @@ export async function saveSeciRecordToFirestore(input: {
     fieldObservation: cleanObservation,
   });
 
-  const payload = {
-    ownerId: currentUser.uid.slice(0, 128),
+  const record: PersistedSeciRecord = {
+    id: docId,
+    ownerId: LOCAL_STORE_OWNER,
     nodeKey: input.nodeKey,
     seciStage: input.seciStage,
     title: cleanTitle,
     fieldObservation: cleanObservation,
     linkedEvCode: (input.linkedEvCode || 'EV-015').slice(0, 32),
     sha256Hash: cleanHash,
-    schemaVersion: CURRENT_SCHEMA_VERSION,
-    syncLifecycleState: 'espejado_firestore_sin_verificar' as const,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
+    createdAtIso: new Date().toISOString(),
   };
-
-  try {
-    await setDoc(doc(db, 'territorial_seci_records', docId), payload);
-    return docId;
-  } catch (error) {
-    handleFirestoreError(error, OperationType.CREATE, path);
-  }
+  upsertLocalRecord('territorial_seci_records', record);
+  return docId;
 }
 
 export async function advanceSeciRecordStageInFirestore(
@@ -404,15 +418,10 @@ export async function advanceSeciRecordStageInFirestore(
     | 'social_ficha_mapa',
 ): Promise<void> {
   const docId = sanitizeId(recordId);
-  const path = `territorial_seci_records/${docId}`;
-  try {
-    await updateDoc(doc(db, 'territorial_seci_records', docId), {
-      seciStage: nextStage,
-      updatedAt: serverTimestamp(),
-    });
-  } catch (error) {
-    handleFirestoreError(error, OperationType.UPDATE, path);
-  }
+  const items = readLocalCollection<PersistedSeciRecord>('territorial_seci_records').map((item) =>
+    item.id === docId ? { ...item, seciStage: nextStage } : item,
+  );
+  writeLocalCollection('territorial_seci_records', items);
 }
 
 export async function saveNodeSovereigntyToFirestore(input: {
@@ -425,16 +434,10 @@ export async function saveNodeSovereigntyToFirestore(input: {
   syncPacksCount: number;
   nodeMerkleRoot: string;
 }): Promise<string> {
-  const currentUser = auth.currentUser;
-  if (!currentUser) {
-    throw new Error('Autenticación con Google requerida para escribir estado de soberanía en Firestore');
-  }
-
   const docId = sanitizeId(`sov-${input.nodeKey}-${Date.now()}`);
-  const path = `territorial_nodes_sovereignty/${docId}`;
-
-  const payload = {
-    ownerId: currentUser.uid.slice(0, 128),
+  const record: PersistedNodeSovereignty = {
+    id: docId,
+    ownerId: LOCAL_STORE_OWNER,
     nodeKey: input.nodeKey,
     nodeName: (input.nodeName || input.nodeKey).slice(0, 120),
     provincia: (input.provincia || 'San Juan').slice(0, 120),
@@ -443,16 +446,10 @@ export async function saveNodeSovereigntyToFirestore(input: {
     postgisCount: Math.max(0, Math.min(1000, Math.floor(input.postgisCount || 0))),
     syncPacksCount: Math.max(0, Math.min(1000, Math.floor(input.syncPacksCount || 0))),
     nodeMerkleRoot: sanitizeHexHash(input.nodeMerkleRoot),
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
+    updatedAtIso: new Date().toISOString(),
   };
-
-  try {
-    await setDoc(doc(db, 'territorial_nodes_sovereignty', docId), payload);
-    return docId;
-  } catch (error) {
-    handleFirestoreError(error, OperationType.CREATE, path);
-  }
+  upsertLocalRecord('territorial_nodes_sovereignty', record);
+  return docId;
 }
 
 export async function saveFederatedModelStateToFirestore(input: {
@@ -465,290 +462,125 @@ export async function saveFederatedModelStateToFirestore(input: {
   networkMerkleRoot: string;
   summaryNote: string;
 }): Promise<string> {
-  const currentUser = auth.currentUser;
-  if (!currentUser) {
-    throw new Error('Autenticación con Google requerida para persistir el estado consolidado del modelo federado en Firestore');
-  }
-
   const docId = sanitizeId(`fed-state-${Date.now()}`);
-  const path = `federated_model_states/${docId}`;
-
-  const payload = {
-    ownerId: currentUser.uid.slice(0, 128),
-    federationScope: 'cuyo_red_federal' as const,
+  const record: PersistedFederatedModelState = {
+    id: docId,
+    ownerId: LOCAL_STORE_OWNER,
+    federationScope: 'cuyo_red_federal',
     activeNodesCount: Math.max(0, Math.min(10, Math.floor(input.activeNodesCount || 0))),
     delegatedNodesCount: Math.max(0, Math.min(10, Math.floor(input.delegatedNodesCount || 0))),
-    strictCustodyNodesCount: Math.max(0, Math.min(10, Math.floor(input.strictCustodyNodesCount || 0))),
-    verifiedEvidencesCount: Math.max(0, Math.min(200, Math.floor(input.verifiedEvidencesCount || 0))),
-    postgisGeometriesCount: Math.max(0, Math.min(5000, Math.floor(input.postgisGeometriesCount || 0))),
+    strictCustodyNodesCount: Math.max(
+      0,
+      Math.min(10, Math.floor(input.strictCustodyNodesCount || 0)),
+    ),
+    verifiedEvidencesCount: Math.max(
+      0,
+      Math.min(200, Math.floor(input.verifiedEvidencesCount || 0)),
+    ),
+    postgisGeometriesCount: Math.max(
+      0,
+      Math.min(5000, Math.floor(input.postgisGeometriesCount || 0)),
+    ),
     eventsRawCount: Math.max(0, Math.min(50000, Math.floor(input.eventsRawCount || 0))),
     networkMerkleRoot: sanitizeHexHash(input.networkMerkleRoot),
-    summaryNote: (input.summaryNote || 'Sincronización centralizada del modelo federado DELocalSoy.AR').slice(0, 1000),
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
+    summaryNote: (
+      input.summaryNote || 'Sincronización del modelo federado DELocalSoy.AR'
+    ).slice(0, 1000),
+    updatedAtIso: new Date().toISOString(),
   };
-
-  try {
-    await setDoc(doc(db, 'federated_model_states', docId), payload);
-    return docId;
-  } catch (error) {
-    handleFirestoreError(error, OperationType.CREATE, path);
-  }
+  upsertLocalRecord('federated_model_states', record);
+  return docId;
 }
 
-// Suscripción de lectura pública al estado consolidado del modelo federado
+// ---------------------------------------------------------------------------
+// Suscripciones locales (decisión DH 2026-11-03): lectura única del store
+// local + callback; la desuscripción es no-op. No hay observable de nube.
+// ---------------------------------------------------------------------------
+
+// Suscripción local al estado consolidado del modelo federado
 export function subscribeFederatedModelStates(
   onData: (items: PersistedFederatedModelState[]) => void,
-  onError?: (err: Error) => void,
-): Unsubscribe {
-  const path = 'federated_model_states';
-  const q = query(
-    collection(db, path),
-    where('federationScope', '==', 'cuyo_red_federal'),
+  _onError?: (err: Error) => void,
+): () => void {
+  const list = readLocalCollection<PersistedFederatedModelState>('federated_model_states').filter(
+    (item) => item.federationScope === 'cuyo_red_federal',
   );
-
-  return onSnapshot(
-    q,
-    (snapshot) => {
-      const list: PersistedFederatedModelState[] = snapshot.docs.map((d) => {
-        const raw = d.data();
-        return {
-          id: d.id,
-          ownerId: String(raw.ownerId ?? ''),
-          federationScope: 'cuyo_red_federal',
-          activeNodesCount: Number(raw.activeNodesCount ?? 0),
-          delegatedNodesCount: Number(raw.delegatedNodesCount ?? 0),
-          strictCustodyNodesCount: Number(raw.strictCustodyNodesCount ?? 0),
-          verifiedEvidencesCount: Number(raw.verifiedEvidencesCount ?? 0),
-          postgisGeometriesCount: Number(raw.postgisGeometriesCount ?? 0),
-          eventsRawCount: Number(raw.eventsRawCount ?? 0),
-          networkMerkleRoot: String(raw.networkMerkleRoot ?? ''),
-          summaryNote: String(raw.summaryNote ?? ''),
-          updatedAtIso: raw.updatedAt?.toDate ? raw.updatedAt.toDate().toISOString() : undefined,
-        };
-      });
-      onData(list);
-    },
-    (error) => {
-      if (onError) onError(error);
-      handleFirestoreError(error, OperationType.LIST, path);
-    },
-  );
+  onData(list);
+  return () => {};
 }
 
-// Suscripción a consultas IA Éticas (Red-Team T2 · Ley 25.326: listado de texto libre solo con custodio autenticado)
+// Suscripción local a consultas IA Éticas (Red-Team T2 · Ley 25.326: texto libre solo con custodio autenticado)
 export function subscribeUserAiConsultations(
   userId: string | null,
   onData: (items: PersistedAiConsultation[]) => void,
-  onError?: (err: Error) => void,
-): Unsubscribe {
+  _onError?: (err: Error) => void,
+): () => void {
   if (!userId) {
     onData([]);
     return () => {};
   }
-  const path = 'territorial_ai_consultations';
-  const q = query(
-    collection(db, path),
-    where('nodeKey', 'in', [...PUBLIC_NODE_KEYS]),
-  );
-
-  return onSnapshot(
-    q,
-    (snapshot) => {
-      const list: PersistedAiConsultation[] = snapshot.docs.map((d) => {
-        const raw = d.data();
-        return {
-          id: d.id,
-          ownerId: String(raw.ownerId ?? ''),
-          nodeKey: (raw.nodeKey ?? 'iglesia') as PersistedAiConsultation['nodeKey'],
-          modality: (raw.modality ?? 'chat') as PersistedAiConsultation['modality'],
-          modelUsed: String(raw.modelUsed ?? 'gemini-3.8-flash'),
-          rolePersona: (raw.rolePersona ?? 'hidro-cuenca') as PersistedAiConsultation['rolePersona'],
-          prompt: String(raw.prompt ?? ''),
-          datoempirico: String(raw.datoempirico ?? ''),
-          interpretacionContextual: String(raw.interpretacionContextual ?? ''),
-          sugerenciaAccionable: String(raw.sugerenciaAccionable ?? ''),
-          requiresHumanReview: Boolean(raw.requiresHumanReview ?? true),
-          humanReviewStatus: (raw.humanReviewStatus ??
-            'pending_review') as PersistedAiConsultation['humanReviewStatus'],
-          sha256Hash: String(raw.sha256Hash ?? ''),
-          groundingLinksCount: Number(raw.groundingLinksCount ?? 0),
-          createdAtIso: raw.createdAt?.toDate ? raw.createdAt.toDate().toISOString() : undefined,
-        };
-      });
-      onData(list);
-    },
-    (error) => {
-      if (onError) onError(error);
-      handleFirestoreError(error, OperationType.LIST, path);
-    },
-  );
+  const list = readLocalCollection<PersistedAiConsultation>(
+    'territorial_ai_consultations',
+  ).filter((item) => (PUBLIC_NODE_KEYS as readonly string[]).includes(item.nodeKey));
+  onData(list);
+  return () => {};
 }
 
-// Suscripción a registros del Ciclo SECI Territorial (Red-Team T2 · Ley 25.326: listado de observaciones de campo solo con custodio autenticado)
+// Suscripción local a registros del Ciclo SECI Territorial (Red-Team T2 · Ley 25.326: observaciones de campo solo con custodio autenticado)
 export function subscribeUserSeciRecords(
   userId: string | null,
   onData: (items: PersistedSeciRecord[]) => void,
-  onError?: (err: Error) => void,
-): Unsubscribe {
+  _onError?: (err: Error) => void,
+): () => void {
   if (!userId) {
     onData([]);
     return () => {};
   }
-  const path = 'territorial_seci_records';
-  const q = query(
-    collection(db, path),
-    where('nodeKey', 'in', [...PUBLIC_NODE_KEYS]),
+  const list = readLocalCollection<PersistedSeciRecord>('territorial_seci_records').filter(
+    (item) => (PUBLIC_NODE_KEYS as readonly string[]).includes(item.nodeKey),
   );
-
-  return onSnapshot(
-    q,
-    (snapshot) => {
-      const list: PersistedSeciRecord[] = snapshot.docs.map((d) => {
-        const raw = d.data();
-        return {
-          id: d.id,
-          ownerId: String(raw.ownerId ?? ''),
-          nodeKey: (raw.nodeKey ?? 'iglesia') as PersistedSeciRecord['nodeKey'],
-          seciStage: (raw.seciStage ?? 'tacito_campo') as PersistedSeciRecord['seciStage'],
-          title: String(raw.title ?? ''),
-          fieldObservation: String(raw.fieldObservation ?? ''),
-          linkedEvCode: String(raw.linkedEvCode ?? 'EV-015'),
-          sha256Hash: String(raw.sha256Hash ?? ''),
-          createdAtIso: raw.createdAt?.toDate ? raw.createdAt.toDate().toISOString() : undefined,
-        };
-      });
-      onData(list);
-    },
-    (error) => {
-      if (onError) onError(error);
-      handleFirestoreError(error, OperationType.LIST, path);
-    },
-  );
+  onData(list);
+  return () => {};
 }
 
-// Suscripción de lectura pública al estado de soberanía de nodos
+// Suscripción local de lectura pública al estado de soberanía de nodos
 export function subscribePublicNodeSovereignty(
   onData: (
     items: PersistedNodeSovereignty[],
     meta?: { fromCache: boolean; hasPendingWrites: boolean; latencyMs: number },
   ) => void,
-  onError?: (err: Error) => void,
-): Unsubscribe {
-  const path = 'territorial_nodes_sovereignty';
+  _onError?: (err: Error) => void,
+): () => void {
   const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
-  const q = query(
-    collection(db, path),
-    where('nodeKey', 'in', [...PUBLIC_NODE_KEYS]),
-  );
-
-  return onSnapshot(
-    q,
-    { includeMetadataChanges: true },
-    (snapshot) => {
-      const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
-      const latencyMs = Math.max(8, Math.round(now - startedAt));
-      const list: PersistedNodeSovereignty[] = snapshot.docs.map((d) => {
-        const raw = d.data();
-        return {
-          id: d.id,
-          ownerId: String(raw.ownerId ?? ''),
-          nodeKey: (raw.nodeKey ?? 'iglesia') as PersistedNodeSovereignty['nodeKey'],
-          nodeName: String(raw.nodeName ?? ''),
-          provincia: String(raw.provincia ?? ''),
-          sovereigntyMode: (raw.sovereigntyMode ??
-            'delegacion_revocable_activa') as PersistedNodeSovereignty['sovereigntyMode'],
-          sharedLayersCount: Number(raw.sharedLayersCount ?? 0),
-          postgisCount: Number(raw.postgisCount ?? 0),
-          syncPacksCount: Number(raw.syncPacksCount ?? 0),
-          nodeMerkleRoot: String(raw.nodeMerkleRoot ?? ''),
-          updatedAtIso: raw.updatedAt?.toDate ? raw.updatedAt.toDate().toISOString() : undefined,
-        };
-      });
-      onData(list, {
-        fromCache: snapshot.metadata.fromCache,
-        hasPendingWrites: snapshot.metadata.hasPendingWrites,
-        latencyMs,
-      });
-    },
-    (error) => {
-      if (onError) onError(error);
-      handleFirestoreError(error, OperationType.LIST, path);
-    },
-  );
+  const list = readLocalCollection<PersistedNodeSovereignty>(
+    'territorial_nodes_sovereignty',
+  ).filter((item) => (PUBLIC_NODE_KEYS as readonly string[]).includes(item.nodeKey));
+  const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+  onData(list, {
+    fromCache: true,
+    hasPendingWrites: false,
+    latencyMs: Math.max(8, Math.round(now - startedAt)),
+  });
+  return () => {};
 }
 
-// Sondeo de latencia RTT real entre cada departamento de San Juan y Firebase Firestore Cloud
+// Sondeo honesto de persistencia local tras deshabilitar Firestore (decisión DH 2026-11-03)
 export async function probeFirestoreCloudLatency(): Promise<FirestoreSyncTelemetry> {
-  const startedGlobal = typeof performance !== 'undefined' ? performance.now() : Date.now();
-  const nodeLatencies: Record<SanJuanNodeKey, number> = {
-    capital: 0,
-    caucete: 0,
-    iglesia: 0,
+  return {
+    connectionState: 'cached_local',
+    cloudRoundTripMs: 0,
+    fromCache: true,
+    hasPendingWrites: false,
+    lastHandshakeIso: new Date().toISOString(),
+    nodeSyncLatenciesMs: {
+      capital: 0,
+      caucete: 0,
+      iglesia: 0,
+    },
+    errorMessage:
+      'Firestore deshabilitado — decisión DH 2026-11-03 (soberanía del dato). Persistencia local en el dispositivo; verdad canónica: events_raw/PostGIS (ADR-020).',
   };
-
-  let fromCache = false;
-  let hasPendingWrites = false;
-
-  try {
-    const fedQuery = query(
-      collection(db, 'federated_model_states'),
-      where('federationScope', '==', 'cuyo_red_federal'),
-    );
-    const fedSnap = await getDocs(fedQuery);
-    fromCache = fedSnap.metadata.fromCache;
-    hasPendingWrites = fedSnap.metadata.hasPendingWrites;
-
-    for (const nodeKey of PUBLIC_NODE_KEYS) {
-      const nodeStart = typeof performance !== 'undefined' ? performance.now() : Date.now();
-      const nodeQ = query(
-        collection(db, 'territorial_nodes_sovereignty'),
-        where('nodeKey', '==', nodeKey),
-      );
-      const nodeSnap = await getDocs(nodeQ);
-      const nodeEnd = typeof performance !== 'undefined' ? performance.now() : Date.now();
-      nodeLatencies[nodeKey] = Math.max(9, Math.round(nodeEnd - nodeStart));
-      if (nodeSnap.metadata.fromCache) {
-        fromCache = true;
-      }
-      if (nodeSnap.metadata.hasPendingWrites) {
-        hasPendingWrites = true;
-      }
-    }
-
-    const endedGlobal = typeof performance !== 'undefined' ? performance.now() : Date.now();
-    const totalRtt = Math.max(
-      14,
-      Math.round(
-        (nodeLatencies.capital + nodeLatencies.caucete + nodeLatencies.iglesia) / 3,
-      ) || Math.round(endedGlobal - startedGlobal),
-    );
-
-    return {
-      connectionState: fromCache ? 'cached_local' : 'connected_live',
-      cloudRoundTripMs: totalRtt,
-      fromCache,
-      hasPendingWrites,
-      lastHandshakeIso: new Date().toISOString(),
-      nodeSyncLatenciesMs: nodeLatencies,
-    };
-  } catch (err) {
-    return {
-      connectionState: 'error',
-      cloudRoundTripMs: 0,
-      fromCache: true,
-      hasPendingWrites: false,
-      lastHandshakeIso: new Date().toISOString(),
-      nodeSyncLatenciesMs: {
-        capital: 0,
-        caucete: 0,
-        iglesia: 0,
-      },
-      errorMessage: err instanceof Error ? err.message : String(err),
-    };
-  }
 }
-
 export interface CustodianSovereigntyAlertInput {
   nodeKey: SanJuanNodeKey;
   nodeName: string;
@@ -771,7 +603,9 @@ export interface CustodianSovereigntyAlertRecord extends CustodianSovereigntyAle
 /**
  * Registra y despacha una alerta de soberanía para los custodios territoriales
  * de los 3 departamentos de San Juan (Capital, Caucete, Iglesia) bajo ADR-020/ADR-034,
- * aplicando sanitización Anti-PII (Ley 25.326) y sincronizando con Firestore si hay sesión activa.
+ * aplicando sanitización Anti-PII (Ley 25.326) y persistiéndola localmente
+ * (decisión DH 2026-11-03: sin Firebase/FCM, el Outbox Local Firmado y
+ * events_raw/PostGIS siguen siendo el canal canónico).
  */
 export async function recordCustodianSovereigntyAlertInFirestore(
   input: CustodianSovereigntyAlertInput,
@@ -797,22 +631,20 @@ export async function recordCustodianSovereigntyAlertInFirestore(
   );
   const id = `fcm-alert-${input.nodeKey}-${sha256.slice(0, 8)}`;
 
-  let persistedInCloud = false;
-  const currentUser = auth.currentUser;
-  if (currentUser && currentUser.emailVerified) {
-    try {
-      await saveSeciRecordToFirestore({
-        nodeKey: input.nodeKey,
-        seciStage: 'explicito_evento',
-        title: `[FCM Push ${fcmTopic}] ${input.nodeName}: ${input.nextMode}`,
-        fieldObservation: `${safeTarget} — ${safeSummary}`,
-        linkedEvCode: 'EV-014',
-        sha256Hash: sha256,
-      });
-      persistedInCloud = true;
-    } catch {
-      persistedInCloud = false;
-    }
+  // Persistencia local del evento de alerta (sin nube): `persistedInCloud` es
+  // siempre `false` de forma honesta; nada se simula (R15).
+  const persistedInCloud = false;
+  try {
+    await saveSeciRecordToFirestore({
+      nodeKey: input.nodeKey,
+      seciStage: 'explicito_evento',
+      title: `[Alerta Custodio ${fcmTopic}] ${input.nodeName}: ${input.nextMode}`,
+      fieldObservation: `${safeTarget} — ${safeSummary}`,
+      linkedEvCode: 'EV-014',
+      sha256Hash: sha256,
+    });
+  } catch {
+    // El Outbox Local Firmado ya registró el evento; el error no bloquea la alerta
   }
 
   if (
