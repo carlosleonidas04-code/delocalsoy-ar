@@ -53,6 +53,15 @@ import {
   type ComercioItem,
   type ComerciosQuery,
 } from './comercios';
+import {
+  normalizarAccesibilidad,
+  normalizarCorredores,
+  normalizarOportunidades,
+  type AccesibilidadResumen,
+  type CorredorItem,
+  type OportunidadesQuery,
+  type OportunidadItem,
+} from './oportunidades';
 
 export interface ApiDataSourceOptions {
   fetchImpl?: typeof fetch;
@@ -590,5 +599,78 @@ export class ApiDataSource implements DataSource {
       });
     }
     return normalizarComercioHistorial(payload);
+  }
+
+  /**
+   * Consulta GET /api/oportunidades — Banco de Potencialidades público
+   * (NCAP-R6 #158 + ext #165): lectura multinodo; 'discarded' nunca se pide
+   * ni se muestra (la API no lo publica, R15). Regla R5: los errores HTTP se
+   * propagan como DataSourceHttpError — jamás [] como máscara de error.
+   */
+  public async listOportunidades(input?: OportunidadesQuery): Promise<OportunidadItem[]> {
+    const params = new URLSearchParams();
+    const nodo = input?.nodo;
+    const tipo = input?.tipo;
+    const estado = input?.estado;
+    const subnodo = input?.subnodo;
+    const limit = input?.limit;
+    const offset = input?.offset;
+    if (typeof nodo === 'string' && nodo !== '') params.set('nodo', nodo);
+    if (typeof tipo === 'string' && tipo !== '') params.set('tipo', tipo);
+    if (typeof estado === 'string' && estado !== '') params.set('estado', estado);
+    if (typeof subnodo === 'string' && subnodo !== '') params.set('subnodo', subnodo);
+    if (typeof limit === 'number') params.set('limit', String(limit));
+    if (typeof offset === 'number') params.set('offset', String(offset));
+    const query = params.toString();
+    const endpoint = '/api/oportunidades' + (query !== '' ? '?' + query : '');
+    const payload = await this.requestJson<any>(endpoint);
+    if (!Array.isArray(payload) && !Array.isArray(payload?.data)) {
+      throw new DataSourceHttpError({
+        status: 500,
+        endpoint,
+        message: 'Respuesta malformada de ' + endpoint + ': se esperaba un arreglo en data',
+        details: payload,
+      });
+    }
+    return normalizarOportunidades(payload);
+  }
+
+  /**
+   * Consulta GET /api/corredores — corredores v0.1 públicos (NCAP-R4 #156):
+   * hipótesis de diseño con conteos de segmentos e hitos y continuidad
+   * revisada. Regla R5: sin fallback silencioso.
+   */
+  public async listCorredores(): Promise<CorredorItem[]> {
+    const endpoint = '/api/corredores';
+    const payload = await this.requestJson<any>(endpoint);
+    if (!Array.isArray(payload) && !Array.isArray(payload?.data)) {
+      throw new DataSourceHttpError({
+        status: 500,
+        endpoint,
+        message: 'Respuesta malformada de ' + endpoint + ': se esperaba un arreglo en data',
+        details: payload,
+      });
+    }
+    return normalizarCorredores(payload);
+  }
+
+  /**
+   * Consulta GET /api/nodos/:key/accesibilidad — dashboard público de
+   * accesibilidad peatonal (NCAP-R5 #157): conteos con cobertura y fecha,
+   * jamás puntajes globales (R5/ADR-036). Regla R5: el 404 de un nodo sin
+   * capa se propaga tal cual; data malformada es 500 honesto.
+   */
+  public async getAccesibilidad(nodoKey: SanJuanFocalNodeKey): Promise<AccesibilidadResumen> {
+    const endpoint = '/api/nodos/' + encodeURIComponent(nodoKey) + '/accesibilidad';
+    const payload = await this.requestJson<any>(endpoint);
+    if (payload === null || typeof payload !== 'object' || typeof payload.data !== 'object' || payload.data === null) {
+      throw new DataSourceHttpError({
+        status: 500,
+        endpoint,
+        message: 'Respuesta malformada de ' + endpoint + ': se esperaba un objeto en data',
+        details: payload,
+      });
+    }
+    return normalizarAccesibilidad(payload.data);
   }
 }

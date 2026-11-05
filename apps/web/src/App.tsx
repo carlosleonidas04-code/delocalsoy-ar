@@ -7,6 +7,7 @@ import { FederatedNodeDetailModal } from './components/FederatedNodeDetailModal'
 import { FederatedNodeExplorer } from './components/FederatedNodeExplorer';
 import { GmpQuotaBanner } from './components/GmpQuotaBanner';
 import { HeroBannerSection } from './components/HeroBannerSection';
+import { NodoCapitalDashboard } from './components/NodoCapitalDashboard';
 import { ShowcaseRecorridoPanel } from './components/ShowcaseRecorridoPanel';
 import { ServicioInformativoPanel } from './components/ServicioInformativoPanel';
 import { SyntheticModeWarningBanner } from './components/SyntheticModeWarningBanner';
@@ -1132,6 +1133,13 @@ export function App() {
             DataSource (ADR-029), multinodo desde día 1 (decisión DH) */}
         {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') && (
           <ComerciosPanel dataSource={defaultDataSource} />
+        )}
+
+        {/* 6e. Vista del nodo Capital (NCAP-FE #163, cascada NODO-CAPITAL ratificada DH
+            2026-11-05): Banco de Potencialidades (NCAP-R6), corredores v0.1 (NCAP-R4) y
+            accesibilidad peatonal (NCAP-R5) — acople por contrato DataSource (ADR-029) */}
+        {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') && (
+          <NodoCapitalDashboard dataSource={defaultDataSource} />
         )}
 
         {/* 7. Estado de Integración API y Registro Maestro de Nodos Territoriales — extraída 1:1 a MasterRegistrySection (FE-DEUDA-02 #293, corte 21) */}
