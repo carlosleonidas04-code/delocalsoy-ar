@@ -198,6 +198,137 @@ router.get('/:key/kpis', async (req: Request, res: Response) => {
 });
 
 
+// GET /nodos/:key/accesibilidad - dashboard público de accesibilidad
+// peatonal (NODO-CAPITAL NCAP-R5, #157 — épica #152): conteos CON cobertura
+// y fecha, NUNCA puntajes globales (R5/ADR-036 — «82% de los tramos
+// relevados cumple (cobertura: 14 de 120)», jamás «accesibilidad del
+// Centro: 82%»). Dominio movilidad del nodo: accessibility (puntos:
+// rampas/cruces/obstáculos — cada registro con fecha+método+estado de
+// revisión) + sidewalks (tramos). Los tramos priorizados provienen del
+// anuncio municipal de repavimentación microcentro 2026 (fuente
+// repavimentacion_microcentro_2026, ADR-035) y nacen 'declared' — anuncio
+// ≠ obra: el estado por tramo exige verificación municipal (R15); el
+// relevamiento real los moverá a community_validated | verified. Lectura
+// pública anónima; 404 nodo inexistente (R15).
+router.get('/:key/accesibilidad', async (req: Request, res: Response) => {
+  try {
+    const nodo = await nodoPorKey(req.params.key);
+    if (!nodo) {
+      return res.status(404).json({ success: false, error: 'Nodo no encontrado' });
+    }
+    const [feats, hitos, reportes] = await Promise.all([
+      prisma.features.findMany({ where: { nodo_id: nodo.id }, include: { capa: true } }),
+      prisma.corredor_hitos.findMany({ where: { nodo_key: nodo.key }, orderBy: { key: 'asc' } }),
+      prisma.reportes.findMany({
+        where: { nodo_id: nodo.id, estado: { not: 'descartado' } },
+        select: { categoria: true },
+      }),
+    ]);
+    const mov = feats.filter((f: any) => f.capa?.key === 'accessibility' || f.capa?.key === 'sidewalks');
+
+    // features del dominio movilidad por capa/estado y por fuente
+    const porCapa = new Map<string, { capa: string; total: number; por_estado: Record<string, number> }>();
+    const porFuente = new Map<string, number>();
+    for (const f of mov) {
+      const capaKey = (f.capa?.key as string) ?? '';
+      if (!porCapa.has(capaKey)) {
+        porCapa.set(capaKey, { capa: capaKey, total: 0, por_estado: {} });
+      }
+      const entry = porCapa.get(capaKey)!;
+      entry.total += 1;
+      const est = f.estado as string;
+      entry.por_estado[est] = (entry.por_estado[est] ?? 0) + 1;
+      const fuente = f.fuente_label as string;
+      porFuente.set(fuente, (porFuente.get(fuente) ?? 0) + 1);
+    }
+    const porCategoria = new Map<string, number>();
+    for (const r of reportes) {
+      porCategoria.set(r.categoria, (porCategoria.get(r.categoria) ?? 0) + 1);
+    }
+
+    // Tramos de vereda priorizados (convención seed-f-tramo-* de NCAP-R5
+    // v1): 'declared' = anuncio sin verificación; el relevamiento los
+    // mueve a community_validated | verified.
+    const tramos = mov.filter(
+      (f: any) => f.capa?.key === 'sidewalks' && typeof f.id === 'string' && f.id.startsWith('seed-f-tramo-')
+    );
+    const priorizados = tramos.filter((f: any) => f.estado === 'declared').length;
+    const relevados = tramos.filter(
+      (f: any) => f.estado === 'community_validated' || f.estado === 'verified'
+    ).length;
+    const fechasTramos = tramos
+      .map((f: any) => new Date(f.observado_at).getTime())
+      .sort((a: number, b: number) => b - a);
+    const fechaCorteTramos = fechasTramos.length > 0 ? new Date(fechasTramos[0]).toISOString() : null;
+
+    // Observaciones de accesibilidad (capa accessibility) por estado de
+    // revisión: ingresadas (pending), revisadas (community_validated),
+    // corroboradas (verified), disputadas (disputed); synthetic_demo son
+    // las ilustrativas del vocabulario NCAP-R1.
+    const acc = mov.filter((f: any) => f.capa?.key === 'accessibility');
+    const observaciones: Record<string, number> = {
+      ingresadas: 0,
+      revisadas: 0,
+      corroboradas: 0,
+      disputadas: 0,
+      ilustrativas: 0,
+    };
+    let fechaObsMax = 0;
+    for (const f of acc) {
+      const est = f.estado as string;
+      if (est === 'pending') observaciones.ingresadas += 1;
+      else if (est === 'community_validated') observaciones.revisadas += 1;
+      else if (est === 'verified') observaciones.corroboradas += 1;
+      else if (est === 'disputed') observaciones.disputadas += 1;
+      else observaciones.ilustrativas += 1;
+      const t = new Date(f.observado_at).getTime();
+      if (t > fechaObsMax) fechaObsMax = t;
+    }
+
+    // Hitos del catálogo global con ficha (feature landmarks 1:1 por id
+    // seed-f-<hito_key>, NCAP-R1) y fecha de última revisión de la ficha.
+    const hitosData = hitos.map((h: any) => {
+      const ficha = feats.find((f: any) => f.id === 'seed-f-' + h.key);
+      return {
+        key: h.key,
+        label: h.label,
+        tipo: h.tipo,
+        con_ficha: Boolean(ficha),
+        ultima_revision: ficha ? new Date((ficha as any).observado_at).toISOString() : null,
+      };
+    });
+
+    res.json({
+      success: true,
+      data: {
+        nodo_key: nodo.key,
+        generado_en: new Date().toISOString(),
+        regla: 'Conteos con cobertura y fecha — jamás puntajes globales (R5/ADR-036)',
+        features_por_capa: Array.from(porCapa.values()),
+        features_por_fuente: Array.from(porFuente.entries()).map(([fuente, total]) => ({ fuente, total })),
+        reportes_por_categoria: Array.from(porCategoria.entries()).map(([categoria, total]) => ({ categoria, total })),
+        tramos_vereda: {
+          priorizados,
+          con_relevamiento: relevados,
+          cobertura:
+            relevados + ' de ' + (priorizados + relevados) + ' tramos priorizados cuentan con relevamiento',
+          fecha_corte: fechaCorteTramos,
+          cautela:
+            'Anuncio municipal de repavimentación microcentro 2026 (fuente repavimentacion_microcentro_2026): anuncio ≠ obra — el estado por tramo exige verificación municipal (R15)',
+        },
+        observaciones: {
+          ...observaciones,
+          fecha_corte: fechaObsMax > 0 ? new Date(fechaObsMax).toISOString() : null,
+        },
+        hitos: hitosData,
+      },
+    });
+  } catch (error) {
+    console.error('[nodos] accesibilidad:', error instanceof Error ? error.message : String(error));
+    res.status(500).json({ success: false, error: 'Error al obtener el dashboard de accesibilidad' });
+  }
+});
+
 // POST /nodos/:key/ask - consulta territorial ética (VIG-006, #188, épica
 // #167): recuperación full-text NATIVA de PostgreSQL sobre rag_index
 // (tsvector 'spanish' generado + GIN, migración 20261014230000) y respuesta

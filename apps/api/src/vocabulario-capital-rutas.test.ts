@@ -91,7 +91,7 @@ describe.skipIf(!dbUp)('Vocabulario del nodo Capital NCAP-R1 (#153)', () => {
 
   it('categorías nuevas alineadas a los dominios del documento (movilidad + espacio público)', async () => {
     const { body } = await getJson('/api/nodos/capital/categorias');
-    expect(body.count).toBe(12);
+    expect(body.count).toBe(13); // 12 NCAP-R1 + tramo_priorizado (NCAP-R5 #157)
     const cats: any[] = body.data;
     const cat = (code: string): any => cats.find((c: any) => c.code === code);
     expect(cat('missing_ramp')?.layer).toBe('accessibility');
@@ -125,19 +125,29 @@ describe.skipIf(!dbUp)('Vocabulario del nodo Capital NCAP-R1 (#153)', () => {
     }
   });
 
-  it('features accessibility (4): puntos complementarios de sidewalks, sintéticos', async () => {
+  it('features accessibility (10): 4 seed R1 + 6 observaciones R5 (#157) con estados de revisión', async () => {
     const { body } = await getJson('/api/nodos/capital/features');
     const acc = body.data.filter((f: any) => f.layer === 'accessibility');
-    expect(acc.length).toBe(4);
+    expect(acc.length).toBe(10); // 4 seed NCAP-R1 + 6 observaciones NCAP-R5 (#157)
     for (const f of acc) {
       expect(['asset', 'problem']).toContain(f.tipo);
-      expect(f.estado).toBe('synthetic_demo');
       expect(f.is_synthetic).toBe(true);
       expect(f.fuente_label.startsWith('Ilustrativa ·')).toBe(true);
       expect(f.lat).toBeGreaterThan(LAT_MIN);
       expect(f.lat).toBeLessThan(LAT_MAX);
       expect(f.lng).toBeGreaterThan(LNG_MIN);
       expect(f.lng).toBeLessThan(LNG_MAX);
+    }
+    const r1 = acc.filter((f: any) => f.id.startsWith('seed-f-acc-2'));
+    expect(r1.length).toBe(4);
+    for (const f of r1) {
+      expect(f.estado).toBe('synthetic_demo'); // vocabulario ilustrativo R1
+    }
+    const r5 = acc.filter((f: any) => f.id.startsWith('seed-f-acc-3'));
+    expect(r5.length).toBe(6);
+    for (const f of r5) {
+      // observaciones NCAP-R5 (#157): fecha+método+estado de revisión
+      expect(['pending', 'community_validated', 'verified', 'disputed']).toContain(f.estado);
     }
   });
 
@@ -189,8 +199,8 @@ describe.skipIf(!dbUp)('Vocabulario del nodo Capital NCAP-R1 (#153)', () => {
     ]);
     expect(despues).toEqual(antes);
     expect(despues[0]).toBe(8);
-    expect(despues[1]).toBe(12);
-    expect(despues[2]).toBe(19);
+    expect(despues[1]).toBe(13); // + tramo_priorizado (NCAP-R5 #157)
+    expect(despues[2]).toBe(43); // 19 NCAP-R1 + 18 tramos + 6 observaciones (NCAP-R5 #157)
     expect(despues[3]).toBe(11);
     expect(despues[4]).toBe(6);
   }, 60000);

@@ -125,7 +125,7 @@ model features {
   capa_id      String   @map("capa_id")
   titulo       String   @map("titulo")
   tipo         String   @map("tipo") // asset | problem
-  estado       String   @map("estado") // verified | pending | community_validated | synthetic_demo
+  estado       String   @map("estado") // verified | pending | community_validated | synthetic_demo | declared | disputed (NCAP-R5 #157: declared = anuncio sin verificación — R15; disputed = observación en disputa)
   fuente_label String   @map("fuente_label") // siempre "Ilustrativa · <tipo>" en demo
   observado_at DateTime @map("observado_at")
   lat          Float    @map("lat")
