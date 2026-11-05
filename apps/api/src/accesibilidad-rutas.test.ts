@@ -65,9 +65,13 @@ describe.skipIf(!dbUp)('Accesibilidad peatonal del nodo Capital NCAP-R5 (#157)',
     expect(body.data.nodo_key).toBe('capital');
     expect(body.data.regla).toContain('cobertura');
     expect(typeof body.data.generado_en).toBe('string');
-    // R5/ADR-036: jamás un puntaje global del tipo «accesibilidad del Centro: 82%»
-    expect(JSON.stringify(body.data)).not.toContain('porcentaje');
-    expect(JSON.stringify(body.data)).not.toContain('puntaje');
+    // R5/ADR-036: jamás un puntaje global del tipo «accesibilidad del Centro:
+    // 82%». Los DATOS no contienen puntaje/porcentaje/score; la `regla`
+    // nombra «puntajes globales» para negarlos — se excluye del assert.
+    const { regla: _regla, ...sinRegla } = body.data;
+    expect(JSON.stringify(sinRegla)).not.toContain('porcentaje');
+    expect(JSON.stringify(sinRegla)).not.toContain('puntaje');
+    expect(JSON.stringify(sinRegla)).not.toContain('score');
     expect(Array.isArray(body.data.reportes_por_categoria)).toBe(true);
   });
 
