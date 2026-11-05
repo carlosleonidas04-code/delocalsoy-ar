@@ -79,15 +79,16 @@ describe.skipIf(!dbUp)('Vocabulario del nodo Capital NCAP-R1 (#153)', () => {
   it('categorías nuevas alineadas a los dominios del documento (movilidad + espacio público)', async () => {
     const { body } = await getJson('/api/nodos/capital/categorias');
     expect(body.count).toBe(12);
-    const porCode = new Map(body.data.map((c: any) => [c.code, c]));
-    expect(porCode.get('missing_ramp')?.layer).toBe('accessibility');
-    expect(porCode.get('obstructed_sidewalk')?.layer).toBe('accessibility');
-    expect(porCode.get('unsafe_crossing')?.layer).toBe('accessibility');
-    expect(porCode.get('damaged_landmark')?.layer).toBe('landmarks');
+    const cats: any[] = body.data;
+    const cat = (code: string): any => cats.find((c: any) => c.code === code);
+    expect(cat('missing_ramp')?.layer).toBe('accessibility');
+    expect(cat('obstructed_sidewalk')?.layer).toBe('accessibility');
+    expect(cat('unsafe_crossing')?.layer).toBe('accessibility');
+    expect(cat('damaged_landmark')?.layer).toBe('landmarks');
     const capas = await getJson('/api/nodos/capital/capas');
     const capaKeys: string[] = capas.body.data.map((c: any) => c.key);
-    for (const cat of body.data) {
-      expect(capaKeys, 'categoría ' + cat.code + ' apunta a capa inexistente ' + cat.layer).toContain(cat.layer);
+    for (const c of cats) {
+      expect(capaKeys, 'categoría ' + c.code + ' apunta a capa inexistente ' + c.layer).toContain(c.layer);
     }
   });
 
@@ -96,7 +97,7 @@ describe.skipIf(!dbUp)('Vocabulario del nodo Capital NCAP-R1 (#153)', () => {
     const landmarks = body.data.filter((f: any) => f.layer === 'landmarks');
     expect(landmarks.length).toBe(9);
     const hitos: any[] = await prisma.corredor_hitos.findMany({ where: { nodo_key: 'capital' }, select: { key: true } });
-    const hitoKeys = new Set(hitos.map((h: any) => h.key));
+    const hitoKeys = new Set<string>(hitos.map((h: any) => h.key));
     for (const f of landmarks) {
       expect(f.id.startsWith('seed-f-hit_')).toBe(true); // alineación estructural: id = seed-f-<hito_key>
       expect(hitoKeys.has(f.id.replace('seed-f-', '')), 'feature ' + f.id + ' sin hito en corredor_hitos').toBe(true);
@@ -130,7 +131,7 @@ describe.skipIf(!dbUp)('Vocabulario del nodo Capital NCAP-R1 (#153)', () => {
   it('corredor_hitos: catálogo global 11 hitos del nodo, lat/lng NULL honestos (R15)', async () => {
     const hitos: any[] = await prisma.corredor_hitos.findMany({ where: { nodo_key: 'capital' } });
     expect(hitos.length).toBe(11);
-    const keys = new Set(hitos.map((h: any) => h.key));
+    const keys = new Set<string>(hitos.map((h: any) => h.key));
     for (const k of HITOS_R1) expect(keys.has(k), 'falta el hito ' + k).toBe(true);
     for (const h of hitos) {
       expect(h.lat).toBeNull();

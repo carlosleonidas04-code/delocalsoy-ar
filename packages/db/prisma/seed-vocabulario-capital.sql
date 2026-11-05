@@ -32,7 +32,7 @@ VALUES
   (gen_random_uuid()::text, (SELECT id FROM nodos WHERE key = 'capital'), 'missing_ramp', 'Falta rampa de accesibilidad', (SELECT id FROM capas WHERE key = 'accessibility' AND nodo_id = (SELECT id FROM nodos WHERE key = 'capital'))),
   (gen_random_uuid()::text, (SELECT id FROM nodos WHERE key = 'capital'), 'obstructed_sidewalk', 'Vereda obstruida o intransitable', (SELECT id FROM capas WHERE key = 'accessibility' AND nodo_id = (SELECT id FROM nodos WHERE key = 'capital'))),
   (gen_random_uuid()::text, (SELECT id FROM nodos WHERE key = 'capital'), 'unsafe_crossing', 'Cruce peatonal inseguro', (SELECT id FROM capas WHERE key = 'accessibility' AND nodo_id = (SELECT id FROM nodos WHERE key = 'capital'))),
-  (gen_random_uuid()::text, (SELECT id FROM nodos WHERE key = 'capital'), 'damaged_landmark', 'Hito o equipamiento dañado', (SELECT id FROM capas WHERE key = 'landmarks' AND nodo_id = (SELECT id FROM nodos WHERE key = 'capital'))),
+  (gen_random_uuid()::text, (SELECT id FROM nodos WHERE key = 'capital'), 'damaged_landmark', 'Hito o equipamiento dañado', (SELECT id FROM capas WHERE key = 'landmarks' AND nodo_id = (SELECT id FROM nodos WHERE key = 'capital')))
 ON CONFLICT (nodo_id, code) DO NOTHING;
 
 -- ─── 4 hitos nuevos del catálogo global (patrón NCAP-R4 #156) ───
@@ -41,7 +41,7 @@ VALUES
   (gen_random_uuid()::text, 'hit_plaza_25_de_mayo', 'capital', 'Plaza 25 de Mayo', 'plaza', NULL, NULL, 'Núcleo fundacional del microcentro — hito NCAP-R1 (#153), punto a verificar (R15)', '2026-11-05T12:00:00Z'),
   (gen_random_uuid()::text, 'hit_catedral', 'capital', 'Catedral de San Juan', 'edificio_publico', NULL, NULL, 'Catedral metropolitana sobre el eje fundacional — hito NCAP-R1 (#153), punto a verificar (R15)', '2026-11-05T12:00:00Z'),
   (gen_random_uuid()::text, 'hit_casa_natal_sarmiento', 'capital', 'Casa Natal de Sarmiento', 'edificio_publico', NULL, NULL, 'Museo histórico — casa natal de Domingo F. Sarmiento — hito NCAP-R1 (#153), punto a verificar (R15)', '2026-11-05T12:00:00Z'),
-  (gen_random_uuid()::text, 'hit_basilica_desamparados', 'capital', 'Basílica de Desamparados', 'edificio_publico', NULL, NULL, 'Basílica junto a la plaza Salvador María del Carril (hit_plaza_desamparados) — hito NCAP-R1 (#153), punto a verificar (R15)', '2026-11-05T12:00:00Z'),
+  (gen_random_uuid()::text, 'hit_basilica_desamparados', 'capital', 'Basílica de Desamparados', 'edificio_publico', NULL, NULL, 'Basílica junto a la plaza Salvador María del Carril (hit_plaza_desamparados) — hito NCAP-R1 (#153), punto a verificar (R15)', '2026-11-05T12:00:00Z')
 ON CONFLICT (key) DO NOTHING;
 
 -- ─── Features seed (13): 9 hitos (landmarks) + 4 accesibilidad ───
@@ -60,7 +60,7 @@ VALUES
   ('seed-f-acc-201', (SELECT id FROM nodos WHERE key = 'capital'), (SELECT id FROM capas WHERE key = 'accessibility' AND nodo_id = (SELECT id FROM nodos WHERE key = 'capital')), 'Cruce peatonal con rampa y rebaje — eje cívico', 'asset', 'synthetic_demo', 'Ilustrativa · relevamiento comunitario', '2026-11-05T12:00:00Z', -31.539, -68.533, true),
   ('seed-f-acc-202', (SELECT id FROM nodos WHERE key = 'capital'), (SELECT id FROM capas WHERE key = 'accessibility' AND nodo_id = (SELECT id FROM nodos WHERE key = 'capital')), 'Falta rampa — esquina sin rebaje (corredor peatonal)', 'problem', 'synthetic_demo', 'Ilustrativa · relevamiento comunitario', '2026-11-05T12:00:00Z', -31.535, -68.521, true),
   ('seed-f-acc-203', (SELECT id FROM nodos WHERE key = 'capital'), (SELECT id FROM capas WHERE key = 'accessibility' AND nodo_id = (SELECT id FROM nodos WHERE key = 'capital')), 'Vereda obstruida — postes en la senda peatonal', 'problem', 'synthetic_demo', 'Ilustrativa · relevamiento comunitario', '2026-11-05T12:00:00Z', -31.531, -68.526, true),
-  ('seed-f-acc-204', (SELECT id FROM nodos WHERE key = 'capital'), (SELECT id FROM capas WHERE key = 'accessibility' AND nodo_id = (SELECT id FROM nodos WHERE key = 'capital')), 'Cruce peatonal sin semáforo — acceso al Parque de Mayo', 'problem', 'synthetic_demo', 'Ilustrativa · relevamiento comunitario', '2026-11-05T12:00:00Z', -31.532, -68.544, true),
+  ('seed-f-acc-204', (SELECT id FROM nodos WHERE key = 'capital'), (SELECT id FROM capas WHERE key = 'accessibility' AND nodo_id = (SELECT id FROM nodos WHERE key = 'capital')), 'Cruce peatonal sin semáforo — acceso al Parque de Mayo', 'problem', 'synthetic_demo', 'Ilustrativa · relevamiento comunitario', '2026-11-05T12:00:00Z', -31.532, -68.544, true)
 ON CONFLICT (id) DO NOTHING;
 
 -- ─── Sellos (patrón seed-fuentes/seed-corredores: events_raw única fuente de verdad) ───
