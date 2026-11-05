@@ -13,6 +13,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 // estado synthetic_demo) — las convenciones 1:1 del vocabulario sintético
 // v5.1 de apps/web/src/demo/syntheticData.js (fixtures congelados ADR-040:
 // no se extienden; el frontend #163 consumirá este vocabulario del API).
+// Idempotencia: los conteos se ACOTAN al vocabulario/ sellos de este seed
+// (un count global de events_raw es racy: vitest corre las suites en
+// paralelo y otras suites (comercios/reportes) sellan en events_raw).
 process.env.DATABASE_URL =
   process.env.TEST_DATABASE_URL ?? 'postgresql://delocalsoy:delocalsoy@localhost:5432/delocalsoy?schema=public';
 
@@ -31,6 +34,16 @@ let base = '';
 
 // Envolvente estricta del nodo Capital (CoordenadaCapitalSchema, #154).
 const LAT_MIN = -31.6, LAT_MAX = -31.45, LNG_MIN = -68.6, LNG_MAX = -68.45;
+
+// Los 6 hashes de los sellos de este seed (2 capas + 4 hitos).
+const SELLOS_R1 = [
+  'seed-capa-capital-accessibility',
+  'seed-capa-capital-landmarks',
+  'seed-hito-hit_plaza_25_de_mayo',
+  'seed-hito-hit_catedral',
+  'seed-hito-hit_casa_natal_sarmiento',
+  'seed-hito-hit_basilica_desamparados',
+];
 
 beforeAll(async () => {
   execSync('pnpm --filter @delocalsoy/db db:seed', { cwd: repoRoot, stdio: 'pipe' });
@@ -161,7 +174,10 @@ describe.skipIf(!dbUp)('Vocabulario del nodo Capital NCAP-R1 (#153)', () => {
       prisma.categorias.count({ where: { nodo_id: nodo!.id } }),
       prisma.features.count({ where: { nodo_id: nodo!.id } }),
       prisma.corredor_hitos.count({ where: { nodo_key: 'capital' } }),
-      prisma.events_raw.count(),
+      // conteo ACOTADO a los sellos de este seed: un count global de
+      // events_raw es racy bajo suites paralelas (comercios/reportes
+      // sellan concurrentemente) — el error real de la 2ª corrida de CI.
+      prisma.events_raw.count({ where: { hash: { in: SELLOS_R1 } } }),
     ]);
     execSync('pnpm --filter @delocalsoy/db db:seed', { cwd: repoRoot, stdio: 'pipe' });
     const despues = await Promise.all([
@@ -169,12 +185,13 @@ describe.skipIf(!dbUp)('Vocabulario del nodo Capital NCAP-R1 (#153)', () => {
       prisma.categorias.count({ where: { nodo_id: nodo!.id } }),
       prisma.features.count({ where: { nodo_id: nodo!.id } }),
       prisma.corredor_hitos.count({ where: { nodo_key: 'capital' } }),
-      prisma.events_raw.count(),
+      prisma.events_raw.count({ where: { hash: { in: SELLOS_R1 } } }),
     ]);
     expect(despues).toEqual(antes);
     expect(despues[0]).toBe(8);
     expect(despues[1]).toBe(12);
     expect(despues[2]).toBe(19);
     expect(despues[3]).toBe(11);
+    expect(despues[4]).toBe(6);
   }, 60000);
 });
