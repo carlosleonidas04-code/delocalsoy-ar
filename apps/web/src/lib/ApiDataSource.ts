@@ -663,7 +663,15 @@ export class ApiDataSource implements DataSource {
   public async getAccesibilidad(nodoKey: SanJuanFocalNodeKey): Promise<AccesibilidadResumen> {
     const endpoint = '/api/nodos/' + encodeURIComponent(nodoKey) + '/accesibilidad';
     const payload = await this.requestJson<any>(endpoint);
-    if (payload === null || typeof payload !== 'object' || typeof payload.data !== 'object' || payload.data === null) {
+    // data es un OBJETO único (resumen): un arreglo ES data malformada (R5).
+    if (
+      payload === null ||
+      typeof payload !== 'object' ||
+      Array.isArray(payload) ||
+      typeof payload.data !== 'object' ||
+      Array.isArray(payload.data) ||
+      payload.data === null
+    ) {
       throw new DataSourceHttpError({
         status: 500,
         endpoint,
