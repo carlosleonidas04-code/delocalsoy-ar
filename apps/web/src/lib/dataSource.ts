@@ -23,6 +23,12 @@ import type {
   ComercioItem,
   ComerciosQuery,
 } from './comercios';
+import type {
+  AccesibilidadResumen,
+  CorredorItem,
+  OportunidadesQuery,
+  OportunidadItem,
+} from './oportunidades';
 
 export type SanJuanFocalNodeKey = 'capital' | 'caucete' | 'iglesia';
 export type Core004Role = 'ciudadano' | 'moderador' | 'admin';
@@ -326,6 +332,15 @@ export interface DataSource<TContext = unknown> {
   // mutable. Opcional por contrato (ADR-029); la paridad sintética marca
   // cada entrada sintetico: true y la UI la etiqueta [SINTÉTICO] (R15).
   getComercioHistorial?(id: string): Promise<ComercioHistorialEntrada[]>;
+  // NCAP-FE #163 (cascada NODO-CAPITAL, ratificada DH 2026-11-05): vista del
+  // nodo Capital — Banco de Potencialidades (NCAP-R6, GET /api/oportunidades),
+  // corredores v0.1 (NCAP-R4, GET /api/corredores) y accesibilidad peatonal
+  // (NCAP-R5, GET /api/nodos/:key/accesibilidad). Opcional por contrato
+  // (ADR-029): las implementaciones convergen sin romperse; la paridad
+  // sintética declara SIEMPRE su origen (R15).
+  listOportunidades?(input?: OportunidadesQuery): Promise<OportunidadItem[]>;
+  listCorredores?(): Promise<CorredorItem[]>;
+  getAccesibilidad?(nodoKey: SanJuanFocalNodeKey): Promise<AccesibilidadResumen>;
 }
 
 export { ApiDataSource, type ApiDataSourceOptions };
@@ -957,6 +972,171 @@ export class SyntheticDataSource implements DataSource {
       });
     }
     return historial.map((e) => ({ ...e }));
+  }
+
+  // NCAP-FE #163 (cascada NODO-CAPITAL, ratificada DH 2026-11-05): paridad
+  // sintética de la vista del nodo Capital — la demo vive SOLO aquí
+  // (VITE_MOCK_API === '1') con títulos [SINTÉTICO] (R15: lo sintético se
+  // declara SIEMPRE). Los corredores sintéticos nacen 'candidate' (hipótesis
+  // de diseño, NCAP-R4 #156) y la accesibilidad sintética declara cobertura
+  // 0 de N honesta (NCAP-R5 #157: anuncio ≠ obra, jamás se maquilla).
+  private readonly syntheticOportunidadesCapital: OportunidadItem[] = [
+    {
+      id: 'syn-opp-capital-01',
+      tipo: 'human_capacity',
+      titulo: '[SINTÉTICO] Taller cooperativo de oficios del microcentro (demo)',
+      descripcion:
+        'Demo sintética del Banco de Potencialidades: capacidad humana comunitaria en revisión técnica (canon de 10 tipos, NCAP-R6 #158).',
+      estado: 'under_review',
+      nodo_key: 'capital',
+      subnodo_key: 'sj_capital_centro',
+      evidencia: {
+        evidence_type: 'community_input',
+        descripcion: 'Aporte de asamblea vecinal (demo sintética).',
+        reference_url: null,
+        validationStatus: null,
+      },
+      actores: [{ role: 'proposer', name: 'Cooperativa de oficios (demo)', consent_confirmed: true }],
+      tags: ['demo', 'oficios'],
+      scoring: null,
+      territorial_context: {
+        corridor_id: 'cor_centro_micro_macro',
+        landmark_id: null,
+        service_area_name: 'Microcentro (demo)',
+      },
+      created_at: '2026-11-05T12:00:00.000Z',
+      updated_at: '2026-11-05T12:00:00.000Z',
+    },
+    {
+      id: 'syn-opp-capital-02',
+      tipo: 'market_gap',
+      titulo: '[SINTÉTICO] Brecha de abastecimiento en Desamparados (demo)',
+      descripcion:
+        'Demo sintética del Banco de Potencialidades: demanda comunitaria detectada, aún sin revisión técnica (estado honesto detected).',
+      estado: 'detected',
+      nodo_key: 'capital',
+      subnodo_key: 'sj_capital_desamparados',
+      evidencia: {
+        evidence_type: 'field_observation',
+        descripcion: 'Relevo vecinal de terreno (demo sintética).',
+        reference_url: null,
+        validationStatus: null,
+      },
+      actores: [{ role: 'proposer', name: 'Unión vecinal (demo)', consent_confirmed: true }],
+      tags: ['demo', 'abastecimiento'],
+      scoring: null,
+      territorial_context: null,
+      created_at: '2026-11-05T12:30:00.000Z',
+      updated_at: '2026-11-05T12:30:00.000Z',
+    },
+  ];
+
+  private readonly syntheticCorredoresCapital: CorredorItem[] = [
+    {
+      key: 'cor_centro_civico',
+      label: '[SINTÉTICO] Corredor Cívico-Cultural (demo)',
+      proposito: 'Demo sintética: hipótesis de articulación cívico-cultural del centro (NCAP-R4 #156).',
+      status: 'candidate',
+      nodo_key: 'capital',
+      segmentos_count: 3,
+      hitos_count: 3,
+      continuidad: 'ok',
+    },
+    {
+      key: 'cor_libertador_west',
+      label: '[SINTÉTICO] Corredor Libertador Oeste (demo)',
+      proposito: 'Demo sintética: eje universitario-oeste, hipótesis de diseño (NCAP-R4 #156).',
+      status: 'candidate',
+      nodo_key: 'capital',
+      segmentos_count: 2,
+      hitos_count: 2,
+      continuidad: 'ok',
+    },
+  ];
+
+  private readonly syntheticAccesibilidadCapital: AccesibilidadResumen = {
+    nodo_key: 'capital',
+    generado_en: '2026-11-05T12:00:00.000Z',
+    regla: 'Conteos con cobertura y fecha — jamás puntajes globales (R5/ADR-036)',
+    features_por_capa: [
+      { capa: 'accessibility', total: 2, por_estado: { pending: 1, verified: 1 } },
+      { capa: 'sidewalks', total: 2, por_estado: { declared: 2 } },
+    ],
+    features_por_fuente: [{ fuente: 'Ilustrativa · demo sintética del panel', total: 4 }],
+    reportes_por_categoria: [{ categoria: 'accesibilidad', total: 1 }],
+    tramos_vereda: {
+      priorizados: 2,
+      con_relevamiento: 0,
+      cobertura: '0 de 2 tramos priorizados cuentan con relevamiento',
+      fecha_corte: '2026-11-05T12:00:00.000Z',
+      cautela: 'Demo sintética: anuncio ≠ obra (R15) — cobertura 0 honesta, sin maquillar.',
+    },
+    observaciones: {
+      ingresadas: 1,
+      revisadas: 0,
+      corroboradas: 1,
+      disputadas: 0,
+      ilustrativas: 0,
+      fecha_corte: '2026-11-05T12:00:00.000Z',
+    },
+    hitos: [
+      {
+        key: 'hit_demo_centro',
+        label: '[SINTÉTICO] Hito demo del centro',
+        tipo: 'plaza',
+        con_ficha: true,
+        ultima_revision: '2026-11-05T12:00:00.000Z',
+      },
+    ],
+  };
+
+  public async listOportunidades(input?: OportunidadesQuery): Promise<OportunidadItem[]> {
+    let items = this.syntheticOportunidadesCapital.map((o) => ({
+      ...o,
+      evidencia: { ...o.evidencia },
+      actores: o.actores.map((a) => ({ ...a })),
+    }));
+    const nodo = input?.nodo;
+    if (typeof nodo === 'string' && nodo !== '') {
+      items = items.filter((o) => o.nodo_key === nodo);
+    }
+    const tipo = input?.tipo;
+    if (typeof tipo === 'string' && tipo !== '') {
+      items = items.filter((o) => o.tipo === tipo);
+    }
+    const estado = input?.estado;
+    if (typeof estado === 'string' && estado !== '') {
+      items = items.filter((o) => o.estado === estado);
+    }
+    const subnodo = input?.subnodo;
+    if (typeof subnodo === 'string' && subnodo !== '') {
+      items = items.filter((o) => (o.subnodo_key ?? '') === subnodo);
+    }
+    return items;
+  }
+
+  public async listCorredores(): Promise<CorredorItem[]> {
+    return this.syntheticCorredoresCapital.map((c) => ({ ...c }));
+  }
+
+  public async getAccesibilidad(nodoKey: SanJuanFocalNodeKey): Promise<AccesibilidadResumen> {
+    if (nodoKey !== 'capital') {
+      throw new DataSourceHttpError({
+        status: 404,
+        endpoint: '/api/nodos/' + nodoKey + '/accesibilidad',
+        message: 'Accesibilidad no disponible en la demo sintética para el nodo ' + nodoKey + ' (R5: sin fallback silencioso)',
+      });
+    }
+    const base = this.syntheticAccesibilidadCapital;
+    return {
+      ...base,
+      features_por_capa: base.features_por_capa.map((c) => ({ ...c, por_estado: { ...c.por_estado } })),
+      features_por_fuente: base.features_por_fuente.map((f) => ({ ...f })),
+      reportes_por_categoria: base.reportes_por_categoria.map((c) => ({ ...c })),
+      tramos_vereda: { ...base.tramos_vereda },
+      observaciones: { ...base.observaciones },
+      hitos: base.hitos.map((h) => ({ ...h })),
+    };
   }
 }
 

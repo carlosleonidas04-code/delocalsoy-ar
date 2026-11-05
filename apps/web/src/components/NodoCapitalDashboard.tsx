@@ -1,17 +1,24 @@
-import { useState, useId } from 'react';
+import { useEffect, useId, useState } from 'react';
 import {
   CAPITAL_TERRITORIAL_ENTITIES,
   CAPITAL_TERRITORIAL_RELATIONS,
-  CAPITAL_STREET_AXES,
   DIRECTORY_CATEGORIES_CATALOG,
   CAPITAL_DIRECTORY_LISTINGS,
   CAPITAL_GITHUB_TRACEABILITY,
 } from '../data/capitalTerritoryData';
 import { BancoPotencialidadesPanel } from './BancoPotencialidadesPanel';
+import type { DataSource } from '../lib/dataSource';
+import { etiquetaContinuidad, type AccesibilidadResumen, type CorredorItem } from '../lib/oportunidades';
 
-type CapitalTab = 'territorio' | 'potencialidades' | 'directorio' | 'gobernanza' | 'asistente_etico';
+type CapitalTab =
+  | 'territorio'
+  | 'potencialidades'
+  | 'accesibilidad'
+  | 'directorio'
+  | 'gobernanza'
+  | 'asistente_etico';
 
-export function NodoCapitalDashboard() {
+export function NodoCapitalDashboard({ dataSource }: { dataSource: DataSource }) {
   const [activeTab, setActiveTab] = useState<CapitalTab>('potencialidades');
   const [selectedSubnode, setSelectedSubnode] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -31,6 +38,55 @@ export function NodoCapitalDashboard() {
   const contactNameId = useId();
   const contactPhoneId = useId();
   const contactMsgId = useId();
+
+  // NCAP-FE #163 (cascada NODO-CAPITAL): corredores reales (NCAP-R4) y
+  // accesibilidad (NCAP-R5) por contrato DataSource (ADR-029) — carga
+  // perezosa UNA sola vez al entrar a cada pestaña; R5: el error ES error,
+  // jamás se degrada a lista vacía ni se inventa un resumen.
+  const [corredores, setCorredores] = useState<CorredorItem[] | null>(null);
+  const [corredoresEstado, setCorredoresEstado] = useState<'idle' | 'loading' | 'error' | 'ok'>('idle');
+  const [accesibilidad, setAccesibilidad] = useState<AccesibilidadResumen | null>(null);
+  const [accesibilidadEstado, setAccesibilidadEstado] = useState<'idle' | 'loading' | 'error' | 'ok'>('idle');
+
+  useEffect(() => {
+    if (activeTab !== 'territorio' || corredoresEstado !== 'idle') return;
+    const listar = dataSource.listCorredores?.bind(dataSource);
+    if (!listar) return;
+    let cancelado = false;
+    setCorredoresEstado('loading');
+    listar()
+      .then((items) => {
+        if (cancelado) return;
+        setCorredores(items);
+        setCorredoresEstado('ok');
+      })
+      .catch(() => {
+        if (!cancelado) setCorredoresEstado('error');
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [activeTab, corredoresEstado, dataSource]);
+
+  useEffect(() => {
+    if (activeTab !== 'accesibilidad' || accesibilidadEstado !== 'idle') return;
+    const obtener = dataSource.getAccesibilidad?.bind(dataSource);
+    if (!obtener) return;
+    let cancelado = false;
+    setAccesibilidadEstado('loading');
+    obtener('capital')
+      .then((resumen) => {
+        if (cancelado) return;
+        setAccesibilidad(resumen);
+        setAccesibilidadEstado('ok');
+      })
+      .catch(() => {
+        if (!cancelado) setAccesibilidadEstado('error');
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [activeTab, accesibilidadEstado, dataSource]);
 
   const filteredEntities = CAPITAL_TERRITORIAL_ENTITIES.filter((entity) => {
     if (selectedSubnode === 'all') return true;
@@ -105,7 +161,7 @@ export function NodoCapitalDashboard() {
               <span aria-hidden="true">·</span>
               <span>Épica #152</span>
               <span aria-hidden="true">·</span>
-              <span className="text-emerald-400">Main @ 89c0bcc</span>
+              <span className="text-emerald-400">Integración ADR-029 · #163</span>
             </div>
             <h1 className="text-2xl font-black tracking-tight text-white mt-1">
               Plataforma Territorial del Nodo Capital
@@ -163,7 +219,7 @@ export function NodoCapitalDashboard() {
             }`}
           >
             <span>Banco de Potencialidades (Bloque 9)</span>
-            <span className="text-[10px] font-mono px-1.5 py-0.2 bg-amber-400/20 text-amber-300 rounded">PR #160</span>
+            <span className="text-[10px] font-mono px-1.5 py-0.2 bg-amber-400/20 text-amber-300 rounded">NCAP-R6 #158</span>
           </button>
 
           <button
@@ -176,6 +232,19 @@ export function NodoCapitalDashboard() {
             }`}
           >
             Territorio, Corredores e Hitos
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('accesibilidad')}
+            className={
+              'px-4 py-2 text-xs font-semibold rounded-lg transition-colors ' +
+              (activeTab === 'accesibilidad'
+                ? 'bg-slate-800 text-amber-300 border border-amber-400/30'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/50')
+            }
+          >
+            Accesibilidad Peatonal (NCAP-R5)
           </button>
 
           <button
@@ -217,45 +286,59 @@ export function NodoCapitalDashboard() {
       </div>
 
       {activeTab === 'potencialidades' && (
-        <BancoPotencialidadesPanel />
+        <BancoPotencialidadesPanel dataSource={dataSource} />
       )}
 
       {activeTab === 'territorio' && (
         <div className="space-y-6">
           <div className="p-5 rounded-xl bg-slate-900 border border-slate-800 space-y-4">
             <div>
-              <span className="text-xs font-mono text-slate-400">NCAP-R4 #156</span>
+              <span className="text-xs font-mono text-slate-400">NCAP-R4 #156 · GET /api/corredores</span>
               <h2 className="text-lg font-bold text-white mt-0.5">
-                Red de Ejes Viales y Corredores de Articulación Territorial
+                Corredores de Articulación Territorial (v0.1 — API real)
               </h2>
               <p className="text-xs text-slate-300">
-                Corredores v0.1 modelados como hipótesis de diseño e interconexión funcional entre el Microcentro, el Complejo El Palomar, la UNSJ y el oeste departamental.
+                Corredores v0.1 publicados por la plataforma (ADR-029): hipótesis de diseño con
+                conteos reales de segmentos e hitos por corredor — nada de esto es inventado ni
+                promediado (R15).
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {CAPITAL_STREET_AXES.map((axis) => (
-                <div key={axis.id} className="p-4 rounded-lg bg-slate-950/60 border border-slate-800 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-bold text-white">{axis.name}</h3>
-                    <span className="text-[11px] font-mono text-amber-400 uppercase">
-                      {axis.orientation.replace('_', ' ')}
-                    </span>
+            {corredoresEstado === 'loading' && (
+              <p className="text-xs font-mono text-slate-400">Cargando corredores de la API…</p>
+            )}
+            {corredoresEstado === 'error' && (
+              <p className="text-xs font-mono text-rose-400">
+                Error al cargar corredores (R5: sin fallback silencioso — sin datos no se muestra nada).
+              </p>
+            )}
+            {corredoresEstado === 'ok' && corredores !== null && corredores.length === 0 && (
+              <p className="text-xs font-mono text-amber-300">
+                0 corredores publicados — la hipótesis de articulación aún no tiene corredores declarados.
+              </p>
+            )}
+            {corredoresEstado === 'ok' && corredores !== null && corredores.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {corredores.map((cor) => (
+                  <div key={cor.key} className="p-4 rounded-lg bg-slate-950/60 border border-slate-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-bold text-white">{cor.label}</h3>
+                      <span className="text-[11px] font-mono text-amber-400 uppercase">{cor.status}</span>
+                    </div>
+                    <p className="text-xs text-slate-400">{cor.proposito}</p>
+                    <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono text-slate-400 pt-1 border-t border-slate-800/60">
+                      <span>{cor.segmentos_count} segmentos</span>
+                      <span aria-hidden="true">·</span>
+                      <span>{cor.hitos_count} hitos</span>
+                      <span aria-hidden="true">·</span>
+                      <span className={cor.continuidad === 'ok' ? 'text-emerald-400' : 'text-rose-400'}>
+                        {etiquetaContinuidad(cor.continuidad)}
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-xs text-slate-400 space-y-1">
-                    {axis.segments.map((seg, i) => (
-                      <div key={i} className="flex items-start gap-1.5">
-                        <span className="text-emerald-400">↳</span>
-                        <span>
-                          <strong>{seg.fromReference}</strong> ➔ <strong>{seg.toReference}</strong>{' '}
-                          <span className="text-slate-300">({seg.circulation === 'two_way' ? 'doble mano' : 'mano única'} · {seg.evidenceStatus})</span>
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="p-5 rounded-xl bg-slate-900 border border-slate-800 space-y-4">
@@ -306,6 +389,135 @@ export function NodoCapitalDashboard() {
               ))}
             </div>
           </div>
+        </div>
+      )}
+
+      {activeTab === 'accesibilidad' && (
+        <div className="space-y-6">
+          {accesibilidadEstado === 'loading' && (
+            <p className="p-5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono text-slate-400">
+              Cargando accesibilidad del nodo…
+            </p>
+          )}
+          {accesibilidadEstado === 'error' && (
+            <p className="p-5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono text-rose-400">
+              Error al cargar accesibilidad (R5: sin fallback silencioso — sin datos no se muestra nada).
+            </p>
+          )}
+          {accesibilidadEstado === 'ok' && accesibilidad !== null && (
+            <>
+              <div className="p-5 rounded-xl bg-slate-900 border border-slate-800 space-y-4">
+                <div>
+                  <span className="text-xs font-mono text-slate-400">
+                    NCAP-R5 #157 · GET /api/nodos/capital/accesibilidad
+                  </span>
+                  <h2 className="text-lg font-bold text-white mt-0.5">Accesibilidad Peatonal del Nodo Capital</h2>
+                  <p className="text-xs text-slate-400 font-mono mt-1">{accesibilidad.regla}</p>
+                </div>
+                <div className="p-4 rounded-lg bg-slate-950/60 border border-slate-800 space-y-2">
+                  <p className="text-2xl font-black text-amber-300">{accesibilidad.tramos_vereda.cobertura}</p>
+                  <p className="text-xs text-slate-300">{accesibilidad.tramos_vereda.cautela}</p>
+                  <p className="text-[11px] font-mono text-slate-400">
+                    Fecha de corte: {accesibilidad.tramos_vereda.fecha_corte ?? 'sin fecha de corte declarada (R15)'}
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+                  <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800 space-y-0.5">
+                    <p className="text-lg font-black text-amber-300">{accesibilidad.observaciones.ingresadas}</p>
+                    <p className="text-[11px] text-slate-400">Ingresadas (pending)</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800 space-y-0.5">
+                    <p className="text-lg font-black text-amber-300">{accesibilidad.observaciones.revisadas}</p>
+                    <p className="text-[11px] text-slate-400">Revisadas (community_validated)</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800 space-y-0.5">
+                    <p className="text-lg font-black text-emerald-400">{accesibilidad.observaciones.corroboradas}</p>
+                    <p className="text-[11px] text-slate-400">Corroboradas (verified)</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800 space-y-0.5">
+                    <p className="text-lg font-black text-rose-400">{accesibilidad.observaciones.disputadas}</p>
+                    <p className="text-[11px] text-slate-400">Disputadas (disputed)</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800 space-y-0.5">
+                    <p className="text-lg font-black text-fuchsia-300">{accesibilidad.observaciones.ilustrativas}</p>
+                    <p className="text-[11px] text-slate-400">Ilustrativas (synthetic_demo)</p>
+                  </div>
+                </div>
+                <p className="text-[11px] font-mono text-slate-500">
+                  Observaciones — fecha de corte: {accesibilidad.observaciones.fecha_corte ?? 'sin fecha declarada (R15)'}
+                </p>
+              </div>
+
+              <div className="p-5 rounded-xl bg-slate-900 border border-slate-800 space-y-4">
+                <h3 className="text-sm font-bold text-white">Features por capa y estado</h3>
+                {accesibilidad.features_por_capa.map((capa) => (
+                  <div key={capa.capa} className="space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-300 font-mono">{capa.capa}</span>
+                      <span className="font-mono text-amber-300">{capa.total}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {Object.entries(capa.por_estado).map(([estado, total]) => (
+                        <span
+                          key={estado}
+                          className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-950/60 border border-slate-800 text-slate-300"
+                        >
+                          {estado}: {total}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="p-5 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
+                  <h3 className="text-sm font-bold text-white">Features por fuente</h3>
+                  {accesibilidad.features_por_fuente.length === 0 && (
+                    <p className="text-xs text-slate-400">Sin fuentes declaradas.</p>
+                  )}
+                  {accesibilidad.features_por_fuente.map((f) => (
+                    <div key={f.fuente} className="flex items-center justify-between gap-2 text-xs">
+                      <span className="text-slate-300">{f.fuente}</span>
+                      <span className="font-mono text-amber-300 shrink-0">{f.total}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="p-5 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
+                  <h3 className="text-sm font-bold text-white">Reportes ciudadanos por categoría</h3>
+                  {accesibilidad.reportes_por_categoria.length === 0 && (
+                    <p className="text-xs text-slate-400">
+                      0 reportes ciudadanos — el registro comunitario arranca vacío (dato honesto).
+                    </p>
+                  )}
+                  {accesibilidad.reportes_por_categoria.map((c) => (
+                    <div key={c.categoria} className="flex items-center justify-between gap-2 text-xs">
+                      <span className="text-slate-300">{c.categoria}</span>
+                      <span className="font-mono text-amber-300 shrink-0">{c.total}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-5 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
+                <h3 className="text-sm font-bold text-white">Hitos del nodo: ficha y última revisión</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {accesibilidad.hitos.map((h) => (
+                    <div key={h.key} className="p-3 rounded-lg bg-slate-950/60 border border-slate-800 space-y-1">
+                      <div className="flex items-center justify-between gap-2 text-xs">
+                        <span className="text-amber-400 font-semibold">{h.label}</span>
+                        <span className="font-mono text-slate-400">{h.tipo}</span>
+                      </div>
+                      <p className="text-[11px] font-mono text-slate-400">
+                        {h.con_ficha ? 'Con ficha viva' : 'Sin ficha (R15)'} ·{' '}
+                        {h.ultima_revision ?? 'sin revisión registrada'}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
 
