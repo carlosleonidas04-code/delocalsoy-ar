@@ -5,9 +5,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 // NODO-CAU R2 (#138/#147): catálogo de fuentes espaciales + procedencia por
 // conjunto — extremo a extremo contra servicios reales (PostgreSQL/PostGIS +
 // Redis):
-// - GET /api/fuentes: catálogo público anónimo (36 fuentes: 15 Caucete +
+// - GET /api/fuentes: catálogo público anónimo (45 fuentes: 15 Caucete +
 //   20 del Valle de Iglesia NVIG-R5 #172 + VIG-008 #240 + 1 SIIC web
-//   MARKET-CAP MK-2 #243 — con organismo,
+//   MARKET-CAP MK-2 #243 + 9 Capital NCAP-R3 #155 — con organismo,
 //   estado honesto de
 //   disponibilidad y cautela) y GET /api/fuentes/:key
 // - POST /api/ingestas: alta curada por admin (decisión DH 2026-10-15);
@@ -85,6 +85,15 @@ describe.skipIf(!dbUp)('fuentes espaciales + procedencia (NODO-CAU R2 — regist
   // provincial — habilitaciones comerciales, verificación individual).
   const KEYS_MK2 = ['fuente_siic_web'];
 
+  // NODO-CAPITAL NCAP-R3 (#155): 9 fuentes del nodo Capital agregadas al
+  // catálogo global por seed-fuentes-capital.sql (verificación 2026-11-05,
+  // decisión DH «NCAP-R3 (#155)», cascada NODO-CAPITAL ratificada por la DH).
+  const KEYS_CAPITAL = [
+    'pec_capital_2025', 'pec_capital_2026', 'catastro_capital', 'unsj_fi',
+    'redtulum_anillo', 'indec_cp2022', 'habilitacion_municipal_sj',
+    'repavimentacion_microcentro_2026', 'datos_abiertos_sj',
+  ];
+
   // Ingesta de referencia: REFES 2026 recortado al departamento Caucete.
   const payloadIngesta = {
     source_id: 'refes-cau-2026-' + ts,
@@ -132,13 +141,13 @@ describe.skipIf(!dbUp)('fuentes espaciales + procedencia (NODO-CAU R2 — regist
     return ((await login.json()) as any).data.token as string;
   }
 
-  it('catálogo público: 36 fuentes (15 Caucete + 20 VIG + 1 MK-2 SIIC web, NVIG-R5 #172 + VIG-008 #240 + MARKET-CAP MK-2 #243) con organismo, estado honesto y cautela', async () => {
+  it('catálogo público: 45 fuentes (15 Caucete + 20 VIG + 1 MK-2 SIIC web + 9 Capital NCAP-R3 #155, NVIG-R5 #172 + VIG-008 #240 + MARKET-CAP MK-2 #243) con organismo, estado honesto y cautela', async () => {
     const res = await fetch(base + '/api/fuentes');
     expect(res.status).toBe(200);
     const body: any = await res.json();
     expect(body.success).toBe(true);
-    expect(body.count).toBe(36);
-    expect(body.data.map((f: any) => f.key).sort()).toEqual([...KEYS_CAUCETE, ...KEYS_VIG, ...KEYS_MK2].sort());
+    expect(body.count).toBe(45);
+    expect(body.data.map((f: any) => f.key).sort()).toEqual([...KEYS_CAUCETE, ...KEYS_VIG, ...KEYS_MK2, ...KEYS_CAPITAL].sort());
     for (const f of body.data) {
       expect(f.organismo.length).toBeGreaterThan(3);
       expect(f.cautela.length).toBeGreaterThan(10);
