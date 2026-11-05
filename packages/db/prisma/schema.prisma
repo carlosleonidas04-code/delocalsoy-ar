@@ -647,3 +647,74 @@ model patrimonio_observaciones {
   @@index([activo_id])
   @@map("patrimonio_observaciones")
 }
+
+// ─── NODO-CAPITAL NCAP-R4 (#156): red de corredores v0.1 ───
+
+/// Corredores como red modelada (#156): grafo relacional — corredor →
+/// segmentos → hitos/subnodos vinculados. SIN columna geom en v0.1 (R15:
+/// sin fuente verificada no hay traza dibujada — nada se presenta como
+/// traza oficial). status = vocabulario territorialModel (#233):
+/// candidate (hipótesis DH) | mapped | validated | retired.
+model corredores {
+  id          String   @id @default(cuid())
+  key         String   @unique @map("key") // cor_* v0.1 (#156) — vocabulario ratificado
+  nodo_key    String   @map("nodo_key")
+  label       String   @map("label")
+  proposito   String   @map("proposito") // ≥10 — el corredor exige propósito declarado
+  status      String   @default("candidate") @map("status") // CorredorStatusSchema
+  created_at  DateTime @default(now()) @map("created_at")
+  updated_at  DateTime @updatedAt @map("updated_at")
+
+  segmentos corredor_segmentos[]
+
+  @@index([nodo_key])
+  @@map("corredores")
+}
+
+/// Hitos nodales de la red (#156): puntos de articulación (plazas, parques,
+/// edificios públicos, áreas analíticas). REGLA #154: SIN asignación
+/// distrital — participan por relaciones connects/near. lat/lng NULL
+/// honestos: sin punto verificado no se publica (R15, ADR-035). Catálogo
+/// GLOBAL del nodo: un hito compartido (p. ej. Parque de Mayo) pertenece a
+/// la red, no a un corredor — la pertenencia la derivan los segmentos.
+model corredor_hitos {
+  id         String   @id @default(cuid())
+  key        String   @unique @map("key") // hit_* — slug del vocabulario v0.1
+  nodo_key   String   @map("nodo_key")
+  label      String   @map("label")
+  tipo       String   @map("tipo") // CorredorHitoTipoSchema
+  lat        Float?   @map("lat") // NULL honesto — punto a verificar (R15)
+  lng        Float?   @map("lng")
+  notas      String?  @map("notas")
+  created_at DateTime @default(now()) @map("created_at")
+
+  @@index([nodo_key])
+  @@map("corredor_hitos")
+}
+
+/// Segmentos del corredor (#156): tramos from/to tipados (hito|subnodo con
+/// key) + secuencia para continuidad + modos (walk|bike|bus|car|unknown,
+/// territorialModel #233) + observaciones de superficie/cruces + observed_at
+/// + fuentes por tramo (ADR-035: una relación sin fuente es una invención).
+/// @@unique([corredor_id, secuencia]) → idempotencia del seed y continuidad
+/// revisable (la API deriva ok|ruptura de esta cadena).
+model corredor_segmentos {
+  id            String   @id @default(cuid())
+  corredor_id   String   @map("corredor_id")
+  secuencia     Int      @map("secuencia") // 1..N — orden del tramo
+  from_tipo     String   @map("from_tipo") // hito | subnodo
+  from_key      String   @map("from_key") // hit_* o sj_*
+  to_tipo       String   @map("to_tipo")
+  to_key        String   @map("to_key")
+  modos         Json     @map("modos") // [CorredorModoSchema] — walk|bike|bus|car|unknown
+  observaciones Json?    @map("observaciones") // superficie/cruces — testimonio, no catastro (R15)
+  observed_at   DateTime @map("observed_at") // fecha del relevamiento del tramo
+  fuentes       Json     @map("fuentes") // [CorredorFuenteSchema] — evidencia por tramo (ADR-035)
+  created_at    DateTime @default(now()) @map("created_at")
+
+  corredor corredores @relation(fields: [corredor_id], references: [id], onDelete: Cascade)
+
+  @@unique([corredor_id, secuencia])
+  @@index([corredor_id])
+  @@map("corredor_segmentos")
+}

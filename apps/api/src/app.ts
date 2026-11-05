@@ -4,6 +4,7 @@ import { levelForStatus, logJson } from './logger.js';
 import activosRouter from './routes/activos.js';
 import authRouter from './routes/auth.js';
 import comerciosRouter from './routes/comercios.js';
+import corredoresRouter from './routes/corredores.js';
 import evidenciasRouter from './routes/evidencias.js';
 import eventsRouter from './routes/events.js';
 import fichasValoracionRouter from './routes/fichasValoracion.js';
@@ -81,6 +82,18 @@ export function createApp(): Express {
   // ciudadana de comercios con moderación (nace 'propuesto'), ficha 1:1
   // comercio_ficha y lectura pública multinodo (facetas + bbox).
   app.use('/api/comercios', comerciosRouter);
+
+  // Dominio: red de corredores v0.1 (NODO-CAPITAL NCAP-R4, #156 — épica
+  // #152): corredores como red MODELADA (grafo relacional: corredor →
+  // segmentos from/to tipados → hitos/subnodos vinculados), no líneas
+  // dibujadas — SIN geometría en v0.1 (R15: la traza exige fuente
+  // verificada; status 'candidate' = hipótesis de diseño DH, ratificado
+  // 2026-11-04). Lectura pública anónima: GET /api/corredores y
+  // GET /api/corredores/:key con hitos/subnodos resueltos, fuentes por
+  // tramo (ADR-035) y continuidad revisada ok|ruptura derivada de la
+  // cadena de segmentos. Sin escritura ciudadana en v0.1: los corredores
+  // son hipótesis de diseño DH, no input ciudadano.
+  app.use('/api/corredores', corredoresRouter);
 
   // Dominio: fichas de valoración comunitaria del espacio público
   // (NODO-CAU R4, #149) — testimonio revisable anclado a features de la capa
