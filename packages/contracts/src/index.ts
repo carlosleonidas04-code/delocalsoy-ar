@@ -566,6 +566,129 @@ export const OportunidadEstadoCambioSchema = z.object({
   motivo: z.string().trim().max(500).optional(),
 });
 
+// ─── NODO-CAPITAL NCAP-R4 (#156): red de corredores v0.1 — grafo relacional ───
+// Corredores como RED MODELADA (relaciones verificables), no líneas dibujadas:
+// corredor → segmentos (from/to tipados + modos) → hitos y subnodos vinculados.
+// SIN geometría en v0.1 (R15: la traza dibujada exige fuente verificada que aún
+// no existe — nada se presenta como traza oficial). Vocabulario alineado a los
+// contratos NCAP-R2 (territorialModel, PR #233): kinds corridor/network_segment/
+// landmark, estados candidate|mapped|validated|retired, modos walk|bike|bus|car/
+// unknown y relaciones connects/near (regla de modelado #154: los hitos
+// participan por relación, jamás por asignación distrital).
+
+// Estado del corredor (vocabulario territorialModel #233): v0.1 nace
+// 'candidate' — hipótesis de diseño de la DH, nunca traza oficial (R15).
+export const CorredorStatusSchema = z.enum(["candidate", "mapped", "validated", "retired"]);
+
+// Modos de circulación del segmento (vocabulario territorialModel #233).
+export const CorredorModoSchema = z.enum(["walk", "bike", "bus", "car", "unknown"]);
+
+// Endpoint tipado del segmento: hito de la red o subnodo del nodo — union
+// discriminada por 'tipo' para que from/to nunca sea un string libre.
+export const CorredorEndpointTipoSchema = z.enum(["hito", "subnodo"]);
+export const CorredorEndpointSchema = z.object({
+  tipo: CorredorEndpointTipoSchema,
+  key: z.string().trim().regex(/^[a-z0-9_]+$/, "key: slug en minúsculas y guiones bajos").max(60),
+});
+
+// Fuentes por tramo (ADR-035): cada segmento declara su evidencia — una
+// relación sin fuente es una invención. La fecha admite año suelto (YYYY).
+export const CorredorFuenteSchema = z.object({
+  fuente: z.string().trim().min(3, "El segmento exige fuente citable").max(160),
+  fecha: z.string().trim().regex(/^\d{4}(-\d{2}-\d{2})?$/, "fecha: YYYY-MM-DD o YYYY"),
+  url: z.string().trim().url("URL inválida").max(500).optional(),
+});
+
+// Observaciones de superficie y cruces del tramo — testimonio de diseño,
+// nunca catastro (R15).
+export const CorredorObservacionesSchema = z.object({
+  superficie: z.string().trim().max(200).optional(),
+  cruces: z.string().trim().max(300).optional(),
+});
+
+// Segmento del corredor (v0.1, uso interno del seed/ingesta DH — la API
+// pública es solo lectura): from/to tipados + secuencia para continuidad +
+// modos + observaciones + observed_at + fuentes por tramo (ADR-035).
+export const CorredorSegmentoSchema = z.object({
+  secuencia: z.number().int().min(1),
+  from: CorredorEndpointSchema,
+  to: CorredorEndpointSchema,
+  modos: z.array(CorredorModoSchema).min(1, "El segmento exige al menos un modo").max(5),
+  observaciones: CorredorObservacionesSchema.optional(),
+  observed_at: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, "observed_at: YYYY-MM-DD"),
+  fuentes: z.array(CorredorFuenteSchema).min(1, "El segmento exige fuente por tramo (ADR-035)").max(5),
+});
+
+// Hito nodal de la red (v0.1): punto de articulación — SIN asignación
+// distrital (regla #154: participa por relaciones connects/near) y lat/lng
+// opcionales NULL honestos: sin punto verificado no se publica (R15).
+export const CorredorHitoTipoSchema = z.enum([
+  "plaza",
+  "parque",
+  "edificio_publico",
+  "nodo_transporte",
+  "institucion_educativa",
+  "area_analitica",
+  "otro",
+]);
+export const CorredorHitoSchema = z.object({
+  key: z.string().trim().regex(/^hit_[a-z0-9_]+$/, "key: prefijo hit_ + slug").max(60),
+  label: z.string().trim().min(3).max(120),
+  tipo: CorredorHitoTipoSchema,
+  lat: z.number().min(-90).max(90).optional(),
+  lng: z.number().min(-180).max(180).optional(),
+  notas: z.string().trim().max(300).optional(),
+});
+
+// Corredor completo (v0.1, uso interno del seed DH): key cor_* del
+// vocabulario ratificado (#156) + hitos de la red + segmentos.
+export const CorredorAltaSchema = z.object({
+  key: z.string().trim().regex(/^cor_[a-z0-9_]+$/, "key: vocabulario cor_* v0.1 (#156)").max(60),
+  label: z.string().trim().min(3).max(120),
+  proposito: z.string().trim().min(10, "El corredor exige propósito declarado").max(500),
+  status: CorredorStatusSchema,
+  hitos: z.array(CorredorHitoSchema).max(20).optional(),
+  segmentos: z.array(CorredorSegmentoSchema).min(1, "Un corredor exige al menos un segmento").max(20),
+});
+
+// Continuidad de la red (criterio de cierre #156): derivada de la cadena de
+// segmentos por secuencia — ok si cada segmento retoma donde terminó el
+// anterior; ruptura si el encadenamiento se corta (el detalle dice dónde).
+export const CorredorContinuidadSchema = z.enum(["ok", "ruptura"]);
+
+// Resumen público del corredor (GET /api/corredores).
+export const CorredorResumenSchema = z.object({
+  key: z.string(),
+  label: z.string(),
+  proposito: z.string(),
+  status: CorredorStatusSchema,
+  nodo_key: SanJuanNodeSlugSchema,
+  segmentos_count: z.number().int().min(0),
+  hitos_count: z.number().int().min(0),
+  continuidad: CorredorContinuidadSchema,
+});
+
+// Detalle público (GET /api/corredores/:key): hitos y subnodos resueltos con
+// label + segmentos ordenados + continuidad revisada con detalle de rupturas.
+export const CorredorDetalleSchema = z.object({
+  key: z.string(),
+  label: z.string(),
+  proposito: z.string(),
+  status: CorredorStatusSchema,
+  nodo_key: SanJuanNodeSlugSchema,
+  hitos: z.array(CorredorHitoSchema),
+  subnodos: z.array(z.object({ key: z.string(), label: z.string() })),
+  segmentos: z.array(CorredorSegmentoSchema),
+  continuidad: CorredorContinuidadSchema,
+  rupturas: z.array(
+    z.object({
+      despues_de_secuencia: z.number().int(),
+      esperaba: CorredorEndpointSchema,
+      encontro: CorredorEndpointSchema,
+    })
+  ),
+});
+
 // ─── NODO-VIG VIG-001 (NVIG-R4 #171, épica #167): subnodos territoriales ───
 
 // Jerarquía territorial de 3 niveles del nodo Valle de Iglesia (Opción B
