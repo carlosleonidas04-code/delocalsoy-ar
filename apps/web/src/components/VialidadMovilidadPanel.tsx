@@ -779,6 +779,17 @@ export function VialidadMovilidadPanel({ dataSource }: { dataSource: DataSource 
                   ))}
                 </select>
               </label>
+              <label className="text-xs text-stone-700 space-y-1 sm:col-span-2">
+                <span className="font-semibold">
+                  Tipo específico N3 (opcional — solo si el canon VIG-010 lo define)
+                </span>
+                <input
+                  value={tipoN3}
+                  onChange={(e) => setTipoN3(e.target.value)}
+                  placeholder="slug en minúsculas con guiones bajos — vacío si no aplica"
+                  className="w-full px-3 py-2 text-xs rounded-lg bg-stone-50 border border-stone-200"
+                />
+              </label>
             </div>
 
             <label className="text-xs text-stone-700 space-y-1 block">
