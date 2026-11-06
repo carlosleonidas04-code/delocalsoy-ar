@@ -1118,30 +1118,108 @@ export class SyntheticDataSource implements DataSource {
   // VIG-014 (#380): paridad sintética del módulo de infraestructura y
   // movilidad del nodo iglesia — demo declarada ([SINTÉTICO], R15): km
   // null honesto, paradas VACÍAS, «0 de 15» pedidos y 0 KPIs sin corrida.
+  // Fix post-VIG-014 (hallazgo DH): la demo de subnodos espeja ahora las
+  // 12 localidades del valle con las keys/types/parents REALES del seed
+  // VIG-001 (los 52 subnodos reales viven en la API). Mirroring exacto
+  // (R15): las coordenadas publicadas del seed se copian tal cual (Pismanta
+  // Georef, Campanario y Zonda BAHRA); districts y parajes sin punto
+  // publicado llegan lat/lng null — nada se inventa.
   private readonly syntheticSubnodosIglesia: SubnodoVig[] = [
+    {
+      key: 'sj_iglesia_angualasto',
+      label: '[SINTÉTICO] Angualasto (demo declarada)',
+      type: 'district',
+      parent_key: null,
+      lat: null,
+      lng: null,
+    },
+    {
+      key: 'sj_iglesia_bella_vista',
+      label: '[SINTÉTICO] Bella Vista (demo declarada)',
+      type: 'district',
+      parent_key: null,
+      lat: null,
+      lng: null,
+    },
+    {
+      key: 'sj_iglesia_las_flores',
+      label: '[SINTÉTICO] Las Flores (demo declarada)',
+      type: 'district',
+      parent_key: null,
+      lat: null,
+      lng: null,
+    },
     {
       key: 'sj_iglesia_rodeo',
       label: '[SINTÉTICO] Rodeo (demo declarada)',
       type: 'district',
       parent_key: null,
-      lat: -30.2114,
-      lng: -69.1392,
+      lat: null,
+      lng: null,
+    },
+    {
+      key: 'sj_iglesia_tudcum',
+      label: '[SINTÉTICO] Tudcum (demo declarada)',
+      type: 'district',
+      parent_key: null,
+      lat: null,
+      lng: null,
     },
     {
       key: 'sj_iglesia_villa_iglesia',
       label: '[SINTÉTICO] Villa Iglesia (demo declarada)',
       type: 'district',
       parent_key: null,
-      lat: -30.0367,
-      lng: -69.1669,
+      lat: null,
+      lng: null,
     },
     {
-      key: 'sj_iglesia_p_las_flores',
-      label: '[SINTÉTICO] Las Flores (demo declarada)',
+      key: 'sj_iglesia_p_pismanta',
+      label: '[SINTÉTICO] Pismanta (demo declarada)',
+      type: 'locality',
+      parent_key: 'sj_iglesia_las_flores',
+      lat: -30.2802254035094,
+      lng: -69.2279466704071,
+    },
+    {
+      key: 'sj_iglesia_p_campanario',
+      label: '[SINTÉTICO] Campanario (demo declarada)',
+      type: 'paraje',
+      parent_key: 'sj_iglesia_villa_iglesia',
+      lat: -30.373192,
+      lng: -69.201039,
+    },
+    {
+      key: 'sj_iglesia_p_colola',
+      label: '[SINTÉTICO] Colola (demo declarada)',
       type: 'paraje',
       parent_key: 'sj_iglesia_rodeo',
-      lat: -30.35,
-      lng: -69.2167,
+      lat: null,
+      lng: null,
+    },
+    {
+      key: 'sj_iglesia_p_el_jarillal',
+      label: '[SINTÉTICO] El Jarillal (demo declarada)',
+      type: 'paraje',
+      parent_key: 'sj_iglesia_las_flores',
+      lat: null,
+      lng: null,
+    },
+    {
+      key: 'sj_iglesia_p_maipirinqui',
+      label: '[SINTÉTICO] Maipirinqui (demo declarada)',
+      type: 'paraje',
+      parent_key: 'sj_iglesia_villa_iglesia',
+      lat: null,
+      lng: null,
+    },
+    {
+      key: 'sj_iglesia_p_zonda',
+      label: '[SINTÉTICO] Zonda (demo declarada)',
+      type: 'paraje',
+      parent_key: 'sj_iglesia_villa_iglesia',
+      lat: -30.392581,
+      lng: -69.210163,
     },
   ];
 
