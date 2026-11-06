@@ -66,7 +66,7 @@ async function kpisDe(nodo: string): Promise<Map<string, SnapshotRow>> {
   await recomputeKpisForNode(nodo);
   const res = await getJson('/api/nodos/' + nodo + '/kpis');
   expect(res.status).toBe(200);
-  expect(res.body.count).toBe(9);
+  expect(res.body.count).toBe(15); // set v1 (VIG-003) + set v2 (VIG-013)
   return porKey(res.body);
 }
 
@@ -78,7 +78,7 @@ describe.skipIf(!dbUp)('KPIs del nodo VIG-003 (#182, épica #167)', () => {
     const activos: any[] = activosRes.body.data ?? [];
 
     const snapshots = await recomputeKpisForNode('iglesia');
-    expect(snapshots.length).toBe(9);
+    expect(snapshots.length).toBe(15); // set v1 (VIG-003) + set v2 (VIG-013)
     const map = await kpisDe('iglesia');
 
     // Subnodos: total y con punto público consistentes con la lectura pública.
@@ -204,3 +204,4 @@ describe.skipIf(!dbUp)('KPIs del nodo VIG-003 (#182, épica #167)', () => {
     expect((sin.get('activos_por_estado')?.detalles ?? {})['aprobado']).toBe(aprobadosAntes);
   });
 });
+

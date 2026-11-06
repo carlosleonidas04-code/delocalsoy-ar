@@ -745,7 +745,32 @@ export const KpiKeySchema = z.enum([
   "activos_verificados",
   "eventos_por_tipo",
   "cobertura_geometrica",
+  // NODO-VIG-3 VIG-013 (#382, épica #377) — set v2: KPIs del dashboard
+  // «Infraestructura y movilidad», mismo canon de honestidad (agregados sin
+  // PII, valor null = métrica sin computar, R15).
+  "pedidos_respondidos",
+  "obras_km_ejecucion",
+  "puntos_criticos_con_revision",
+  "reportes_amc_por_dominio",
+  "reportes_amc_por_distrito",
+  "parajes_con_reporte",
 ]);
+
+// Set VIG-013 (NODO-VIG-3 #382, épica #377): los 6 KPIs del dashboard público
+// «Infraestructura y movilidad» (GET /api/nodos/{key}/infraestructura-movilidad)
+// que la ruta lee de kpi_snapshots. Los materializa el consumidor vig003-kpi
+// del worker (patrón VIG-003: upsert idempotente por nodo_key+kpi_key que
+// RE-DERIVA desde las tablas de dominio — pedidos, features obra_vial/
+// punto_critico/parada_transporte/cobertura_sos, reportes AMC, subnodos —,
+// nunca incrementos). Sin corrida del worker → 0 snapshots honestos (R15).
+export const VIG013_KPI_KEYS = [
+  "pedidos_respondidos",
+  "obras_km_ejecucion",
+  "puntos_criticos_con_revision",
+  "reportes_amc_por_dominio",
+  "reportes_amc_por_distrito",
+  "parajes_con_reporte",
+] as const;
 
 // Valor honesto: número O null (cobertura_geometrica es null en v1 — sin
 // métrica de cobertura computada; null ≠ 0, R15).
@@ -1634,3 +1659,4 @@ export const PedidoRespuestaSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/, "fecha_respuesta: fecha real YYYY-MM-DD de la respuesta"),
   nota: z.string().trim().max(500).optional(),
 });
+

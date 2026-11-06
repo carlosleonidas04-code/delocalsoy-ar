@@ -27,6 +27,15 @@ export const KPI_KEYS = [
   'activos_verificados',
   'eventos_por_tipo',
   'cobertura_geometrica',
+  // NODO-VIG-3 VIG-013 (#382, épica #377) — set v2: KPIs del dashboard
+  // «Infraestructura y movilidad». Los materializa el mismo consumidor
+  // vig003-kpi (upsert idempotente, nunca incrementos).
+  'pedidos_respondidos',
+  'obras_km_ejecucion',
+  'puntos_criticos_con_revision',
+  'reportes_amc_por_dominio',
+  'reportes_amc_por_distrito',
+  'parajes_con_reporte',
 ] as const;
 
 export type KpiKey = (typeof KPI_KEYS)[number];
@@ -154,6 +163,90 @@ export async function recomputeKpisForNode(nodoKey: string): Promise<KpiSnapshot
   const suma = (obj: Record<string, number>): number =>
     Object.values(obj).reduce((acc, n) => acc + n, 0);
 
+  // ─── NODO-VIG-3 VIG-013 (#382, épica #377): set v2 — KPIs del dashboard ───
+  // «Infraestructura y movilidad». Mismas reglas del set v1: agregados sin
+  // PII (Ley 25.326) re-derivados del dominio, null honesto cuando la
+  // métrica no existe (R15) y conteo 0 honesto el día que la tabla nace
+  // vacía. Sin visibilidad sensible involucrada: las tablas leídas no
+  // publican geometría (ADR-036 — el dashboard cuenta, no dibuja).
+
+  type EstadoRow = { estado: string; total: number };
+  type AmcRow = { dominio: string; subnodo_key: string | null; total: number };
+
+  // Pedidos formales (VIG-012 #379): respondidos contra los estados
+  // ALMACENADOS — sin_respuesta se deriva en lectura, nunca aquí.
+  const porEstadoPedidos: Record<string, number> = {};
+  for (const r of (await prisma.$queryRaw(Prisma.sql`
+    SELECT estado, COUNT(*)::int AS total FROM pedidos
+    WHERE nodo_key = ${nodoKey} GROUP BY estado`)) as EstadoRow[]) {
+    porEstadoPedidos[r.estado] = r.total;
+  }
+  const pedidosPresentados = Object.values(porEstadoPedidos).reduce((a, b) => a + b, 0);
+  const pedidosRespondidos =
+    (porEstadoPedidos['respondido_en_plazo'] ?? 0) + (porEstadoPedidos['respondido_tardio'] ?? 0);
+
+  // Obras viales (VIG-010 #381): tramos de la capa obra_vial por estado del
+  // ciclo declared → in_execution → completed. km null honesto: los km de
+  // los tramos no están estructurados en fuente verificada (R15 — el
+  // desglose verificable son los tramos, no una cifra de prensa).
+  const porEstadoObras: Record<string, number> = {};
+  for (const r of (await prisma.$queryRaw(Prisma.sql`
+    SELECT f.estado AS estado, COUNT(*)::int AS total
+    FROM features f
+    JOIN capas c ON c.id = f.capa_id
+    WHERE c.key = 'obra_vial' AND f.nodo_id = (SELECT id FROM nodos WHERE key = ${nodoKey})
+    GROUP BY f.estado`)) as EstadoRow[]) {
+    porEstadoObras[r.estado] = r.total;
+  }
+
+  // Puntos críticos del AMC (VIG-011 #378): features pc-* de la capa
+  // punto_critico por estado de revisión; «con revisión» = validación
+  // comunitaria o verificación técnica — la comunidad corrobora, NUNCA
+  // verifica (R15), así que community_validated y verified se cuentan
+  // por separado en el desglose.
+  const porEstadoCriticos: Record<string, number> = {};
+  for (const r of (await prisma.$queryRaw(Prisma.sql`
+    SELECT f.estado AS estado, COUNT(*)::int AS total
+    FROM features f
+    JOIN capas c ON c.id = f.capa_id
+    WHERE c.key = 'punto_critico' AND f.nodo_id = (SELECT id FROM nodos WHERE key = ${nodoKey})
+    GROUP BY f.estado`)) as EstadoRow[]) {
+    porEstadoCriticos[r.estado] = r.total;
+  }
+  const criticosConRevision =
+    (porEstadoCriticos['community_validated'] ?? 0) + (porEstadoCriticos['verified'] ?? 0);
+
+  // Reportes AMC (VIG-011 #378): por dominio y por distrito (el distrito se
+  // DERIVA del subnodo ancla por la cadena parent — '_sin_subnodo' si el
+  // reporte no declara ancla). Al pasar por un paraje de la cadena, el
+  // paraje queda marcado con reporte («X de Y parajes», #382).
+  const amcPorDominio: Record<string, number> = {};
+  const amcPorDistrito: Record<string, number> = {};
+  const parajesConReporte = new Set<string>();
+  const amcRows = (await prisma.$queryRaw(Prisma.sql`
+    SELECT dominio, subnodo_key, COUNT(*)::int AS total
+    FROM reportes
+    WHERE nodo_id = (SELECT id FROM nodos WHERE key = ${nodoKey})
+      AND dominio IS NOT NULL AND is_synthetic = false AND estado <> 'descartado'
+    GROUP BY dominio, subnodo_key`)) as AmcRow[];
+  for (const r of amcRows) {
+    amcPorDominio[r.dominio] = (amcPorDominio[r.dominio] ?? 0) + r.total;
+    let distrito = '_sin_subnodo';
+    if (r.subnodo_key !== null) {
+      let actual: SubnodoRow | undefined = porKey.get(r.subnodo_key);
+      while (actual) {
+        if (actual.type === 'district') {
+          distrito = actual.key;
+          break;
+        }
+        if (actual.type === 'paraje') parajesConReporte.add(actual.key);
+        actual = actual.parent_key ? porKey.get(actual.parent_key) : undefined;
+      }
+    }
+    amcPorDistrito[distrito] = (amcPorDistrito[distrito] ?? 0) + r.total;
+  }
+  const parajesTotal = subnodos.filter((s) => s.type === 'paraje').length;
+
   const snapshots: KpiSnapshot[] = [
     { nodo_key: nodoKey, kpi_key: 'subnodos_total', valor: subnodos.length, detalles: {} },
     { nodo_key: nodoKey, kpi_key: 'subnodos_por_distrito', valor: suma(porDistrito), detalles: porDistrito },
@@ -171,6 +264,54 @@ export async function recomputeKpisForNode(nodoKey: string): Promise<KpiSnapshot
       valor: null,
       detalles: { subnodos_con_punto: conPunto, activos_con_punto: activosConPunto },
     },
+    // ─── VIG-013 (#382, épica #377): set v2 del dashboard «Infraestructura y
+    // movilidad» — mismas reglas: derivado del dominio, sin PII, honesto.
+    {
+      nodo_key: nodoKey,
+      kpi_key: 'pedidos_respondidos',
+      valor: pedidosRespondidos,
+      detalles: {
+        presentados: pedidosPresentados,
+        respondidos_en_plazo: porEstadoPedidos['respondido_en_plazo'] ?? 0,
+        respondidos_tardio: porEstadoPedidos['respondido_tardio'] ?? 0,
+      },
+    },
+    {
+      nodo_key: nodoKey,
+      kpi_key: 'obras_km_ejecucion',
+      // null honesto (R15): los km de los tramos no están estructurados en
+      // fuente verificada — el desglose verificable son los tramos.
+      valor: null,
+      detalles: {
+        tramos_declared: porEstadoObras['declared'] ?? 0,
+        tramos_in_execution: porEstadoObras['in_execution'] ?? 0,
+        tramos_completed: porEstadoObras['completed'] ?? 0,
+      },
+    },
+    {
+      nodo_key: nodoKey,
+      kpi_key: 'puntos_criticos_con_revision',
+      valor: criticosConRevision,
+      detalles: porEstadoCriticos,
+    },
+    {
+      nodo_key: nodoKey,
+      kpi_key: 'reportes_amc_por_dominio',
+      valor: suma(amcPorDominio),
+      detalles: amcPorDominio,
+    },
+    {
+      nodo_key: nodoKey,
+      kpi_key: 'reportes_amc_por_distrito',
+      valor: suma(amcPorDistrito),
+      detalles: amcPorDistrito,
+    },
+    {
+      nodo_key: nodoKey,
+      kpi_key: 'parajes_con_reporte',
+      valor: parajesConReporte.size,
+      detalles: { parajes_total: parajesTotal, parajes_con_reporte: parajesConReporte.size },
+    },
   ];
 
   for (const s of snapshots) {
@@ -178,3 +319,4 @@ export async function recomputeKpisForNode(nodoKey: string): Promise<KpiSnapshot
   }
   return snapshots;
 }
+

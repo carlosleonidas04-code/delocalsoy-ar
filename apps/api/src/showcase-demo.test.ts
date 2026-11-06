@@ -113,7 +113,7 @@ describe.skipIf(!dbUp)('Demo final del showcase VIG-007 (#193, épica #167)', ()
 
     expect(iglesia.subnodos).toBe(subnodos);
     expect(iglesia.subnodos).toBeGreaterThanOrEqual(52); // semilla VIG-001
-    expect(iglesia.kpis).toBe(9); // set honesto v1 tras el recompute
+    expect(iglesia.kpis).toBe(15); // set honesto v1 (VIG-003) + v2 (VIG-013) tras el recompute
     expect(iglesia.kpis).toBe(iglesia.kpis_detalle.length);
     expect(iglesia.activos_aprobados).toBe(idsNoRestricted.length);
     expect(iglesia.activos_aprobados).toBeGreaterThanOrEqual(6);
@@ -194,7 +194,7 @@ describe.skipIf(!dbUp)('Demo final del showcase VIG-007 (#193, épica #167)', ()
     const showcase = await getJson('/api/showcase');
     const iglesia: any = showcase.body.data.nodos.find((n: any) => n.key === 'iglesia');
     const kpis = await porKey('/api/nodos/iglesia/kpis');
-    expect(kpis.size).toBe(9);
+    expect(kpis.size).toBe(15); // set v1 (VIG-003) + v2 (VIG-013)
     expect(kpis.get('subnodos_total')?.valor).toBe(iglesia.subnodos);
     expect(kpis.get('subnodos_total')?.valor).toBeGreaterThanOrEqual(52);
     expect(kpis.get('cobertura_geometrica')?.valor).toBeNull(); // R15 honesto
@@ -223,3 +223,4 @@ describe.skipIf(!dbUp)('Demo final del showcase VIG-007 (#193, épica #167)', ()
     expect(sellosOperativa).toBeGreaterThanOrEqual(3);
   });
 });
+
