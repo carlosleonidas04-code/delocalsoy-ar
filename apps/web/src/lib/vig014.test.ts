@@ -481,6 +481,26 @@ describe('SyntheticDataSource — paridad [SINTÉTICO] declarada (R15)', () => {
     });
   });
 
+  it('fix post-VIG-014: la demo espeja las 12 localidades del valle con keys/types/parents del seed VIG-001', async () => {
+    const ds = new SyntheticDataSource();
+    const subnodos = await ds.listSubnodos?.('iglesia');
+    expect(subnodos).toHaveLength(12);
+    const buscar = (k: string) => subnodos?.find((s) => s.key === k);
+    const lasFlores = buscar('sj_iglesia_las_flores');
+    expect(lasFlores?.type).toBe('district');
+    expect(lasFlores?.parent_key).toBeNull();
+    const pismanta = buscar('sj_iglesia_p_pismanta');
+    expect(pismanta?.type).toBe('locality');
+    expect(pismanta?.parent_key).toBe('sj_iglesia_las_flores');
+    expect(pismanta?.lat).not.toBeNull();
+    const colola = buscar('sj_iglesia_p_colola');
+    expect(colola?.parent_key).toBe('sj_iglesia_rodeo');
+    expect(colola?.lat).toBeNull();
+    expect(buscar('sj_iglesia_p_zonda')?.label).toContain('Zonda');
+    expect(buscar('sj_iglesia_p_maipirinqui')?.label).toContain('Maipirinqui');
+    expect(buscar('sj_iglesia_angualasto')?.type).toBe('district');
+  });
+
   it('createReporteAmc en synthetic es demo declarada — jamás acreditada (R15)', async () => {
     const ds = new SyntheticDataSource();
     const res = await ds.createReporteAmc?.({ ...formAmc(), token: 'x' });
