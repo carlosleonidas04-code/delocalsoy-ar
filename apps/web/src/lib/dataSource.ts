@@ -29,6 +29,16 @@ import type {
   OportunidadesQuery,
   OportunidadItem,
 } from './oportunidades';
+import type {
+  FeatureMapaVig,
+  InfraestructuraMovilidad,
+  MiReporte,
+  PedidosTablero,
+  ReporteAmcCreatePayload,
+  ReporteAmcResultado,
+  ReporteHistorial,
+  SubnodoVig,
+} from './vig014';
 
 export type SanJuanFocalNodeKey = 'capital' | 'caucete' | 'iglesia';
 export type Core004Role = 'ciudadano' | 'moderador' | 'admin';
@@ -341,6 +351,21 @@ export interface DataSource<TContext = unknown> {
   listOportunidades?(input?: OportunidadesQuery): Promise<OportunidadItem[]>;
   listCorredores?(): Promise<CorredorItem[]>;
   getAccesibilidad?(nodoKey: SanJuanFocalNodeKey): Promise<AccesibilidadResumen>;
+  // NODO-VIG-3 VIG-014 (#380, épica #377 — cierra el módulo): frontend del
+  // nodo iglesia — dashboard de infraestructura y movilidad (VIG-013), mapa
+  // de capas y puntos críticos (GET /api/nodos/:key/features), tablero de
+  // pedidos a DPV (VIG-012), subnodos VIG-001 y formulario + seguimiento
+  // del reporte ciudadano AMC (VIG-011). Opcional por contrato (ADR-029):
+  // las implementaciones convergen sin romperse; la paridad sintética
+  // declara SIEMPRE su origen (R15) y en synthetic NO hay sesión JWT —
+  // las escrituras del panel son demo declarada, nunca acreditada.
+  listSubnodos?(nodoKey: SanJuanFocalNodeKey): Promise<SubnodoVig[]>;
+  getInfraestructuraMovilidad?(nodoKey: SanJuanFocalNodeKey): Promise<InfraestructuraMovilidad>;
+  getFeaturesMapa?(nodoKey: SanJuanFocalNodeKey): Promise<FeatureMapaVig[]>;
+  getPedidosTablero?(nodoKey: SanJuanFocalNodeKey): Promise<PedidosTablero>;
+  createReporteAmc?(input: ReporteAmcCreatePayload): Promise<ReporteAmcResultado>;
+  listMisReportes?(token: string): Promise<MiReporte[]>;
+  getReporteHistorial?(id: string): Promise<ReporteHistorial>;
 }
 
 export { ApiDataSource, type ApiDataSourceOptions };
@@ -1089,6 +1114,234 @@ export class SyntheticDataSource implements DataSource {
       },
     ],
   };
+
+  // VIG-014 (#380): paridad sintética del módulo de infraestructura y
+  // movilidad del nodo iglesia — demo declarada ([SINTÉTICO], R15): km
+  // null honesto, paradas VACÍAS, «0 de 15» pedidos y 0 KPIs sin corrida.
+  private readonly syntheticSubnodosIglesia: SubnodoVig[] = [
+    {
+      key: 'sj_iglesia_rodeo',
+      label: '[SINTÉTICO] Rodeo (demo declarada)',
+      type: 'district',
+      parent_key: null,
+      lat: -30.2114,
+      lng: -69.1392,
+    },
+    {
+      key: 'sj_iglesia_villa_iglesia',
+      label: '[SINTÉTICO] Villa Iglesia (demo declarada)',
+      type: 'district',
+      parent_key: null,
+      lat: -30.0367,
+      lng: -69.1669,
+    },
+    {
+      key: 'sj_iglesia_p_las_flores',
+      label: '[SINTÉTICO] Las Flores (demo declarada)',
+      type: 'paraje',
+      parent_key: 'sj_iglesia_rodeo',
+      lat: -30.35,
+      lng: -69.2167,
+    },
+  ];
+
+  private readonly syntheticInfraestructuraMovilidadIglesia: InfraestructuraMovilidad = {
+    nodo_key: 'iglesia',
+    generado_en: '2026-11-06T12:00:00.000Z',
+    regla: 'Conteos con cobertura y fecha — jamás puntajes globales (R5/ADR-036)',
+    obras: {
+      total: 2,
+      por_estado: { declared: 2 },
+      por_fuente: [{ fuente: 'Ilustrativa · demo sintética del panel', total: 2 }],
+      km_ejecucion: null,
+      km_nota: 'los km de los tramos en ejecución no están estructurados en fuente verificada — null honesto (R15)',
+      fecha_corte: '2026-11-06',
+      cautela: 'demo sintética: anuncio ≠ obra (R15) — el estado por tramo exige verificación',
+    },
+    puntos_criticos: {
+      total: 1,
+      por_estado: { community_validated: 1 },
+      criticos: [
+        {
+          id: 'syn-pc-demo-01',
+          titulo: '[SINTÉTICO] 3 reportes de 2 vecinos (demo declarada)',
+          estado: 'community_validated',
+          observado_at: '2026-11-06',
+        },
+      ],
+      fecha_corte: '2026-11-06',
+      cautela: 'demo sintética: la comunidad corrobora, NUNCA verifica (R15)',
+    },
+    paradas_transporte: {
+      total: 0,
+      por_estado: {},
+      cobertura: '0 paradas registradas (sin padrón verificado — R15)',
+      fuente: 'agregador de transporte (secundaria/provisional — ADR-035)',
+      cautela: 'demo sintética: la capa parada_transporte nace VACÍA (R15)',
+    },
+    cobertura_sos: {
+      red_por_estado: { verified: 1 },
+      brechas_declaradas: [
+        {
+          tramo: '[SINTÉTICO] RN 150 tramo Las Flores–Colola (demo declarada)',
+          estado: 'declarada',
+          fuente: 'documento vecinal interno (procedencia declarada, sin firmantes — ADR-027)',
+        },
+      ],
+      fecha_corte: '2026-11-06',
+      cautela: 'demo sintética: brechas DECLARADAS por el trabajo territorial (R15)',
+    },
+    pedidos_dpv: {
+      esperados_documento: 15,
+      presentados: 0,
+      respondidos: 0,
+      cobertura: '0 de 15 presentados · 0 respondidos (corte 2026-11-06)',
+      fecha_corte: '2026-11-06',
+    },
+    kpis: {
+      total: 0,
+      snapshots: [],
+      fecha_corte: null,
+      nota: 'demo sintética: sin corrida del consumidor vig003-kpi → 0 honesto (R15)',
+    },
+  };
+
+  public async listSubnodos(nodoKey: SanJuanFocalNodeKey): Promise<SubnodoVig[]> {
+    if (nodoKey !== 'iglesia') {
+      throw new DataSourceHttpError({
+        status: 404,
+        endpoint: '/api/nodos/' + nodoKey + '/subnodos',
+        message: 'Subnodos no disponibles en la demo sintética para el nodo ' + nodoKey + ' (R5: sin fallback silencioso)',
+      });
+    }
+    return this.syntheticSubnodosIglesia.map((s) => ({ ...s }));
+  }
+
+  public async getInfraestructuraMovilidad(nodoKey: SanJuanFocalNodeKey): Promise<InfraestructuraMovilidad> {
+    if (nodoKey !== 'iglesia') {
+      throw new DataSourceHttpError({
+        status: 404,
+        endpoint: '/api/nodos/' + nodoKey + '/infraestructura-movilidad',
+        message: 'Dashboard no disponible en la demo sintética para el nodo ' + nodoKey + ' (R5: sin fallback silencioso)',
+      });
+    }
+    const base = this.syntheticInfraestructuraMovilidadIglesia;
+    return {
+      ...base,
+      obras: { ...base.obras, por_estado: { ...base.obras.por_estado }, por_fuente: base.obras.por_fuente.map((f) => ({ ...f })) },
+      puntos_criticos: {
+        ...base.puntos_criticos,
+        por_estado: { ...base.puntos_criticos.por_estado },
+        criticos: base.puntos_criticos.criticos.map((c) => ({ ...c })),
+      },
+      paradas_transporte: { ...base.paradas_transporte, por_estado: { ...base.paradas_transporte.por_estado } },
+      cobertura_sos: {
+        ...base.cobertura_sos,
+        red_por_estado: { ...base.cobertura_sos.red_por_estado },
+        brechas_declaradas: base.cobertura_sos.brechas_declaradas.map((b) => ({ ...b })),
+      },
+      pedidos_dpv: { ...base.pedidos_dpv },
+      kpis: { ...base.kpis, snapshots: base.kpis.snapshots.map((s) => ({ ...s, detalles: { ...s.detalles } })) },
+    };
+  }
+
+  public async getFeaturesMapa(nodoKey: SanJuanFocalNodeKey): Promise<FeatureMapaVig[]> {
+    if (nodoKey !== 'iglesia') {
+      throw new DataSourceHttpError({
+        status: 404,
+        endpoint: '/api/nodos/' + nodoKey + '/features',
+        message: 'Features no disponibles en la demo sintética para el nodo ' + nodoKey + ' (R5: sin fallback silencioso)',
+      });
+    }
+    return [
+      {
+        id: 'syn-f-vig014-obra-demo',
+        capa: 'obra_vial',
+        titulo: '[SINTÉTICO] RN 150 tramo demo (demo declarada)',
+        estado: 'declared',
+        fuente_label: 'Ilustrativa · demo sintética del panel',
+        lat: -30.28,
+        lng: -69.19,
+        is_synthetic: true,
+      },
+      {
+        id: 'syn-f-vig014-critico-demo',
+        capa: 'punto_critico',
+        titulo: '[SINTÉTICO] Punto crítico demo (3 reportes de 2 vecinos)',
+        estado: 'community_validated',
+        fuente_label: 'Ilustrativa · demo sintética del panel',
+        lat: -30.21,
+        lng: -69.14,
+        is_synthetic: true,
+      },
+    ];
+  }
+
+  public async getPedidosTablero(nodoKey: SanJuanFocalNodeKey): Promise<PedidosTablero> {
+    if (nodoKey !== 'iglesia') {
+      throw new DataSourceHttpError({
+        status: 404,
+        endpoint: '/api/pedidos?nodo=' + nodoKey,
+        message: 'Tablero no disponible en la demo sintética para el nodo ' + nodoKey + ' (R5: sin fallback silencioso)',
+      });
+    }
+    return {
+      esperados_documento: 15,
+      presentados: 0,
+      respondidos: 0,
+      respondidos_en_plazo: 0,
+      respondidos_tardio: 0,
+      sin_respuesta: 0,
+      en_espera: 0,
+      fecha_corte: '2026-11-06',
+      cobertura: '0 de 15 presentados · 0 respondidos (corte 2026-11-06)',
+      fuente: '[SINTÉTICO] demo declarada del tablero de pedidos (R15)',
+      pedidos: [],
+    };
+  }
+
+  // Demo declarada (R15): en synthetic NO hay sesión JWT ni persistencia —
+  // el resultado se etiqueta y JAMÁS se presenta como acreditado.
+  public async createReporteAmc(_input: ReporteAmcCreatePayload): Promise<ReporteAmcResultado> {
+    return {
+      id: 'syn-reporte-demo-01',
+      categoria: _input.categoria,
+      estado: 'received',
+      creado: true,
+      duplicados_sugeridos: [],
+      duplicados_verificados: true,
+      cluster: null,
+      cluster_verificado: true,
+      devolucion: '[SINTÉTICO] demo declarada: sin sesión JWT no hay escritura acreditada (R15) — iniciá sesión con la API real para reportar.',
+    };
+  }
+
+  public async listMisReportes(_token: string): Promise<MiReporte[]> {
+    return [
+      {
+        id: 'syn-reporte-demo-01',
+        nodo_key: 'iglesia',
+        categoria: 'road_surface',
+        descripcion: '[SINTÉTICO] demo declarada del seguimiento — sin sesión no hay reportes propios.',
+        estado: 'received',
+        lat: -30.21,
+        lng: -69.14,
+        created_at: '2026-11-06T12:00:00.000Z',
+        transiciones: [],
+      },
+    ];
+  }
+
+  public async getReporteHistorial(id: string): Promise<ReporteHistorial> {
+    if (id !== 'syn-reporte-demo-01') {
+      throw new DataSourceHttpError({
+        status: 404,
+        endpoint: '/api/reportes/' + id + '/historial',
+        message: 'Historial no disponible en la demo sintética (R5: sin fallback silencioso)',
+      });
+    }
+    return { reporte_id: id, transiciones: [] };
+  }
 
   public async listOportunidades(input?: OportunidadesQuery): Promise<OportunidadItem[]> {
     let items = this.syntheticOportunidadesCapital.map((o) => ({
