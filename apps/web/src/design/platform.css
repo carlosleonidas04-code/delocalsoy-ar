@@ -1,0 +1,111 @@
+/* ============================================================================
+   DELocalSoy.AR - Capa de Plataforma Multiplataforma (UX-001)
+   Dominio: [agent: vibe] - Extension L1/L2 bajo ADR-034
+   Issue: #221 - Serie UX-001..UX-005 (Diseno Base UX Multiplataforma)
+   Este archivo NO redefine los estados honestos ni la paleta canonica de
+   tokens.css (dominio [agent: google], ADR-034): solo los extiende con
+   perfiles de plataforma (tv / vehicle / desktop) y primitivas fluidas.
+   UX-002 aterriza la deteccion de plataforma (InputManager).
+   ============================================================================ */
+
+:root {
+  /* Escala base de plataforma (UX-002 la activa por deteccion) */
+  --platform-font-scale: 1;
+  --platform-target-min: var(--touch-target-min, 2.75rem);
+  --platform-focus-ring: 0 0 0 3px rgba(255, 199, 44, 0.35), 0 0 0 6px rgba(255, 199, 44, 0.15);
+  --platform-safe-overscan: 0px;   /* TV: 2.5% por borde (aprox. 5% total) */
+  --platform-density: 1;
+
+  /* Tipografia fluida por contenedor (cqi) */
+  --platform-text-card-title: clamp(1.05rem, 0.55rem + 2.4cqi, 1.6rem);
+  --platform-text-card-body: clamp(0.92rem, 0.5rem + 1.6cqi, 1.15rem);
+  --platform-text-card-meta: clamp(0.78rem, 0.44rem + 1.2cqi, 0.95rem);
+}
+
+/* ---------------------------------------------------------------- perfil TV */
+/* 10-foot UI: escala ampliada, overscan protegido, foco D-pad evidente */
+:root[data-platform='tv'] {
+  --platform-font-scale: 1.35;
+  --platform-target-min: 3rem;
+  --platform-density: 0.85;
+  --platform-safe-overscan: 2.5vw;
+}
+:root[data-platform='tv'] body {
+  font-size: calc(1rem * var(--platform-font-scale));
+  padding: var(--platform-safe-overscan);
+}
+
+/* --------------------------------------------------------- perfil vehiculo */
+/* Glanceable UI: bloques grandes, densidad baja, texto de un vistazo */
+:root[data-platform='vehicle'] {
+  --platform-font-scale: 1.15;
+  --platform-target-min: 3.25rem;
+  --platform-density: 0.5;
+}
+
+/* -------------------------------------------------------- perfil escritorio */
+:root[data-platform='desktop'] {
+  --platform-density: 1.1;
+}
+
+/* ----------------------------------------------- tipografia adaptativa fluida */
+.delocal-text-card-title { font-size: var(--platform-text-card-title); }
+.delocal-text-card-body  { font-size: var(--platform-text-card-body); }
+.delocal-text-card-meta  { font-size: var(--platform-text-card-meta); }
+
+/* --------------------------------------------------- container queries (L1) */
+.delocal-container {
+  container-type: inline-size;
+  container-name: delocal;
+}
+
+.delocal-adaptive-card {
+  display: grid;
+  gap: calc(0.75rem * var(--platform-density));
+  font-size: var(--platform-text-card-body);
+}
+.delocal-adaptive-card > .delocal-adaptive-main { grid-area: main; }
+.delocal-adaptive-card > .delocal-adaptive-aside { grid-area: aside; }
+@container delocal (min-width: 480px) {
+  .delocal-adaptive-card {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    grid-template-areas: 'main aside';
+  }
+}
+
+.delocal-adaptive-grid {
+  display: grid;
+  gap: calc(0.75rem * var(--platform-density));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+}
+
+/* ------------------------------------------------------- anillo de foco D-pad */
+/* Navegacion por control remoto / gamepad: el foco SIEMPRE visible */
+.delocal-focusable {
+  min-height: var(--platform-target-min);
+  min-width: var(--platform-target-min);
+}
+.delocal-focus-ring,
+.delocal-focusable:focus-visible {
+  outline: 2px solid #ffc72c;
+  box-shadow: var(--platform-focus-ring);
+  border-radius: 0.375rem;
+}
+:root[data-platform='tv'] .delocal-focusable:focus-visible {
+  outline-width: 3px;
+}
+:root[data-platform='vehicle'] .delocal-focusable:focus-visible {
+  outline-width: 4px;
+}
+
+/* ------------------------------------------------ movimientos reducidos (L2) */
+@media (prefers-reduced-motion: reduce) {
+  .delocal-focusable,
+  .delocal-focus-ring,
+  .delocal-adaptive-card,
+  .delocal-adaptive-grid {
+    transition-duration: 0.01ms;
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+  }
+}
