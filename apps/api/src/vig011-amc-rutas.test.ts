@@ -59,7 +59,7 @@ describe.skipIf(!dbUp)('AMC — mediación ciudadana del nodo Iglesia (NODO-VIG-
   // Puntos ilustrativos del valle (test): A ~ Tudcum, B a ~7 km de A.
   const puntoA = { lat: -30.14, lng: -69.19 };
   const puntoB = { lat: -30.18, lng: -69.25 };
-  const MEDIADOR_KEY = 'mediador-test-' + ts;
+  const MEDIADOR_KEY = 'mediador_test_' + ts;
   const hoy = new Date().toISOString().slice(0, 10);
   const hace100 = new Date(Date.now() - 100 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const ids: Record<string, string> = {};
@@ -134,7 +134,7 @@ describe.skipIf(!dbUp)('AMC — mediación ciudadana del nodo Iglesia (NODO-VIG-
     tokens.ciudadano = await registrarYLoguear('vig011-ciudadano-' + ts + '@example.test');
     const intento = await post(tokens.ciudadano, '/api/mediadores', {
       nodo_key: 'iglesia',
-      key: 'mediador-otro-' + ts,
+      key: 'mediador_otro_' + ts,
       label: 'Sin aval ratificado',
       aval: 'asamblea',
     });
@@ -390,7 +390,7 @@ describe.skipIf(!dbUp)('AMC — mediación ciudadana del nodo Iglesia (NODO-VIG-
       { name: 'subnodo inexistente', body: { ...baseAmc, subnodo_key: 'sj_iglesia_no_existe_' + ts } },
       { name: 'categoría ajena al dominio', body: { ...baseAmc, dominio: 'agua_saneamiento' } },
       { name: 'whatsapp sin mediador_ref', body: { ...baseAmc, canal_ingreso: 'whatsapp' } },
-      { name: 'mediador sin registro', body: { ...baseAmc, canal_ingreso: 'whatsapp', mediador_ref: 'mediador-fantasma-' + ts } },
+      { name: 'mediador sin registro', body: { ...baseAmc, canal_ingreso: 'whatsapp', mediador_ref: 'mediador_fantasma_' + ts } },
       { name: 'alias sin consentimiento', body: { ...baseAmc, canal_ingreso: 'papel', mediador_ref: MEDIADOR_KEY, reportado_por: 'vecino-x-' + ts } },
       { name: 'papel sin alias', body: { ...baseAmc, canal_ingreso: 'papel', mediador_ref: MEDIADOR_KEY } },
     ];
