@@ -10,6 +10,14 @@
  *   POST /api/auth/login    {email, password}                -> 200 {data:{token, usuario}}
  *   GET  /api/auth/me       (Authorization: Bearer)          -> 200 {data:{id,email,rol,display_name}}
  *
+ * ARTEFACTOS-ROLES AR1 (#400, épica #399, main @ 512c3686) agrega:
+ *   POST /api/auth/register-visitante {email, password, alias, subnodo_transito_key,
+ *                                      consentimiento:{contacto_email:true}} -> 201 {data:{...usuario}}
+ *   GET /api/auth/me ahora devuelve residencia_subnodo_key / residencia_declarada_en /
+ *   transito_subnodo_key — el perfil (vecino = ATRIBUTO de residencia, NO rol;
+ *   decisión DH 2026-11-06) se DERIVA en el cliente desde esos campos reales.
+ * El visitante es un rol REAL solo lectura v0.2: la API es la compuerta.
+ *
  * El alta publica solo crea rol 'ciudadano' (ADR-031); la promocion a
  * moderador/admin es operacion de sistema (guard R8) — este modulo JAMAS
  * la simula (R15). En modo synthetic no hay sesion: las escrituras de los
@@ -18,6 +26,7 @@
 
 export type RolPlataforma =
   | 'ciudadano'
+  | 'visitante'
   | 'vecino'
   | 'operador_campo'
   | 'comerciante'
@@ -34,6 +43,9 @@ export type RolPlataforma =
  */
 export const RATE_LIMIT_POR_ROL: Record<RolPlataforma, number> = {
   ciudadano: 10,
+  // ARTEFACTOS-ROLES AR1 (#400): la cuenta ligera visitante vive del techo
+  // público de lectura (10 req/min, mismo criterio que RATE_LIMIT_VISITANTE).
+  visitante: 10,
   vecino: 10,
   operador_campo: 50,
   comerciante: 50,
@@ -53,6 +65,14 @@ export interface UsuarioSesion {
   email: string;
   rol: RolPlataforma;
   display_name: string | null;
+  /**
+   * ARTEFACTOS-ROLES AR1 (#400, épica #399) — opcionales para no romper los
+   * literales existentes: la residencia es un ATRIBUTO auto-declarado (el
+   * perfil 'vecino' se DERIVA de este campo, NO es un rol — decisión DH
+   * 2026-11-06) y el tránsito es el subnodo DECLARADO del visitante.
+   */
+  residencia_subnodo_key?: string | null;
+  transito_subnodo_key?: string | null;
 }
 
 export type EstadoSesion =
@@ -103,6 +123,10 @@ interface RespuestaAuth {
   email: string;
   rol: string;
   display_name?: string | null;
+  // ARTEFACTOS-ROLES AR1 (#400): campos opcionales de /api/auth/me extendido.
+  residencia_subnodo_key?: string | null;
+  residencia_declarada_en?: string | null;
+  transito_subnodo_key?: string | null;
 }
 
 interface RespuestaLogin {
@@ -116,6 +140,11 @@ function parseUsuario(crudo: RespuestaAuth): UsuarioSesion {
     email: crudo.email,
     rol: crudo.rol as RolPlataforma,
     display_name: crudo.display_name ?? null,
+    // ARTEFACTOS-ROLES AR1 (#400): atributos reales de la cuenta — el perfil
+    // (vecino|ciudadano|visitante) se DERIVA de estos campos, jamás se
+    // declara del lado del cliente (R15).
+    residencia_subnodo_key: crudo.residencia_subnodo_key ?? null,
+    transito_subnodo_key: crudo.transito_subnodo_key ?? null,
   };
 }
 
@@ -130,6 +159,19 @@ export interface Sesion {
   modo: ModoSesion;
   tokenActual(): string | null;
   registrar(email: string, password: string, displayName?: string): Promise<UsuarioSesion>;
+  /**
+   * ARTEFACTOS-ROLES AR1 (#400, épica #399): alta de la cuenta ligera
+   * visitante (POST /api/auth/register-visitante). El consentimiento de
+   * contacto es GRANULAR y literal (ADR-027): sin él NO se llama a la API —
+   * el rechazo es del lado del cliente, ANTES de persistir nada.
+   */
+  registrarVisitante(
+    email: string,
+    password: string,
+    alias: string,
+    subnodoTransitoKey: string,
+    consentimientoContacto: boolean
+  ): Promise<UsuarioSesion>;
   iniciar(email: string, password: string): Promise<UsuarioSesion>;
   quienSoy(): Promise<EstadoSesion>;
   cerrarSesion(): void;
@@ -200,6 +242,49 @@ export function crearSesion(opts: OpcionesSesion): Sesion {
     throw new SesionError('no_disponible', textoError(res.status, cuerpo));
   };
 
+  // ARTEFACTOS-ROLES AR1 (#400, épica #399): cuenta ligera visitante. El
+  // consentimiento se exige ANTES de llamar a la API (ADR-027: granular y
+  // literal — el cliente jamás lo pre-marca ni lo sobrentiende).
+  const registrarVisitante = async (
+    email: string,
+    password: string,
+    alias: string,
+    subnodoTransitoKey: string,
+    consentimientoContacto: boolean
+  ): Promise<UsuarioSesion> => {
+    if (!consentimientoContacto) {
+      throw new SesionError(
+        'datos',
+        'el consentimiento de contacto es obligatorio (ADR-027): sin él no hay cuenta visitante'
+      );
+    }
+    const res = await llamar('/register-visitante', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        password,
+        alias,
+        subnodo_transito_key: subnodoTransitoKey,
+        consentimiento: { contacto_email: true },
+      }),
+    });
+    const cuerpo = await leer(res);
+    if (res.status === 201 && cuerpo.success === true && cuerpo.data) {
+      return parseUsuario(cuerpo.data as RespuestaAuth);
+    }
+    if (res.status === 409) {
+      throw new SesionError('email_existente', 'el email ya esta registrado');
+    }
+    if (res.status === 400) {
+      throw new SesionError('datos', 'datos invalidos');
+    }
+    if (res.status === 429) {
+      throw new SesionError('no_disponible', 'demasiados intentos; espera un momento');
+    }
+    throw new SesionError('no_disponible', textoError(res.status, cuerpo));
+  };
+
   const iniciar = async (email: string, password: string): Promise<UsuarioSesion> => {
     const res = await llamar('/login', {
       method: 'POST',
@@ -252,7 +337,7 @@ export function crearSesion(opts: OpcionesSesion): Sesion {
     return { tipo: 'sin_sesion' };
   };
 
-  return { modo, tokenActual, registrar, iniciar, quienSoy, cerrarSesion };
+  return { modo, tokenActual, registrar, registrarVisitante, iniciar, quienSoy, cerrarSesion };
 }
 
 /**

@@ -40,8 +40,10 @@ export const EvidenceStatusSchema = z.enum([
 
 // ─── CORE-004 R3 (ADR-031, #87): identidad por etapas ───
 
-// Roles ratificados (ADR-031): ciudadano | moderador | admin.
-export const RolSchema = z.enum(["ciudadano", "moderador", "admin"]);
+// Roles ratificados (ADR-031): ciudadano | moderador | admin. ARTEFACTOS-ROLES
+// AR1 (#400, épica #399) agrega el rol REAL 'visitante': cuenta ligera de
+// tránsito SOLO LECTURA en v0.2 — la API es la compuerta (403 real).
+export const RolSchema = z.enum(["ciudadano", "visitante", "moderador", "admin"]);
 
 // Registro: el email es el identificador de login (única PII persistida en
 // 'usuarios'; los sellos system.user_* de events_raw nunca lo contienen — Ley 25.326).
@@ -58,6 +60,49 @@ export * from './comercios.js';
 export const UsuarioLoginSchema = z.object({
   email: z.string().trim().toLowerCase().email("Email inválido"),
   password: z.string().min(1, "La contraseña es requerida"),
+});
+
+// ─── ARTEFACTOS-ROLES AR1 (#400, épica #399): residencia y visitante ───
+
+// AR1 — decisión DH 2026-11-06: el vecino es un ATRIBUTO de residencia sobre
+// la cuenta ciudadana, NO un rol. Solo la clave del subnodo real del
+// vocabulario (la ruta la valida contra la tabla subnodos): sin domicilio
+// jamás (Ley 25.326 / ADR-027), auto-declarada sin verificación (R15).
+export const ResidenciaAltaSchema = z.object({
+  subnodo_key: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9_]+$/, "subnodo_key: clave del vocabulario (minúsculas, dígitos o _)")
+    .min(3, "subnodo_key: al menos 3 caracteres")
+    .max(60, "subnodo_key: a lo sumo 60 caracteres"),
+});
+
+// AR1 — consentimiento GRANULAR del visitante (ADR-027): literal true. Sin
+// contacto_email true no hay cuenta visitante — nunca se pre-marca en el
+// cliente y el rechazo es ANTES de persistir.
+export const VisitanteConsentimientoSchema = z
+  .object({ contacto_email: z.boolean() })
+  .refine((c) => c.contacto_email === true, {
+    message: "Consentimiento de contacto: se exige contacto_email true (ADR-027)",
+  });
+
+// AR1 — cuenta ligera visitante (rol real 'visitante', SOLO LECTURA v0.2):
+// alias público (anti-PII en la ruta), subnodo de tránsito DECLARADO contra
+// el vocabulario (jamás geolocalizado) y consentimiento granular literal.
+export const VisitanteRegistroSchema = z.object({
+  email: z.string().trim().toLowerCase().email("Email inválido"),
+  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
+  alias: z
+    .string()
+    .trim()
+    .min(3, "El alias público debe tener al menos 3 caracteres")
+    .max(40, "El alias público debe tener a lo sumo 40 caracteres"),
+  subnodo_transito_key: z
+    .string()
+    .trim()
+    .min(3, "subnodo_transito_key: al menos 3 caracteres")
+    .max(60, "subnodo_transito_key: a lo sumo 60 caracteres"),
+  consentimiento: VisitanteConsentimientoSchema,
 });
 
 // ─── Serie Contracts NCAP-R2 (PR #233): índice extendido [agent: vibe] ───

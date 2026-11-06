@@ -11,7 +11,9 @@
 //   versionada: Prisma no soporta tipos geometry nativamente)
 //
 // EXTENSIÓN CORE-004 (identidad por etapas, ADR-031):
-// - usuarios con rol ciudadano | moderador | admin
+// - usuarios con rol ciudadano | visitante | moderador | admin (ARTEFACTOS-ROLES
+//   AR1 #400: visitante = cuenta ligera SOLO LECTURA v0.2; el vecino NO es rol —
+//   es atributo de residencia, ver columnas AR1 del model usuarios)
 // - sin PII en events_raw: sellos system.user_* solo con {usuario_id, rol}
 // - R5b: activos territoriales propuestos por ciudadanos (pseudónimo, sin PII)
 
@@ -196,8 +198,21 @@ model usuarios {
   id            String   @id @default(cuid())
   email         String   @unique @map("email")
   password_hash String   @map("password_hash") // scrypt$<salt hex>$<hash hex>
-  rol           String   @default("ciudadano") @map("rol") // ciudadano | moderador | admin
+  rol           String   @default("ciudadano") @map("rol") // ciudadano | visitante (AR1 #400: cuenta ligera solo lectura v0.2) | moderador | admin
   display_name  String?  @map("display_name")
+  // ARTEFACTOS-ROLES AR1 (#400, épica #399) — decisión DH 2026-11-06: vecino =
+  // ATRIBUTO de residencia sobre la cuenta ciudadana, NO un rol. Ley 25.326 /
+  // ADR-027: SIN domicilio jamás — solo la clave del subnodo real del
+  // vocabulario (validada contra subnodos) y el timestamp de auto-declaración
+  // (R15: sin verificación). La re-declaración renueva el atributo y sella
+  // de nuevo (historial append-only en events_raw).
+  residencia_subnodo_key   String?   @map("residencia_subnodo_key")
+  residencia_declarada_en  DateTime? @map("residencia_declarada_en")
+  // AR1: subnodo de tránsito DECLARADO del visitante (jamás geolocalizado,
+  // Ley 25.326) + consentimiento granular {contacto_email: boolean} (ADR-027:
+  // el alta visitante lo exige literal true, nunca pre-marcado en el cliente).
+  transito_subnodo_key     String?   @map("transito_subnodo_key")
+  consentimiento           Json?     @map("consentimiento")
   created_at    DateTime @default(now()) @map("created_at")
   updated_at    DateTime @updatedAt @map("updated_at")
 

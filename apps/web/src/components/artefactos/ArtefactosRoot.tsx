@@ -11,6 +11,10 @@
  *   <SesionProvider>              ART-R0 (#269): JWT real + degradación honesta a synthetic
  *     BarraSesion                  identidad del actor: el gate por rol del contexto R0 —
  *                                 sin esta pieza nadie puede asumir el rol que la API exige
+ *     <MiCuenta />                ARTEFACTOS-ROLES AR1 (#400, épica #399): perfiles de
+ *                                 cuenta — residencia = atributo del vecino (NO rol) y
+ *                                 cuenta ligera visitante (solo lectura v0.2): la API es
+ *                                 la compuerta
  *     <A1VecinoCiudadano />        ART-R1 (#270): escritura ciudadana y lectura pública
  *     <A2Comerciante />            ART-R4 (#273): comerciante y titular verificado — alta
  *                                 ciudadana, reclamo de titularidad SOLO-hash, habilitación
@@ -33,6 +37,7 @@ import A1VecinoCiudadano from './A1VecinoCiudadano';
 import A2Comerciante from './A2Comerciante';
 import A3GestorAdmin from './A3GestorAdmin';
 import A4AuditorDatosAbiertos from './A4AuditorDatosAbiertos';
+import MiCuenta from './MiCuenta';
 
 /* ------------------------------------------------------------------ */
 /* Gate por rol del contexto R0: la identidad del actor                */
@@ -147,6 +152,7 @@ export function ArtefactosRoot() {
           es estado de ficha, no rol: la API es la compuerta (403 real) — nada se simula (R15).
         </p>
         <BarraSesion />
+        <MiCuenta />
         <A1VecinoCiudadano />
         <A2Comerciante />
         <A3GestorAdmin />
