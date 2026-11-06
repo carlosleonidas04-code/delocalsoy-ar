@@ -28,9 +28,7 @@ const { prisma } = await import('@delocalsoy/db');
 const repoRoot = fileURLToPath(new URL('../../../', import.meta.url));
 
 const dbUp = await prisma
-  .$queryRaw
-    SELECT 1
-  `
+  .$queryRaw`SELECT 1`
   .then(() => true)
   .catch(() => false);
 
