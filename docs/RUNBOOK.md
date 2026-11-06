@@ -12,7 +12,7 @@ Estado: v0.1 (paquete M0). **Fuente de verdad:** si este runbook difiere del có
 
 ## 2. Instalación
 
-`pnpm install --frozen-lockfile`. Deuda conocida: lockfile desincronizado por lucide-react (#238) — regenerar con `pnpm install` al volver CI, antes de mergear #235/#238.
+`pnpm install --frozen-lockfile`. La deuda de lockfile por lucide-react (#238) quedó **RESUELTA**: lockfile regenerado y CI con frozen-lockfile desde los PRs #354/#355 (EV-066 re-anclada, ver `docs/EV_NUMERACION_F0C1.md`).
 
 ## 3. Base de datos
 
@@ -42,8 +42,8 @@ NO IMPLEMENTADO (v0.1). Política objetivo (mejora D3): backup diario de Postgre
 
 ## 8. CI caído / restauración de Actions
 
-- Bloqueo vigente por spending desde el 2026-10-15 (reinicio esperado ~2026-11-01). Hay recordatorio programado para re-verificar el 01-11.
-- Al volver: re-run de jobs desde la UI o push trivial por rama (evento synchronize). Mergear la cascada de `docs/MANTENIMIENTO.md` §3 con CI verde, en orden.
+- **CI RESTAURADA el 2026-11-01** (bloqueo de spending 2026-10-15 → 2026-11-01 resuelto). La cascada de 31 PRs de `docs/MANTENIMIENTO.md` §3 se mergeó con CI verde tras la restauración.
+- Protocolo ante un nuevo bloqueo: re-run de jobs desde la UI o push trivial por rama (evento synchronize); vaciar la cascada antes de abrir frentes nuevos (regla 2 de `docs/MANTENIMIENTO.md`).
 - Diagnóstico: si los checks mueren en ~2–3 s sin arrancar runner, el bloqueo persiste — re-programar y NO forzar merges (R15).
 
 ## 9. Reglas de emergencia
