@@ -11,6 +11,7 @@ import fichasValoracionRouter from './routes/fichasValoracion.js';
 import fuentesRouter from './routes/fuentes.js';
 import healthRouter from './routes/health.js';
 import healthDetailedRouter from './routes/healthDetailed.js';
+import mediadoresRouter from './routes/mediadores.js';
 import modeloFederadoRouter from './routes/modeloFederado.js';
 import nodosRouter from './routes/nodos.js';
 import oportunidadesRouter from './routes/oportunidades.js';
@@ -148,6 +149,14 @@ export function createApp(): Express {
   // persistir (ADR-020 cond. 1), idempotencia por hash único y sello
   // reporte.recibido en events_raw con rollback si el sello falla.
   app.use('/api/reportes', reportesRouter);
+
+  // Dominio: AMC — registro de mediadores (NODO-VIG-3 VIG-011, #378 — épica
+  // #377): boca única de reporte territorial del nodo. POST /api/mediadores
+  // (admin): alias comunitario + aval (asamblea | comision_vecinal —
+  // comunitario, no gubernamental), sello 'mediador.registrado' con rollback;
+  // GET público de vigentes sin PII. Nace VACÍO (R15): la asamblea aún no
+  // ratificó mediadores — sin registro no hay canal papel|whatsapp.
+  app.use('/api/mediadores', mediadoresRouter);
 
   // Demo final (NODO-VIG VIG-007, NVIG-R9 #193 — épica #167): recorrido
   // federado del showcase — lectura pública del estado REAL de los tres

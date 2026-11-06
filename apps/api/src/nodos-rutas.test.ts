@@ -110,7 +110,16 @@ describe.skipIf(!dbUp)('Rutas del vocabulario CORE-002 (CORE-003, #83)', () => {
         expect(f.lat).toBeLessThan(-29);
         expect(f.lng).toBeGreaterThan(-70);
         expect(f.lng).toBeLessThan(-66);
-        // datos de diseño hasta que exista relevamiento real (regla de la demo)
+        // VIG-011 (#378): los clusters AMC convergen en runtime como features
+        // 'pc-*' de punto_critico — registros comunitarios reales
+        // (is_synthetic=false, fuente comunitaria), no datos del demo. El
+        // job test corre los suites en paralelo sobre la misma base, así
+        // que pueden aparecer aquí; los features sembrados siguen siendo
+        // de diseño hasta que exista relevamiento real (regla de la demo).
+        if (String(f.id).startsWith('pc-')) {
+          expect(f.is_synthetic).toBe(false);
+          continue;
+        }
         expect(f.is_synthetic).toBe(true);
         expect(f.fuente_label.startsWith('Ilustrativa ·')).toBe(true);
       }
@@ -134,16 +143,22 @@ describe.skipIf(!dbUp)('Rutas del vocabulario CORE-002 (CORE-003, #83)', () => {
       prisma.nodos.count(),
       prisma.capas.count(),
       prisma.categorias.count(),
-      prisma.features.count(),
-      prisma.reportes.count(),
+      // VIG-011 (#378): los suites corren en paralelo sobre la misma base —
+      // clusters AMC 'pc-*' y reportes ciudadanos runtime no son seed: el
+      // conteo de idempotencia aísla el vocabulario sembrado.
+      prisma.features.count({ where: { id: { not: { startsWith: 'pc-' } } } }),
+      prisma.reportes.count({ where: { is_synthetic: true } }),
     ]);
     execSync('pnpm --filter @delocalsoy/db db:seed', { cwd: repoRoot, stdio: 'pipe' });
     const despues = await Promise.all([
       prisma.nodos.count(),
       prisma.capas.count(),
       prisma.categorias.count(),
-      prisma.features.count(),
-      prisma.reportes.count(),
+      // VIG-011 (#378): los suites corren en paralelo sobre la misma base —
+      // clusters AMC 'pc-*' y reportes ciudadanos runtime no son seed: el
+      // conteo de idempotencia aísla el vocabulario sembrado.
+      prisma.features.count({ where: { id: { not: { startsWith: 'pc-' } } } }),
+      prisma.reportes.count({ where: { is_synthetic: true } }),
     ]);
     expect(despues).toEqual(antes);
   }, 60000);

@@ -263,7 +263,9 @@ describe.skipIf(!dbUp)('Vocabulario vial del nodo Iglesia (NODO-VIG-3 VIG-010, #
     const antes = await Promise.all([
       prisma.capas.count({ where: { nodo_id: nodo!.id } }),
       prisma.categorias.count({ where: { nodo_id: nodo!.id } }),
-      prisma.features.count({ where: { nodo_id: nodo!.id } }),
+      // VIG-011 (#378): los puntos críticos de convergencia AMC (id 'pc-')
+      // viven fuera de este conteo — solo cuenta el vocabulario seed.
+      prisma.features.count({ where: { nodo_id: nodo!.id, id: { not: { startsWith: 'pc-' } } } }),
       // conteo ACOTADO a los sellos de este seed: un count global de
       // events_raw es racy bajo suites paralelas (patrón NCAP-R1).
       prisma.events_raw.count({ where: { hash: { in: SELLOS_VIG010 } } }),
@@ -272,7 +274,9 @@ describe.skipIf(!dbUp)('Vocabulario vial del nodo Iglesia (NODO-VIG-3 VIG-010, #
     const despues = await Promise.all([
       prisma.capas.count({ where: { nodo_id: nodo!.id } }),
       prisma.categorias.count({ where: { nodo_id: nodo!.id } }),
-      prisma.features.count({ where: { nodo_id: nodo!.id } }),
+      // VIG-011 (#378): los puntos críticos de convergencia AMC (id 'pc-')
+      // viven fuera de este conteo — solo cuenta el vocabulario seed.
+      prisma.features.count({ where: { nodo_id: nodo!.id, id: { not: { startsWith: 'pc-' } } } }),
       prisma.events_raw.count({ where: { hash: { in: SELLOS_VIG010 } } }),
     ]);
     expect(despues).toEqual(antes);
