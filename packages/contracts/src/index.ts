@@ -1553,3 +1553,84 @@ export const MediadorAltaSchema = z.object({
   label: z.string().trim().min(3, "El rol comunitario visible requiere al menos 3 caracteres").max(120),
   aval: MediadorAvalSchema,
 });
+
+// ─── NODO-VIG-3 VIG-012 (#379, épica #377): pedidos formales ───
+//
+// La traducción al repo del libro de reclamos del plan vecinal: pedidos
+// formales a Vialidad Provincial (DPV) y su seguimiento público. La tabla
+// `pedidos` es la ÚNICA tabla nueva del módulo (decisión DH 2026-11-06) y
+// NACE VACÍA (R15): los 15 pedidos de la nota formal a DPV (bloques A-E)
+// son contenido DOCUMENTAL — fuente: documento vecinal interno,
+// procedencia declarada, citado sin firmantes expuestos (ADR-027) —, NO
+// filas precargadas. Preparar la nota ≠ presentarla (R15): cada pedido se
+// registra a medida que se presenta, con fecha real y sello
+// 'pedido.presentado'.
+
+// Bloques temáticos de la nota formal a DPV (A-E, ratificados por la DH).
+export const PedidoBloqueSchema = z.enum([
+  "proyecto_ejecutivo",
+  "seguridad_derivadores",
+  "datos_cargas",
+  "red_provincial_emergencias",
+  "seguimiento_vecinal",
+]);
+export type PedidoBloque = z.infer<typeof PedidoBloqueSchema>;
+
+// Los 15 pedidos de la nota formal a DPV — constante DOCUMENTAL del
+// tablero de cobertura: «X de 15 presentados · Y respondidos (fecha de
+// corte)». NUNCA son filas: la cobertura se mide contra el documento, no
+// contra un seed (R15).
+export const PEDIDOS_DPV_ESPERADOS = 15;
+
+// Ciclo de vida del pedido: presentado → respondido_en_plazo |
+// respondido_tardio. sin_respuesta NO se transita ni se sella: se DERIVA
+// honesto en lectura — presentado con plazo vencido y sin respuesta
+// (R15: no existe el evento «no contestaron», existe la fecha vencida).
+export const PedidoEstadoSchema = z.enum([
+  "presentado",
+  "respondido_en_plazo",
+  "respondido_tardio",
+  "sin_respuesta",
+]);
+export type PedidoEstado = z.infer<typeof PedidoEstadoSchema>;
+
+// Alta de un pedido REALMENTE presentado (admin — acto institucional del
+// nodo ante el organismo): fecha real de presentación (la ruta rechaza
+// fechas futuras: preparar la nota ≠ presentarla, R15), plazo declarado de
+// respuesta y evidencia opcional citando puntos críticos corroborados
+// del AMC (features pc-* community_validated de VIG-011 — N reportes de
+// M reportantes detrás, nunca un puntaje).
+export const PedidoAltaSchema = z.object({
+  nodo_key: SanJuanNodeSlugSchema,
+  key: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9_]+$/, "key: slug del pedido, minúsculas y guiones bajos")
+    .min(4)
+    .max(60),
+  bloque: PedidoBloqueSchema,
+  tema: z.string().trim().min(10, "El tema del pedido requiere al menos 10 caracteres").max(500),
+  destinatario: z.string().trim().min(2, "El destinatario requiere al menos 2 caracteres").max(120),
+  fecha_presentacion: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "fecha_presentacion: fecha real YYYY-MM-DD de la presentación"),
+  plazo_dias: z.number().int().min(1, "El plazo de respuesta requiere al menos 1 día").max(365),
+  evidencia_cluster_keys: z
+    .array(
+      z.string().regex(/^pc-/, "evidencia_cluster_keys: cluster keys pc-* del AMC (VIG-011)")
+    )
+    .max(10)
+    .optional(),
+});
+
+// Registro de la respuesta del organismo (admin): fecha real (la ruta
+// rechaza fechas futuras); el estado final lo DERIVA la ruta contra el
+// plazo (respondido_en_plazo | respondido_tardio) — nunca se declara a mano.
+export const PedidoRespuestaSchema = z.object({
+  fecha_respuesta: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "fecha_respuesta: fecha real YYYY-MM-DD de la respuesta"),
+  nota: z.string().trim().max(500).optional(),
+});
