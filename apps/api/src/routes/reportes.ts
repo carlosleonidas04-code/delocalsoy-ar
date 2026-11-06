@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { prisma, Prisma } from '@delocalsoy/db';
 import { xaddEventReference } from '@delocalsoy/redis';
-import { ReporteAltaSchema, ReporteDuplicadoSugeridoSchema, ReporteEstadoCambioSchema, REPORTE_TRANSICIONES } from '@delocalsoy/contracts';
+import { ReporteAltaSchema, ReporteAmcAltaSchema, ReporteCorroboracionSchema, ReporteDuplicadoSugeridoSchema, ReporteEstadoCambioSchema, REPORTE_TRANSICIONES, AMC_CATEGORIAS_POR_DOMINIO } from '@delocalsoy/contracts';
 import { detectaPII } from '../lib/anti-pii.js';
 import { requireJwt, requireRole } from '../lib/auth.js';
 
@@ -93,6 +93,187 @@ const RADIO_DUPLICADOS_M =
     ? RADIO_DUPLICADOS_CONFIGURADO
     : 100;
 
+// ─── VIG-011 (#378, épica #377): AMC — convergencia de clusters ───
+// Reglas ratificadas: mismo dominio+categoría, radio ~500 m (configurable
+// AMC_CLUSTER_RADIO_M) y ventana de 90 días (AMC_CLUSTER_VENTANA_DIAS)
+// sobre la fecha del testimonio (COALESCE(observado_en, created_at) — la
+// planilla papel se carga diferida y pesa por SU fecha, no por la de
+// carga). Un reportante distinto = un peso: web por pseudónimo
+// (created_by_hash), papel/whatsapp/presencial por alias comunitario
+// (reportado_por — nunca el hash del mediador que carga). 2+ reportantes
+// distintos → punto crítico 'community_validated' en la capa
+// punto_critico con N reportes, M reportantes y fecha — NUNCA un
+// puntaje (R5). Caducidad: 12 meses sin nueva corroboración → el punto
+// queda solo con su fecha visible para moderación (regla publicada en
+// docs/nodes/valle-de-iglesia/VIG-011-AMC.md). La comunidad corrobora,
+// NUNCA verifica (R15): 'verified' es solo técnico.
+type ClusterResultado = {
+  cluster_key: string;
+  reportes_count: number;
+  reportantes_count: number;
+  radio_m: number;
+  ventana_dias: number;
+};
+
+const RADIO_CLUSTER_CONFIGURADO = Number(process.env.AMC_CLUSTER_RADIO_M ?? '500');
+const RADIO_CLUSTER_M =
+  Number.isFinite(RADIO_CLUSTER_CONFIGURADO) && RADIO_CLUSTER_CONFIGURADO > 0
+    ? RADIO_CLUSTER_CONFIGURADO
+    : 500;
+const VENTANA_CLUSTER_CONFIGURADA = Number(process.env.AMC_CLUSTER_VENTANA_DIAS ?? '90');
+const VENTANA_CLUSTER_DIAS =
+  Number.isFinite(VENTANA_CLUSTER_CONFIGURADA) && VENTANA_CLUSTER_CONFIGURADA > 0
+    ? VENTANA_CLUSTER_CONFIGURADA
+    : 90;
+
+type ClusterMiembroRow = {
+  id: string;
+  categoria: string;
+  estado: string;
+  dominio: string | null;
+  canal_ingreso: string | null;
+  reportado_por: string | null;
+  created_by_hash: string | null;
+  lat: number | null;
+  lng: number | null;
+  fecha: Date;
+};
+
+async function convergenciaCluster(
+  nodoId: string,
+  nodoKey: string,
+  semilla: { id: string; categoria: string; dominio: string; subnodo_key: string | null; lat: number | null; lng: number | null }
+): Promise<ClusterResultado | null> {
+  if (semilla.lat === null || semilla.lng === null) return null;
+  const radioGrados = RADIO_CLUSTER_M / 111320;
+  const desde = new Date(Date.now() - VENTANA_CLUSTER_DIAS * 24 * 60 * 60 * 1000);
+  const miembros = (await prisma.$queryRaw`
+    SELECT id, categoria, estado, dominio, canal_ingreso, reportado_por, created_by_hash, lat, lng,
+      COALESCE(observado_en, created_at) AS fecha
+    FROM reportes
+    WHERE nodo_id = ${nodoId}
+      AND dominio = ${semilla.dominio}
+      AND categoria = ${semilla.categoria}
+      AND estado IN ('received', 'evaluating', 'in_progress')
+      AND is_synthetic = false
+      AND ST_DWithin(geom, ST_SetSRID(ST_MakePoint(${semilla.lng}, ${semilla.lat}), 4326), ${radioGrados})
+      AND COALESCE(observado_en, created_at) >= ${desde}
+    ORDER BY COALESCE(observado_en, created_at) ASC
+  `) as ClusterMiembroRow[];
+  if (miembros.length === 0) return null;
+
+  // Un reportante distinto = un peso (web: pseudónimo; mediado: alias).
+  const reportantes = new Set<string>();
+  for (const m of miembros) {
+    if (m.canal_ingreso === 'papel' || m.canal_ingreso === 'whatsapp' || m.canal_ingreso === 'presencial') {
+      reportantes.add('alias:' + (m.reportado_por ?? m.id));
+    } else {
+      reportantes.add('hash:' + (m.created_by_hash ?? m.id));
+    }
+  }
+  // Corroboraciones selladas de estos reportes: cada reportante distinto
+  // aporta un peso (idempotente por hash del evento 'reporte.corroborado').
+  for (const m of miembros) {
+    const sellos = (await prisma.events_raw.findMany({
+      where: { type: 'reporte.corroborado', payload: { path: ['reporte_id'], equals: m.id } },
+    })) as SelloRow[];
+    for (const s of sellos) {
+      const p = s.payload as Record<string, unknown>;
+      reportantes.add('hash:' + String(p.reportante_hash ?? m.id));
+    }
+  }
+  if (reportantes.size < 2) return null;
+
+  // Ancla determinista: punto del miembro MÁS ANTIGUO de la ventana — la
+  // convergencia se re-deriva en cada alta/corroboración; si el ancla
+  // envejece, el cluster se re-forma con clave nueva (honesto, R15).
+  const ancla = miembros[0];
+  const clusterKey =
+    'pc-' +
+    createHash('sha256')
+      .update(
+        nodoKey + '|' + semilla.categoria + '|' + (semilla.subnodo_key ?? 'nodo') + '|' +
+        Number(ancla.lat ?? 0).toFixed(3) + '|' + Number(ancla.lng ?? 0).toFixed(3)
+      )
+      .digest('hex')
+      .slice(0, 24);
+  const latProm = miembros.reduce((acc, m) => acc + (m.lat ?? 0), 0) / miembros.length;
+  const lngProm = miembros.reduce((acc, m) => acc + (m.lng ?? 0), 0) / miembros.length;
+  const fechaMax = miembros.reduce((acc, m) => (m.fecha > acc ? m.fecha : acc), miembros[0].fecha);
+
+  const capa = await prisma.capas.findFirst({ where: { key: 'punto_critico', nodo_id: nodoId } });
+  if (capa === null) return null;
+
+  const titulo =
+    'Punto crítico comunitario — ' + semilla.categoria + ' (' + miembros.length + ' reportes de ' + reportantes.size + ' vecinos)';
+  const fuenteLabel =
+    'Comunidad · AMC VIG-011 · ' + miembros.length + ' reportes de ' + reportantes.size + ' vecinos · ventana ' + VENTANA_CLUSTER_DIAS + ' días';
+
+  let creado = false;
+  try {
+    await prisma.features.create({
+      data: {
+        id: clusterKey, // determinista → idempotencia del punto crítico
+        nodo_id: nodoId,
+        capa_id: capa.id,
+        titulo,
+        tipo: 'problem',
+        estado: 'community_validated', // la comunidad valida; NUNCA verified (R15)
+        fuente_label: fuenteLabel,
+        observado_at: fechaMax,
+        lat: latProm,
+        lng: lngProm,
+        is_synthetic: false,
+      },
+    });
+    creado = true;
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      // El punto ya existe: los conteos se RE-DERIVAN (sin sello nuevo —
+      // una creación, un evento, R4).
+      await prisma.features.update({
+        where: { id: clusterKey },
+        data: { titulo, fuente_label: fuenteLabel, observado_at: fechaMax, lat: latProm, lng: lngProm },
+      });
+    } else {
+      throw err;
+    }
+  }
+
+  if (creado) {
+    try {
+      await sellarEvento('cluster.creado', {
+        cluster_key: clusterKey,
+        nodo_key: nodoKey,
+        categoria: semilla.categoria,
+        dominio: semilla.dominio,
+        subnodo_key: semilla.subnodo_key,
+        reportes_count: miembros.length,
+        reportantes_count: reportantes.size,
+        radio_m: RADIO_CLUSTER_M,
+        ventana_dias: VENTANA_CLUSTER_DIAS,
+      });
+    } catch (err) {
+      // Rollback (R4/R15): sin sello no hay punto crítico acreditado.
+      await prisma.features.delete({ where: { id: clusterKey } }).catch(() => undefined);
+      throw err;
+    }
+  }
+
+  await prisma.reportes.updateMany({
+    where: { id: { in: miembros.map((m) => m.id) } },
+    data: { cluster_key: clusterKey },
+  });
+
+  return {
+    cluster_key: clusterKey,
+    reportes_count: miembros.length,
+    reportantes_count: reportantes.size,
+    radio_m: RADIO_CLUSTER_M,
+    ventana_dias: VENTANA_CLUSTER_DIAS,
+  };
+}
+
 type DuplicadoRow = {
   id: string;
   categoria: string;
@@ -139,9 +320,21 @@ async function sugerirDuplicados(
 // POST /api/reportes — alta ciudadana (requireJwt): todo usuario con sesión
 // puede reportar; el reporte nace 'received', nunca un estado resuelto.
 router.post('/', requireJwt, async (req: Request, res: Response) => {
+  // VIG-011 (#378, épica #377): alta AMC — un cuerpo con 'dominio' activa
+  // la boca única del AMC (ReporteAmcAltaSchema: subnodo_key obligatorio,
+  // dominio→categoría coherentes, canal de ingreso, consentimiento
+  // granular para el alias); sin 'dominio', el alta CORE-005 R2 queda
+  // intacta (compatibilidad total, patrón VIG-002).
+  const esAmc = typeof req.body === 'object' && req.body !== null && 'dominio' in req.body;
+  let amc: z.infer<typeof ReporteAmcAltaSchema> | null = null;
   let parsed: z.infer<typeof ReporteAltaSchema>;
   try {
-    parsed = ReporteAltaSchema.parse(req.body);
+    if (esAmc) {
+      amc = ReporteAmcAltaSchema.parse(req.body);
+      parsed = amc;
+    } else {
+      parsed = ReporteAltaSchema.parse(req.body);
+    }
   } catch (error) {
     if (error instanceof z.ZodError) {
       res.status(400).json({ success: false, error: 'datos inválidos', details: error.errors });
@@ -155,6 +348,9 @@ router.post('/', requireJwt, async (req: Request, res: Response) => {
   const contenido = JSON.stringify({
     categoria: parsed.categoria,
     descripcion: parsed.descripcion,
+    // VIG-011: el alias comunitario también pasa el anti-PII (un alias
+    // con nombre/apellido o contacto se rechaza — es pseudónimo, ADR-027).
+    reportado_por: amc?.reportado_por ?? null,
   });
   const pii = detectaPII(contenido);
   if (pii) {
@@ -169,10 +365,14 @@ router.post('/', requireJwt, async (req: Request, res: Response) => {
 
   // Idempotencia por hash único: mismo ciudadano + mismo reporte → una sola
   // fila (patrón activos/fichas). El hash nunca contiene PII (sha256).
+  // VIG-011: el hash cubre el contexto AMC — dos planillas del mismo
+  // punto con alias distintos son DOS reportes (un reportante = un peso),
+  // nunca un duplicado idempotente.
   const hash = createHash('sha256')
     .update(
       usuario.id + '|' + parsed.nodo_key + '|' + parsed.categoria + '|' +
-      parsed.descripcion + '|' + parsed.lat + '|' + parsed.lng
+      parsed.descripcion + '|' + parsed.lat + '|' + parsed.lng + '|' +
+      (amc?.dominio ?? '') + '|' + (amc?.subnodo_key ?? '') + '|' + (amc?.reportado_por ?? '')
     )
     .digest('hex');
 
@@ -193,6 +393,42 @@ router.post('/', requireJwt, async (req: Request, res: Response) => {
       return;
     }
 
+    // VIG-011 (#378): AMC — coherencia dominio→categoría contra el espejo
+    // EXACTO del vocabulario VIG-010, ancla territorial contra los
+    // subnodos reales del nodo y mediador con aval vigente cuando el
+    // canal es mediado (ingesta humana, sin bot — R15).
+    if (amc !== null) {
+      if (!AMC_CATEGORIAS_POR_DOMINIO[amc.dominio].includes(parsed.categoria)) {
+        res.status(400).json({
+          success: false,
+          error: "categoría '" + parsed.categoria + "' ajena al dominio '" + amc.dominio + "' del AMC (VIG-011)",
+        });
+        return;
+      }
+      const subnodo = await prisma.subnodos.findFirst({
+        where: { key: amc.subnodo_key, nodo_key: parsed.nodo_key },
+      });
+      if (subnodo === null) {
+        res.status(400).json({
+          success: false,
+          error: 'subnodo_key inexistente en el nodo declarado (VIG-011: ancla territorial obligatoria)',
+        });
+        return;
+      }
+      if (amc.mediador_ref !== undefined) {
+        const mediador = await prisma.mediadores.findFirst({
+          where: { key: amc.mediador_ref, aval_estado: 'vigente' },
+        });
+        if (mediador === null) {
+          res.status(400).json({
+            success: false,
+            error: 'mediador_ref inexistente o sin aval vigente (registro de mediadores, VIG-011)',
+          });
+          return;
+        }
+      }
+    }
+
     const reporte = await prisma.reportes.create({
       data: {
         nodo_id: nodo.id,
@@ -204,6 +440,18 @@ router.post('/', requireJwt, async (req: Request, res: Response) => {
         is_synthetic: false, // el reporte ciudadano es registro comunitario real
         hash,
         created_by_hash: autor,
+        // VIG-011 (#378): extensión AMC — sin tabla nueva (patrón VIG-002).
+        subnodo_key: amc?.subnodo_key ?? null,
+        dominio: amc?.dominio ?? null,
+        tipo: amc?.tipo ?? null,
+        canal_ingreso: amc?.canal_ingreso ?? null,
+        mediador_ref: amc?.mediador_ref ?? null,
+        // El alias SOLO persiste con consentimiento granular guarda_alias.
+        reportado_por: amc !== null && amc.consentimiento?.guarda_alias === true ? (amc.reportado_por ?? null) : null,
+        consentimiento: amc?.consentimiento ?? null,
+        precision: amc?.precision ?? null,
+        riesgo_inmediato: amc?.riesgo_inmediato ?? false,
+        observado_en: amc?.observado_en !== undefined ? new Date(amc.observado_en + 'T12:00:00Z') : null,
       },
     });
 
@@ -216,6 +464,13 @@ router.post('/', requireJwt, async (req: Request, res: Response) => {
         categoria: parsed.categoria,
         estado: reporte.estado,
         created_by_hash: autor,
+        // VIG-011 (#378): AMC — sello extendido sin PII (sin descripción
+        // ni alias comunitario).
+        subnodo_key: amc?.subnodo_key ?? null,
+        dominio: amc?.dominio ?? null,
+        canal_ingreso: amc?.canal_ingreso ?? null,
+        precision: amc?.precision ?? null,
+        riesgo_inmediato: amc?.riesgo_inmediato ?? false,
       });
     } catch (err) {
       // Rollback (R4/R15): sin evento no hay escritura acreditada.
@@ -241,11 +496,35 @@ router.post('/', requireJwt, async (req: Request, res: Response) => {
       console.error('[reportes] sugerir duplicados:', err instanceof Error ? err.message : String(err));
     }
 
+    // VIG-011 (#378): convergencia de clusters AMC (mismo dominio+categoría,
+    // ~500 m, ventana 90 días; un reportante distinto = un peso).
+    // Fail-open honesto: el alta YA está acreditada (reporte + sello); si
+    // el cómputo falla → cluster_verificado: false — nunca un vacío no
+    // verificado (R15), mismo patrón que duplicados_verificados.
+    let cluster: ClusterResultado | null = null;
+    let clusterVerificado = true;
+    if (amc !== null) {
+      try {
+        cluster = await convergenciaCluster(nodo.id, parsed.nodo_key, {
+          id: reporte.id,
+          categoria: parsed.categoria,
+          dominio: amc.dominio,
+          subnodo_key: amc.subnodo_key,
+          lat: parsed.lat,
+          lng: parsed.lng,
+        });
+      } catch (err) {
+        clusterVerificado = false;
+        console.error('[reportes] convergencia:', err instanceof Error ? err.message : String(err));
+      }
+    }
+
     res.status(201).json({
       success: true,
       data: reporte,
       duplicados_sugeridos: duplicadosSugeridos,
       duplicados_verificados: duplicadosVerificados,
+      ...(amc !== null ? { cluster, cluster_verificado: clusterVerificado } : {}),
     });
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
@@ -372,6 +651,136 @@ router.patch('/:id/estado', requireJwt, requireRole('moderador', 'admin'), async
     // AUD-06 (#100): el detalle queda en stdout del servidor, nunca en la respuesta.
     console.error('[reportes] cambiar estado:', err instanceof Error ? err.message : String(err));
     res.status(500).json({ success: false, error: 'fallo al cambiar el estado' });
+  }
+});
+
+// POST /:id/corroboracion — VIG-011 (#378, épica #377): corroboración
+// ciudadana. La comunidad corrobora, NUNCA verifica (R15 — la promoción
+// a 'verified' es solo técnica: organismo, estudio, inspección). Un
+// reportante distinto = un peso: el autor no corrobora su propio
+// reporte (400) y el mismo vecino re-corroborando es idempotente (200,
+// sin nuevo peso — hash determinista del par usuario|reporte, una
+// escritura un evento, R4). El sello 'reporte.corroborado' es la fuente
+// de verdad del peso; tras sellar, la convergencia del cluster se
+// re-deriva (fail-open honesto: la corroboración YA está acreditada).
+router.post('/:id/corroboracion', requireJwt, async (req: Request, res: Response) => {
+  const reporteId = req.params.id;
+
+  let parsed: z.infer<typeof ReporteCorroboracionSchema>;
+  try {
+    parsed = ReporteCorroboracionSchema.parse(req.body ?? {});
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ success: false, error: 'datos inválidos', details: error.errors });
+      return;
+    }
+    throw error;
+  }
+
+  // Anti-PII (ADR-020 cond. 1): la nota del vecino también pasa el filtro
+  // ANTES de sellarse — rechazo genérico, sin eco del valor.
+  if (parsed.nota !== undefined) {
+    const pii = detectaPII(parsed.nota);
+    if (pii) {
+      res.status(400).json({
+        error: 'payload rechazado: contiene datos personales identificables (' + pii + ') — ADR-020 cond. 1, Ley 25.326',
+      });
+      return;
+    }
+  }
+
+  const usuario = res.locals.usuario as { id: string };
+  const reportanteHash = seudonimo(usuario.id);
+
+  try {
+    const reporte = await prisma.reportes.findUnique({ where: { id: reporteId } });
+    if (reporte === null) {
+      res.status(404).json({ success: false, error: 'reporte no encontrado' });
+      return;
+    }
+    if (!['received', 'evaluating', 'in_progress'].includes(reporte.estado)) {
+      res.status(409).json({
+        success: false,
+        error: "el reporte está cerrado ('" + reporte.estado + "') — no hay nada que corroborar",
+      });
+      return;
+    }
+    if (reporte.created_by_hash === reportanteHash) {
+      res.status(400).json({
+        success: false,
+        error: 'el autor no corrobora su propio reporte (un reportante distinto = un peso, VIG-011)',
+      });
+      return;
+    }
+
+    // Sello idempotente: hash determinista del par (usuario, reporte) —
+    // un mismo vecino nunca pesa dos veces por el mismo reporte. El
+    // payload es NO-PII por construcción (reportante_hash = pseudónimo).
+    const hash = createHash('sha256').update(usuario.id + '|corroboracion|' + reporteId).digest('hex');
+    const nodo = await prisma.nodos.findUnique({ where: { id: reporte.nodo_id } });
+    try {
+      const event = await prisma.events_raw.create({
+        data: {
+          type: 'reporte.corroborado',
+          payload: {
+            reporte_id: reporteId,
+            nodo_key: nodo?.key ?? null,
+            categoria: reporte.categoria,
+            dominio: reporte.dominio,
+            subnodo_key: reporte.subnodo_key,
+            precision: parsed.precision ?? null,
+            reportante_hash: reportanteHash,
+          } as object,
+          hash,
+          occurred_at: new Date(),
+        },
+      });
+      await xaddEventReference('events:raw', {
+        event_id: event.id,
+        type: event.type,
+        hash: event.hash,
+        occurred_at: event.occurred_at.toISOString(),
+      });
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        // Reintento idempotente: 200 sin nuevo peso ni sello (R4).
+        res.status(200).json({ success: true, data: { reporte_id: reporteId, peso: false }, idempotente: true });
+        return;
+      }
+      throw err;
+    }
+
+    // Convergencia AMC: el peso nuevo puede formar/actualizar el cluster
+    // (fail-open honesto — la corroboración YA está acreditada).
+    let cluster: ClusterResultado | null = null;
+    let clusterVerificado = true;
+    if (reporte.dominio !== null && reporte.dominio !== undefined) {
+      try {
+        cluster = await convergenciaCluster(reporte.nodo_id, nodo?.key ?? '', {
+          id: reporte.id,
+          categoria: reporte.categoria,
+          dominio: reporte.dominio,
+          subnodo_key: reporte.subnodo_key,
+          lat: reporte.lat,
+          lng: reporte.lng,
+        });
+      } catch (err) {
+        clusterVerificado = false;
+        console.error('[reportes] convergencia (corroboración):', err instanceof Error ? err.message : String(err));
+      }
+    }
+
+    res.status(201).json({
+      success: true,
+      data: { reporte_id: reporteId, peso: true },
+      ...(reporte.dominio !== null && reporte.dominio !== undefined
+        ? { cluster, cluster_verificado: clusterVerificado }
+        : {}),
+    });
+  } catch (err) {
+    // AUD-06 (#100): el detalle queda en stdout del servidor, nunca en la respuesta.
+    console.error('[reportes] corroboración:', err instanceof Error ? err.message : String(err));
+    res.status(500).json({ success: false, error: 'fallo al corroborar el reporte' });
   }
 });
 
