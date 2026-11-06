@@ -2,7 +2,7 @@
 
 Propósito: fijar la asignación de números EV **antes** de la cascada de registros post-merge (cierre del conflicto abierto F0-C1: EV-057 llegó a estar reclamada dos veces). Regla: el número se escribe en `docs/EVIDENCIA.md` solo al registrar el merge, anclado al SHA real (patrón PR #208).
 
-Estado de esta revisión (2026-11-06, actualización M0): la cascada de 31 PRs se mergeó tras la restauración de Actions (2026-11-01) y EV-055..EV-081 quedaron **registradas** en `docs/EVIDENCIA.md`. Esta tabla refleja ahora los anclajes REALES del registro; las divergencias con la asignación original quedan documentadas en Notas.
+Estado de esta revisión (2026-11-06, actualización M0): la cascada de 31 PRs se mergeó tras la restauración de Actions (2026-11-01) y EV-055..EV-082 quedaron **registradas** en `docs/EVIDENCIA.md`. Esta tabla refleja ahora los anclajes REALES del registro; las divergencias con la asignación original quedan documentadas en Notas.
 
 | EV | PR | Entregable | Notas |
 | --- | --- | --- | --- |
@@ -33,7 +33,7 @@ Estado de esta revisión (2026-11-06, actualización M0): la cascada de 31 PRs s
 | EV-079 | #369 | NCAP-R1 (#153) — vocabulario del nodo Capital | registrada |
 | EV-080 | #371 | NCAP-R5 (#157) — accesibilidad del nodo Capital | registrada |
 | EV-081 | #373 | NCAP-FE-163 — integración del frontend del Nodo Capital | registrada |
-| EV-082 | — | RESERVADA: registro NC-R4 (#139, cruce in-situ Caucete) | reservada; sin registro aún |
+| EV-082 | #375 | NC-R4 (#139) — cruce público ↔ in-situ sobre capas v6 de caucete | registrada (registro tardío R15; ancla `9f1bae9d`) |
 | EV-083 | #383 | VIG-010 (#381) — vocabulario vial del Valle de Iglesia | registrada (registro en #384) |
 | EV-084 | #385 | VIG-011 (#378) — AMC: reportes + mediadores | registrada (registro en #386) |
 | EV-085 | #387 | VIG-012 (#379) — pedidos formales | registrada (registro en #388) |
@@ -42,6 +42,6 @@ Estado de esta revisión (2026-11-06, actualización M0): la cascada de 31 PRs s
 
 PRs sin EV (documental/estética, patrón #148): #225 (F0 + RFC-027), #232 (volcado ADR-037/038/039), #237 (reporte stage + tokens epistémicos), #238 (stage componentes parciales, ADR-034), #244 (MK-0 diseño), #251 (MK-2 diseño), #257 (CAU-001 doc rector stage Caucete). Fixes sin EV (precedente #298 — corrección de paridad demo): #393 (subnodos demo del nodo iglesia).
 
-Próximo número libre: **EV-088** (EV-082 reservada al registro NC-R4 #139).
+Próximo número libre: **EV-088** (EV-082 ya registrada: NC-R4 #139, PR #375).
 
-Esta tabla es mecánica y fue aterrizada por directiva de la DH del 2026-10-26; revisada contra `docs/EVIDENCIA.md` el 2026-11-06 (actualización M0, PR de docs con traza en #258). Cambios de asignación: editar este archivo en un PR propio con traza.
+Esta tabla es mecánica y fue aterrizada por directiva de la DH del 2026-10-26; revisada contra `docs/EVIDENCIA.md` el 2026-11-06 (actualización M0, PR de docs con traza en #258; EV-082 registrada por su PR de registro). Cambios de asignación: editar este archivo en un PR propio con traza.
