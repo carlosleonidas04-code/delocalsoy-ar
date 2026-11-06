@@ -759,3 +759,39 @@ model mediadores {
   @@index([nodo_key])
   @@map("mediadores")
 }
+
+// ─── NODO-VIG-3 VIG-012 (#379, épica #377): pedidos formales ───
+
+/// Pedidos formales del nodo (libro de reclamos del plan vecinal ante
+/// DPV): ÚNICA tabla nueva del módulo (decisión DH 2026-11-06). Nace
+/// VACÍA (R15): preparar la nota ≠ presentarla — los 15 pedidos de la
+/// nota formal a DPV son contenido documental (fuente: documento vecinal
+/// interno, sin firmantes expuestos ADR-027), NO filas precargadas; cada
+/// pedido se crea a medida que se presenta, con fecha real y sello
+/// 'pedido.presentado'. Ciclo: presentado → respondido_en_plazo |
+/// respondido_tardio ('sin_respuesta' NO se transita: se DERIVA en
+/// lectura — plazo vencido sin respuesta, R15). La evidencia cita los
+/// puntos críticos corroborados del AMC (features pc-* community_validated
+/// de VIG-011: N reportes de M reportantes detrás). Autor = pseudónimo
+/// sha256(usuario_id) truncado — sin PII (Ley 25.326, ADR-027).
+model pedidos {
+  id                     String    @id @default(cuid())
+  nodo_key               String    @map("nodo_key")
+  key                    String    @unique @map("key") // slug único del pedido (p. ej. dpv_01_proyecto)
+  bloque                 String    @map("bloque") // PedidoBloqueSchema: bloques A-E de la nota a DPV
+  tema                   String    @map("tema") // tema público del pedido (anti-PII al crear)
+  destinatario           String    @map("destinatario") // organismo destinatario (p. ej. DPV)
+  fecha_presentacion     DateTime  @map("fecha_presentacion") // fecha REAL de presentación (no futura — R15)
+  plazo_dias             Int       @map("plazo_dias") // plazo declarado de respuesta
+  estado                 String    @default("presentado") @map("estado") // presentado | respondido_en_plazo | respondido_tardio
+  respondido_en          DateTime? @map("respondido_en") // fecha de la respuesta del organismo
+  nota_respuesta         String?   @map("nota_respuesta") // nota pública de la respuesta (anti-PII)
+  evidencia_cluster_keys String[]  @map("evidencia_cluster_keys") // → features pc-* (punto_critico community_validated, VIG-011)
+  created_by_hash        String    @map("created_by_hash") // pseudónimo sha256(usuario_id) — ADR-027
+  hash                   String    @unique @map("hash") // idempotencia del registro
+  created_at             DateTime  @default(now()) @map("created_at")
+  updated_at             DateTime  @updatedAt @map("updated_at")
+
+  @@index([nodo_key, estado])
+  @@map("pedidos")
+}

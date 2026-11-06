@@ -16,6 +16,7 @@ import modeloFederadoRouter from './routes/modeloFederado.js';
 import nodosRouter from './routes/nodos.js';
 import oportunidadesRouter from './routes/oportunidades.js';
 import patrimonioRouter from './routes/patrimonio.js';
+import pedidosRouter from './routes/pedidos.js';
 import productosRouter from './routes/productos.js';
 import reportesRouter from './routes/reportes.js';
 import showcaseRouter from './routes/showcase.js';
@@ -117,6 +118,7 @@ export function createApp(): Express {
   // punto de acceso — NUNCA el campo sensible, ADR-036) y custodia PATCH
   // moderador|admin con sello patrimonio.custodiado en events_raw + rollback.
   app.use('/api/patrimonio', patrimonioRouter);
+  app.use('/api/pedidos', pedidosRouter);
 
   // Dominio: producción y turismo (NODO-VIG VIG-005, NVIG-R7 #174 — épica
   // #167): catálogo de productos del territorio por activo (GET público
