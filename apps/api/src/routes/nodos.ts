@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import prisma from '../lib/prisma.js';
 import { Prisma } from '@delocalsoy/db';
-import { AskPreguntaSchema, SubnodoFiltroSchema } from '@delocalsoy/contracts';
+import { AskPreguntaSchema, PEDIDOS_DPV_ESPERADOS, SubnodoFiltroSchema, VIG013_KPI_KEYS } from '@delocalsoy/contracts';
 
 /**
  * Rutas de lectura del vocabulario CORE-002 (CORE-003 R1, #83).
@@ -329,6 +329,192 @@ router.get('/:key/accesibilidad', async (req: Request, res: Response) => {
   }
 });
 
+// GET /nodos/:key/infraestructura-movilidad — dashboard público del módulo
+// NODO-VIG-3 (VIG-013 #382, épica #377 — patrón NCAP-R5 #157): conteos CON
+// cobertura y fecha SIEMPRE, NUNCA puntajes globales (R5/ADR-036).
+// Secciones: obras viales por estado del ciclo (declared|in_execution|
+// completed — anuncio ≠ obra, R15) y por fuente, con km null honesto (los km
+// de los tramos no están estructurados en fuente verificada); puntos
+// críticos del AMC por estado de revisión (VIG-011: la comunidad corrobora,
+// NUNCA verifica) con el título comunitario «N reportes de M vecinos» y
+// SIN geometría publicada (ADR-036: el dashboard cuenta, no dibuja — no se
+// publica lat/lng de ningún punto); paradas de transporte con cobertura
+// declarada (la capa parada_transporte nace VACÍA: sin padrón verificado no
+// se siembran paradas — fuente secundaria/provisional, R15); brechas de
+// cobertura SOS por tramo DECLARADAS por el trabajo territorial (el portal
+// oficial NO publica cobertura por tramo como padrón, R15) junto a la red
+// verificada del Paso Agua Negra (VIG-010); resumen del tablero de pedidos
+// a DPV (VIG-012: «X de 15 presentados · Y respondidos (corte …)») y los
+// 6 KPIs VIG-013 leídos de kpi_snapshots (patrón VIG-003: los materializa
+// el consumidor vig003-kpi — sin corrida → 0 snapshots honestos, R15).
+// Lectura pública anónima; 404 nodo inexistente (R15).
+const VIG013_BRECHAS_SOS: Array<{ tramo: string; estado: string; fuente: string }> = [
+  {
+    tramo: 'RN 150 tramo Las Flores–Colola',
+    estado: 'declarada',
+    fuente: 'documento vecinal interno (procedencia declarada, sin firmantes — ADR-027)',
+  },
+  {
+    tramo: 'RN 150 tramo Rodeo–Jáchal',
+    estado: 'declarada',
+    fuente: 'documento vecinal interno (procedencia declarada, sin firmantes — ADR-027)',
+  },
+  {
+    tramo: 'RN 149 bajada Alto del Colorado–Villa Iglesia',
+    estado: 'declarada',
+    fuente: 'documento vecinal interno (procedencia declarada, sin firmantes — ADR-027)',
+  },
+];
+
+router.get('/:key/infraestructura-movilidad', async (req: Request, res: Response) => {
+  try {
+    const nodo = await nodoPorKey(req.params.key);
+    if (!nodo) {
+      return res.status(404).json({ success: false, error: 'Nodo no encontrado' });
+    }
+    const [feats, pedidosRows, kpiRows] = await Promise.all([
+      prisma.features.findMany({ where: { nodo_id: nodo.id }, include: { capa: true } }),
+      prisma.pedidos.findMany({ where: { nodo_key: nodo.key } }),
+      prisma.kpi_snapshots.findMany({
+        where: { nodo_key: nodo.key, kpi_key: { in: [...VIG013_KPI_KEYS] } },
+        orderBy: { kpi_key: 'asc' },
+      }),
+    ]);
+
+    const deCapa = (capaKey: string) => feats.filter((f: any) => f.capa?.key === capaKey);
+
+    // Obras viales (VIG-010): por estado del ciclo y por fuente — anuncio ≠
+    // obra (R15); km null honesto: no hay km estructurados verificados.
+    const porEstadoObras: Record<string, number> = {};
+    const porFuenteObras: Record<string, number> = {};
+    let fechaObrasMax = 0;
+    for (const f of deCapa('obra_vial')) {
+      const est = f.estado as string;
+      porEstadoObras[est] = (porEstadoObras[est] ?? 0) + 1;
+      const fuente = f.fuente_label as string;
+      porFuenteObras[fuente] = (porFuenteObras[fuente] ?? 0) + 1;
+      const t = new Date(f.observado_at).getTime();
+      if (t > fechaObrasMax) fechaObrasMax = t;
+    }
+
+    // Puntos críticos del AMC (VIG-011): por estado de revisión + el título
+    // comunitario de cada uno — SIN lat/lng (ADR-036).
+    const porEstadoCriticos: Record<string, number> = {};
+    let fechaCriticosMax = 0;
+    for (const f of deCapa('punto_critico')) {
+      const est = f.estado as string;
+      porEstadoCriticos[est] = (porEstadoCriticos[est] ?? 0) + 1;
+      const t = new Date(f.observado_at).getTime();
+      if (t > fechaCriticosMax) fechaCriticosMax = t;
+    }
+    const criticos = deCapa('punto_critico')
+      .map((f: any) => ({
+        id: f.id as string,
+        titulo: f.titulo as string,
+        estado: f.estado as string,
+        observado_at: new Date(f.observado_at).toISOString().slice(0, 10),
+      }))
+      .sort((a: any, b: any) => (a.observado_at < b.observado_at ? 1 : -1));
+
+    // Paradas de transporte (VIG-010): nace VACÍA — cobertura declarada.
+    const paradas = deCapa('parada_transporte');
+    const porEstadoParadas: Record<string, number> = {};
+    for (const f of paradas) {
+      const est = f.estado as string;
+      porEstadoParadas[est] = (porEstadoParadas[est] ?? 0) + 1;
+    }
+
+    // Cobertura SOS (VIG-010): red verificada del portal oficial + brechas
+    // por tramo DECLARADAS por el trabajo territorial (R15).
+    const sos = deCapa('cobertura_sos');
+    const porEstadoSos: Record<string, number> = {};
+    let fechaSosMax = 0;
+    for (const f of sos) {
+      const est = f.estado as string;
+      porEstadoSos[est] = (porEstadoSos[est] ?? 0) + 1;
+      const t = new Date(f.observado_at).getTime();
+      if (t > fechaSosMax) fechaSosMax = t;
+    }
+
+    // Pedidos a DPV (VIG-012): resumen del tablero — misma cobertura/fecha.
+    const presentados = pedidosRows.length;
+    const respondidos = pedidosRows.filter(
+      (p: any) => p.estado === 'respondido_en_plazo' || p.estado === 'respondido_tardio'
+    ).length;
+    const hoy = new Date();
+    hoy.setUTCHours(0, 0, 0, 0);
+    const fechaCorte = hoy.toISOString().slice(0, 10);
+
+    // KPIs VIG-013 (patrón VIG-003): lectura de kpi_snapshots — sin corrida
+    // del consumidor vig003-kpi → 0 snapshots honestos (R15).
+    let fechaKpiMax = 0;
+    for (const k of kpiRows) {
+      const t = new Date(k.computed_at).getTime();
+      if (t > fechaKpiMax) fechaKpiMax = t;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        nodo_key: nodo.key,
+        generado_en: new Date().toISOString(),
+        regla: 'Conteos con cobertura y fecha — jamás puntajes globales (R5/ADR-036)',
+        obras: {
+          total: deCapa('obra_vial').length,
+          por_estado: porEstadoObras,
+          por_fuente: Object.entries(porFuenteObras).map(([fuente, total]) => ({ fuente, total })),
+          km_ejecucion: null,
+          km_nota: 'los km de los tramos en ejecución no están estructurados en fuente verificada — null honesto (R15)',
+          fecha_corte: fechaObrasMax > 0 ? new Date(fechaObrasMax).toISOString().slice(0, 10) : null,
+          cautela: 'anuncio ≠ obra (R15): RN 150 y derivadores son anuncios/ejecuciones de prensa provincial — el estado por tramo exige verificación (VIG-010)',
+        },
+        puntos_criticos: {
+          total: criticos.length,
+          por_estado: porEstadoCriticos,
+          criticos,
+          fecha_corte: fechaCriticosMax > 0 ? new Date(fechaCriticosMax).toISOString().slice(0, 10) : null,
+          cautela: 'la comunidad corrobora, NUNCA verifica (R15): community_validated ≠ verificado técnico — el título declara «N reportes de M vecinos», nunca un puntaje',
+        },
+        paradas_transporte: {
+          total: paradas.length,
+          por_estado: porEstadoParadas,
+          cobertura: paradas.length + ' paradas registradas (sin padrón verificado — R15)',
+          fuente: 'agregador de transporte (secundaria/provisional — ADR-035, sin GTFS/padrón de las líneas 600/601)',
+          cautela: 'la capa parada_transporte nace VACÍA (R15): sin padrón verificado no se siembran paradas',
+        },
+        cobertura_sos: {
+          red_por_estado: porEstadoSos,
+          brechas_declaradas: VIG013_BRECHAS_SOS,
+          fecha_corte: fechaSosMax > 0 ? new Date(fechaSosMax).toISOString().slice(0, 10) : null,
+          cautela: 'brechas DECLARADAS por el trabajo territorial (R15): el portal oficial del Paso Agua Negra no publica cobertura por tramo como padrón',
+        },
+        pedidos_dpv: {
+          esperados_documento: PEDIDOS_DPV_ESPERADOS,
+          presentados,
+          respondidos,
+          cobertura:
+            presentados + ' de ' + PEDIDOS_DPV_ESPERADOS + ' presentados · ' + respondidos + ' respondidos (corte ' + fechaCorte + ')',
+          fecha_corte: fechaCorte,
+        },
+        kpis: {
+          total: kpiRows.length,
+          snapshots: kpiRows.map((k: any) => ({
+            kpi_key: k.kpi_key as string,
+            valor: (k.valor as number | null) ?? null,
+            detalles: k.detalles as Record<string, number>,
+            computed_at: new Date(k.computed_at).toISOString(),
+          })),
+          fecha_corte: fechaKpiMax > 0 ? new Date(fechaKpiMax).toISOString().slice(0, 10) : null,
+          nota: 'materializados por el consumidor vig003-kpi (patrón VIG-003, VIG-013 #382): sin corrida del worker → 0 honesto (R15)',
+        },
+      },
+    });
+  } catch (error) {
+    console.error('[nodos] infraestructura-movilidad:', error instanceof Error ? error.message : String(error));
+    res.status(500).json({ success: false, error: 'Error al obtener el dashboard de infraestructura y movilidad' });
+  }
+});
+
 // POST /nodos/:key/ask - consulta territorial ética (VIG-006, #188, épica
 // #167): recuperación full-text NATIVA de PostgreSQL sobre rag_index
 // (tsvector 'spanish' generado + GIN, migración 20261014230000) y respuesta
@@ -469,3 +655,4 @@ router.post('/:key/ask', async (req: Request, res: Response) => {
   }
 });
 export default router;
+

@@ -92,6 +92,15 @@ const KPI_TEXTO: Record<string, string> = {
   activos_verificados: 'Activos verificados con procedencia trazable',
   eventos_por_tipo: 'Eventos sellados por tipo',
   cobertura_geometrica: 'Cobertura geométrica del nodo',
+  // VIG-013 (#382, épica #377): prosa de los KPIs del dashboard «Infraestructura
+  // y movilidad» — el fallback ya era honesto (la clave cruda), esto le da
+  // lectura humana sin agregar interpretación (R15).
+  pedidos_respondidos: 'Pedidos formales respondidos ante el organismo',
+  obras_km_ejecucion: 'Kilómetros de obra vial en ejecución',
+  puntos_criticos_con_revision: 'Puntos críticos con revisión comunitaria o técnica',
+  reportes_amc_por_dominio: 'Reportes ciudadanos del AMC por dominio',
+  reportes_amc_por_distrito: 'Reportes ciudadanos del AMC por distrito',
+  parajes_con_reporte: 'Parajes con al menos un reporte del AMC',
 };
 
 function asReglas(v: unknown): ReglaRow[] {
@@ -262,3 +271,4 @@ export async function recomputeRagIndexForNode(nodoKey: string): Promise<RagReco
 
   return { written: fragmentos.length, deleted };
 }
+
