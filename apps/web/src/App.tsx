@@ -8,6 +8,7 @@ import { FederatedNodeExplorer } from './components/FederatedNodeExplorer';
 import { GmpQuotaBanner } from './components/GmpQuotaBanner';
 import { HeroBannerSection } from './components/HeroBannerSection';
 import { NodoCapitalDashboard } from './components/NodoCapitalDashboard';
+import { VialidadMovilidadPanel } from './components/VialidadMovilidadPanel';
 import { ShowcaseRecorridoPanel } from './components/ShowcaseRecorridoPanel';
 import { ServicioInformativoPanel } from './components/ServicioInformativoPanel';
 import { SyntheticModeWarningBanner } from './components/SyntheticModeWarningBanner';
@@ -1140,6 +1141,15 @@ export function App() {
             accesibilidad peatonal (NCAP-R5) — acople por contrato DataSource (ADR-029) */}
         {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') && (
           <NodoCapitalDashboard dataSource={defaultDataSource} />
+        )}
+
+        {/* 6f. Módulo de infraestructura y movilidad del nodo iglesia (VIG-014 #380,
+            épica #377 — cierra NODO-VIG-3): dashboard VIG-013, mapa de capas, tablero de
+            pedidos a DPV (VIG-012), formulario y seguimiento AMC (VIG-011) y planilla de
+            papel — acople por contrato DataSource (ADR-029), degradación synthetic
+            etiquetada (R15) */}
+        {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') && (
+          <VialidadMovilidadPanel dataSource={defaultDataSource} />
         )}
 
         {/* 7. Estado de Integración API y Registro Maestro de Nodos Territoriales — extraída 1:1 a MasterRegistrySection (FE-DEUDA-02 #293, corte 21) */}

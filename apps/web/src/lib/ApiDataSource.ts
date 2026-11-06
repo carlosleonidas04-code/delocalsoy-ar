@@ -62,6 +62,24 @@ import {
   type OportunidadesQuery,
   type OportunidadItem,
 } from './oportunidades';
+import {
+  normalizarFeaturesMapa,
+  normalizarInfraestructuraMovilidad,
+  normalizarMisReportes,
+  normalizarPedidosTablero,
+  normalizarReporteAmcRespuesta,
+  normalizarReporteHistorial,
+  normalizarSubnodos,
+  validarReporteAmc,
+  type FeatureMapaVig,
+  type InfraestructuraMovilidad,
+  type MiReporte,
+  type PedidosTablero,
+  type ReporteAmcCreatePayload,
+  type ReporteAmcResultado,
+  type ReporteHistorial,
+  type SubnodoVig,
+} from './vig014';
 
 export interface ApiDataSourceOptions {
   fetchImpl?: typeof fetch;
@@ -680,5 +698,155 @@ export class ApiDataSource implements DataSource {
       });
     }
     return normalizarAccesibilidad(payload.data);
+  }
+
+  // ─── NODO-VIG-3 VIG-014 (#380, épica #377): módulo de infraestructura y
+  // movilidad del nodo iglesia — consumo por contrato (ADR-029), R5: ningún
+  // error HTTP se convierte en [] y un data malformado es un error honesto.
+
+  /** GET /api/nodos/:key/subnodos — jerarquía VIG-001 (distritos/parajes). */
+  public async listSubnodos(nodoKey: SanJuanFocalNodeKey): Promise<SubnodoVig[]> {
+    const endpoint = '/api/nodos/' + encodeURIComponent(nodoKey) + '/subnodos';
+    const payload = await this.requestJson<any>(endpoint);
+    const data = Array.isArray(payload?.data) ? payload.data : null;
+    if (data === null) {
+      throw new DataSourceHttpError({
+        status: 500,
+        endpoint,
+        message: 'Respuesta malformada de ' + endpoint + ': se esperaba un arreglo en data',
+        details: payload,
+      });
+    }
+    return normalizarSubnodos(data);
+  }
+
+  /** GET /api/nodos/:key/infraestructura-movilidad — dashboard VIG-013. */
+  public async getInfraestructuraMovilidad(nodoKey: SanJuanFocalNodeKey): Promise<InfraestructuraMovilidad> {
+    const endpoint = '/api/nodos/' + encodeURIComponent(nodoKey) + '/infraestructura-movilidad';
+    const payload = await this.requestJson<any>(endpoint);
+    // data es un OBJETO único (dashboard): un arreglo ES data malformada (R5).
+    if (
+      payload === null ||
+      typeof payload !== 'object' ||
+      Array.isArray(payload) ||
+      typeof payload.data !== 'object' ||
+      Array.isArray(payload.data) ||
+      payload.data === null
+    ) {
+      throw new DataSourceHttpError({
+        status: 500,
+        endpoint,
+        message: 'Respuesta malformada de ' + endpoint + ': se esperaba un objeto en data',
+        details: payload,
+      });
+    }
+    return normalizarInfraestructuraMovilidad(payload.data);
+  }
+
+  /** GET /api/nodos/:key/features — capas del mapa del módulo (is_synthetic
+   * llega tal cual: la UI etiqueta «Ilustrativa» cada feature sintética). */
+  public async getFeaturesMapa(nodoKey: SanJuanFocalNodeKey): Promise<FeatureMapaVig[]> {
+    const endpoint = '/api/nodos/' + encodeURIComponent(nodoKey) + '/features';
+    const payload = await this.requestJson<any>(endpoint);
+    const data = Array.isArray(payload?.data) ? payload.data : null;
+    if (data === null) {
+      throw new DataSourceHttpError({
+        status: 500,
+        endpoint,
+        message: 'Respuesta malformada de ' + endpoint + ': se esperaba un arreglo en data',
+        details: payload,
+      });
+    }
+    return normalizarFeaturesMapa(data);
+  }
+
+  /** GET /api/pedidos?nodo= — tablero público VIG-012 («X de 15»). */
+  public async getPedidosTablero(nodoKey: SanJuanFocalNodeKey): Promise<PedidosTablero> {
+    const endpoint = '/api/pedidos?nodo=' + encodeURIComponent(nodoKey);
+    const payload = await this.requestJson<any>(endpoint);
+    if (
+      payload === null ||
+      typeof payload !== 'object' ||
+      Array.isArray(payload) ||
+      typeof payload.data !== 'object' ||
+      Array.isArray(payload.data) ||
+      payload.data === null
+    ) {
+      throw new DataSourceHttpError({
+        status: 500,
+        endpoint,
+        message: 'Respuesta malformada de ' + endpoint + ': se esperaba un objeto en data',
+        details: payload,
+      });
+    }
+    return normalizarPedidosTablero(payload.data);
+  }
+
+  /**
+   * POST /api/reportes (alta AMC VIG-011): validación cliente espejo del Zod
+   * (422 anticipado) + Bearer de sesión. La API valida SIEMPRE (canon
+   * AMC_CATEGORIAS_POR_DOMINIO, 400 si la categoría es ajena al dominio).
+   * La respuesta puede ser 201 (creado) o 200 (reintento idempotente).
+   */
+  public async createReporteAmc(input: ReporteAmcCreatePayload): Promise<ReporteAmcResultado> {
+    const validacion = validarReporteAmc(input);
+    if (!validacion.ok) {
+      throw new DataSourceHttpError({
+        status: 422,
+        endpoint: '/api/reportes',
+        message: 'Reporte AMC inválido: ' + validacion.errores.join('; '),
+        details: validacion.errores,
+      });
+    }
+    const { token, ...cuerpo } = input;
+    const payload = await this.requestJson<any>('/api/reportes', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(cuerpo),
+    });
+    return normalizarReporteAmcRespuesta(payload);
+  }
+
+  /** GET /api/reportes/mios — suscripción del reportero (Bearer, R4 #206). */
+  public async listMisReportes(token: string): Promise<MiReporte[]> {
+    const endpoint = '/api/reportes/mios';
+    const payload = await this.requestJson<any>(endpoint, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = Array.isArray(payload?.data) ? payload.data : null;
+    if (data === null) {
+      throw new DataSourceHttpError({
+        status: 500,
+        endpoint,
+        message: 'Respuesta malformada de ' + endpoint + ': se esperaba un arreglo en data',
+        details: payload,
+      });
+    }
+    return normalizarMisReportes(data);
+  }
+
+  /** GET /api/reportes/:id/historial — historial público (ADR-038). */
+  public async getReporteHistorial(id: string): Promise<ReporteHistorial> {
+    const endpoint = '/api/reportes/' + encodeURIComponent(id) + '/historial';
+    const payload = await this.requestJson<any>(endpoint);
+    if (
+      payload === null ||
+      typeof payload !== 'object' ||
+      Array.isArray(payload) ||
+      typeof payload.data !== 'object' ||
+      Array.isArray(payload.data) ||
+      payload.data === null
+    ) {
+      throw new DataSourceHttpError({
+        status: 500,
+        endpoint,
+        message: 'Respuesta malformada de ' + endpoint + ': se esperaba un objeto en data',
+        details: payload,
+      });
+    }
+    return normalizarReporteHistorial(payload.data);
   }
 }
