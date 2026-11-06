@@ -163,7 +163,26 @@ model reportes {
   /// versionada 20261007120000_core002_schema (Prisma no tipa geometry).
   geom Unsupported("geometry(Point,4326)")?
 
+  // VIG-011 (#378, épica #377): AMC — contexto de mediación del reporte.
+  // Sin "dominio" la fila es un reporte legacy CORE-005 intacto (patrón
+  // VIG-002: la escritura existente no cambia).
+  subnodo_key     String?   @map("subnodo_key") // ancla territorial del AMC (subnodos VIG-001)
+  dominio         String?   @map("dominio") // AmcDominioSchema: espacio_publico | infraestructura_vial | movilidad | agua_saneamiento | clima_ambiente | conectividad | servicios | produccion_rural | patrimonio
+  tipo            String?   @map("tipo") // N3 de la taxonomía VIG-000 (opcional)
+  canal_ingreso   String?   @map("canal_ingreso") // web | papel | whatsapp | presencial — 3 canales en paralelo desde el día 1
+  mediador_ref    String?   @map("mediador_ref") // → mediadores.key (canal mediado, sin bot — R15)
+  reportado_por   String?   @map("reportado_por") // alias comunitario — SOLO con consentimiento guarda_alias (ADR-027, Ley 25.326)
+  consentimiento  Json?     @map("consentimiento") // ReporteAmcConsentimientoSchema — consentimiento granular
+  precision       String?   @map("precision") // gps | referencial | aproximado
+  riesgo_inmediato Boolean  @default(false) @map("riesgo_inmediato") // prioridad por riesgo declarado (VIG-011)
+  observado_en    DateTime? @map("observado_en") // fecha del testimonio (carga diferida del mediador)
+  cluster_key     String?   @map("cluster_key") // convergencia AMC: mismo dominio+categoría, ~500 m, 90 días
+
   nodo nodos @relation(fields: [nodo_id], references: [id], onDelete: Cascade)
+
+  @@index([dominio])
+  @@index([subnodo_key])
+  @@index([cluster_key])
 
   @@map("reportes")
 }
@@ -717,4 +736,26 @@ model corredor_segmentos {
   @@unique([corredor_id, secuencia])
   @@index([corredor_id])
   @@map("corredor_segmentos")
+}
+
+// ─── NODO-VIG-3 VIG-011 (#378, épica #377): AMC — registro de mediadores ───
+
+/// Registro comunitario de mediadores del AMC (boca única de reporte del
+/// nodo): alias público + aval (asamblea | comision_vecinal — comunitario,
+/// no gubernamental, R15). SIN PII: no nombre ni contacto — la devolución
+/// al vecino va por el canal de origen (web: su cuenta; papel/whatsapp:
+/// el mediador con aval). Nace VACÍA (R15): la asamblea aún no ratificó
+/// mediadores — ninguna fila se siembra (conteo 0 honesto).
+model mediadores {
+  id          String   @id @default(cuid())
+  nodo_key    String   @map("nodo_key")
+  key         String   @unique @map("key") // alias comunitario único del mediador (slug)
+  label       String   @map("label") // rol visible (p.ej. «mediador de asamblea — Tudcum»)
+  aval        String   @map("aval") // MediadorAvalSchema: asamblea | comision_vecinal
+  aval_estado String   @default("vigente") @map("aval_estado") // vigente | retirado — retiro por decisión comunitaria
+  created_at  DateTime @default(now()) @map("created_at")
+  updated_at  DateTime @updatedAt @map("updated_at")
+
+  @@index([nodo_key])
+  @@map("mediadores")
 }

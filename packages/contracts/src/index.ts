@@ -1378,3 +1378,178 @@ export const ReporteDuplicadoSugeridoSchema = z.object({
   distancia_m: z.number().nullable(),
   created_at: z.string().datetime(),
 });
+
+// ─── NODO-VIG-3 VIG-011 (#378, épica #377): AMC — mediación ciudadana ───
+//
+// La AMC (Agencia de Mediación Ciudadana) es la boca única de reporte
+// territorial del nodo: un mismo contrato cubre los 3 canales que operan
+// en paralelo desde el día 1 (web autenticada, planilla papel cargada por
+// un mediador con aval comunitario, número único de WhatsApp de la
+// asamblea SIN bot — R15: ingesta humana, sin automatización de conversa).
+// 9 dominios ratificados por la DH con keyword oficial por dominio; la
+// categoría N2 sigue perteneciendo al vocabulario real del nodo (VIG-010)
+// — el contrato NO duplica taxonomía.
+
+export const AmcDominioSchema = z.enum([
+  "espacio_publico",
+  "infraestructura_vial",
+  "movilidad",
+  "agua_saneamiento",
+  "clima_ambiente",
+  "conectividad",
+  "servicios",
+  "produccion_rural",
+  "patrimonio",
+]);
+export type AmcDominio = z.infer<typeof AmcDominioSchema>;
+
+// Keyword oficial del canal WhatsApp por dominio (p.ej. «BACHE RN150 km
+// 12 frente a la escuela…»): la keyword abre el formulario de carga del
+// mediador — no hay bot conversando con el vecino (R15).
+export const AMC_KEYWORDS_POR_DOMINIO: Record<AmcDominio, string> = {
+  espacio_publico: "PLAZA",
+  infraestructura_vial: "BACHE",
+  movilidad: "PARADA",
+  agua_saneamiento: "AGUA",
+  clima_ambiente: "CLIMA",
+  conectividad: "SEÑALCEL",
+  servicios: "SERVICIO",
+  produccion_rural: "CAMINO",
+  patrimonio: "PATRIMONIO",
+};
+
+// Categorías N2 por dominio — espejo EXACTO del vocabulario VIG-010 (#381)
+// del nodo Iglesia (40 nuevas + damaged_road/damaged_heritage reutilizadas
+// + patrimonio_deterioro/patrimonio_perdida de VIG-009). La coherencia
+// dominio→categoría la valida la API contra esta tabla (400 si es ajena).
+export const AMC_CATEGORIAS_POR_DOMINIO: Record<AmcDominio, string[]> = {
+  espacio_publico: [
+    "street_lighting", "sidewalk_condition", "plaza_furniture", "waste_dumping",
+    "tree_damage", "stray_animals", "noise_dust_nuisance",
+  ],
+  infraestructura_vial: [
+    "road_surface", "urban_surface", "road_shoulder", "road_signage",
+    "road_barrier", "bridge_culvert", "work_zone_risk",
+  ],
+  movilidad: [
+    "bus_stop_issue", "service_frequency", "school_health_transport",
+    "pedestrian_crossing", "active_mobility_risk",
+  ],
+  agua_saneamiento: [
+    "drinking_water_issue", "sewer_drainage", "irrigation_conflict",
+  ],
+  clima_ambiente: [
+    "drought_scarcity", "snow_ice", "zonda_dust", "frost_hail",
+    "flash_flood_risk", "fog_visibility", "urban_rural_pests",
+  ],
+  conectividad: [
+    "cell_dead_zone", "internet_gap", "sos_coverage_gap",
+  ],
+  servicios: [
+    "power_grid_issue", "health_access_issue", "school_facility_issue",
+    "security_post_issue", "public_building_issue",
+  ],
+  produccion_rural: [
+    "productive_access", "agro_practice_issue", "wildlife_corridor", "damaged_road",
+  ],
+  patrimonio: [
+    "damaged_heritage", "patrimonio_deterioro", "patrimonio_perdida",
+  ],
+};
+
+export const AmcCanalIngresoSchema = z.enum(["web", "papel", "whatsapp", "presencial"]);
+export type AmcCanalIngreso = z.infer<typeof AmcCanalIngresoSchema>;
+
+// Precisión declarada del punto: el vecino dice qué sabe (R15 — nunca se
+// simula certeza GPS que no tiene). El cluster converge con lo declarado.
+export const AmcPrecisionSchema = z.enum(["gps", "referencial", "aproximado"]);
+
+// Consentimiento granular (ADR-027, Ley 25.326): guardar el alias comunitario
+// es opt-in explícito; la devolución al vecino va por el canal de origen
+// (web: su cuenta; papel/whatsapp: el mediador con aval). NUNCA se guarda
+// el nombre de la planilla — solo el alias elegido.
+export const ReporteAmcConsentimientoSchema = z.object({
+  acepta_devolucion_contacto: z.boolean(),
+  guarda_alias: z.boolean(),
+});
+
+// Alta AMC: ReporteAltaSchema (CORE-005) + el contexto de mediación. Sin
+// "dominio" en el cuerpo, la API aplica el contrato legacy intacto —
+// compatibilidad total del alta CORE-005 R2 (#206).
+export const ReporteAmcAltaSchema = ReporteAltaSchema.extend({
+  // Ancla territorial obligatoria: el reporte del AMC vive en un subnodo
+  // real del Valle de Iglesia (jerarquía VIG-001), no en el nodo abstracto.
+  subnodo_key: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9_]+$/, "subnodo_key: slug del subnodo (VIG-001), minúsculas y guiones bajos")
+    .min(4)
+    .max(60),
+  dominio: AmcDominioSchema,
+  tipo: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9_]+$/, "tipo N3: slug de la taxonomía VIG-000, minúsculas y guiones bajos")
+    .max(40)
+    .optional(),
+  canal_ingreso: AmcCanalIngresoSchema,
+  precision: AmcPrecisionSchema,
+  riesgo_inmediato: z.boolean(),
+  // Canal mediado (papel|whatsapp): quién con aval registró la carga.
+  mediador_ref: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9_]+$/, "mediador_ref: key del registro de mediadores (VIG-011)")
+    .max(60)
+    .optional(),
+  // Alias comunitario del vecino (planilla/WhatsApp): NUNCA el nombre —
+  // exige consentimiento granular guarda_alias (ADR-027, Ley 25.326).
+  reportado_por: z
+    .string()
+    .trim()
+    .min(2, "El alias comunitario requiere al menos 2 caracteres")
+    .max(80)
+    .optional(),
+  consentimiento: ReporteAmcConsentimientoSchema.optional(),
+  // Fecha del testimonio (carga diferida de planilla: puede ser anterior).
+  observado_en: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "observado_en: fecha YYYY-MM-DD del testimonio")
+    .optional(),
+})
+  .refine((a) => a.reportado_por === undefined || a.consentimiento?.guarda_alias === true, {
+    message: "guardar el alias comunitario exige consentimiento granular guarda_alias=true (ADR-027, Ley 25.326)",
+    path: ["consentimiento"],
+  })
+  .refine((a) => !(a.canal_ingreso === "papel" || a.canal_ingreso === "whatsapp") || a.mediador_ref !== undefined, {
+    message: "el canal papel|whatsapp exige mediador_ref del registro con aval (ingesta humana sin bot, R15)",
+    path: ["mediador_ref"],
+  })
+  .refine((a) => !(a.canal_ingreso === "papel" || a.canal_ingreso === "whatsapp") || a.reportado_por !== undefined, {
+    message: "el canal papel|whatsapp exige el alias comunitario del vecino (reportado_por, sin PII)",
+    path: ["reportado_por"],
+  });
+
+// Corroboración ciudadana (VIG-011): la comunidad corrobora, NUNCA verifica
+// (R15 — la promoción a "verified" es solo técnica: organismo, estudio,
+// inspección). Un reportante distinto = un peso.
+export const ReporteCorroboracionSchema = z.object({
+  precision: AmcPrecisionSchema.optional(),
+  nota: z.string().trim().max(500).optional(),
+});
+
+// Registro de mediadores (VIG-011): aval comunitario, no gubernamental.
+export const MediadorAvalSchema = z.enum(["asamblea", "comision_vecinal"]);
+
+export const MediadorAltaSchema = z.object({
+  nodo_key: SanJuanNodeSlugSchema,
+  key: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9_]+$/, "key: alias comunitario del mediador, minúsculas y guiones bajos")
+    .min(4)
+    .max(60),
+  label: z.string().trim().min(3, "El rol comunitario visible requiere al menos 3 caracteres").max(120),
+  aval: MediadorAvalSchema,
+});
