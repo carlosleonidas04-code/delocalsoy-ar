@@ -21,7 +21,8 @@
    NACE VACÍA: sin padrón verificado no se siembran paradas, R15) y `cobertura_sos`
    (health — señal celular, internet y postes SOS).
 3. **40 categorías N2 de los 9 dominios del AMC v0.3** + 2 reutilizadas (`damaged_road`
-   → caminos rurales; `damaged_heritage` → patrimonio). Cierra los vacíos pedidos por
+   → caminos rurales; `damaged_heritage` → patrimonio). El nodo queda con 52
+   categorías (10 demo + 2 VIG-009 patrimonio + 40 nuevas). Cierra los vacíos pedidos por
    la DH: sequía y escasez, clima completo (zonda/polvo, nieve/hielo, niebla, plagas,
    heladas/granizo, cauces/aluvión), energía eléctrica (tendido caído = riesgo), calles
    urbanas explícitas (vs. ruta), animales sueltos, ruidos de obra, movilidad activa y
@@ -50,7 +51,7 @@
 | parada_transporte | community | Point | false | nueva VIG-010 |
 | cobertura_sos | health | Point | false | nueva VIG-010 |
 
-## Categorías (50 = 10 demo + 40 nuevas), mapeadas por dominio AMC
+## Categorías (52 = 10 demo + 2 VIG-009 + 40 nuevas), mapeadas por dominio AMC
 
 - **Espacio público (7):** street_lighting, sidewalk_condition, plaza_furniture,
   waste_dumping, tree_damage, stray_animals, noise_dust_nuisance →
@@ -69,7 +70,10 @@
 - **Producción rural (3):** productive_access, wildlife_corridor → rural_services;
   agro_practice_issue → productive_units.
 - **Patrimonio y caminos rurales:** reutilizan damaged_heritage (tourism_resources)
-  y damaged_road (rural_services) del vocabulario demo — sin duplicados.
+  y damaged_road (rural_services) del vocabulario demo — sin duplicados. Más las 2 categorías de patrimonio de
+   VIG-009 ya en main (patrimonio_deterioro y patrimonio_perdida, sobre
+   tourism_resources): el nodo queda con 52 categorías (10 demo + 2 VIG-009 +
+   40 nuevas).
 
 ## Features seed (5) — estado honesto del ciclo de obra (R15)
 
@@ -118,7 +122,7 @@ sprint de corrección con decisión expresa de la DH.
 
 ## Criterio de cierre #381
 
-1. Seed verde en CI (db:seed + suite nueva + regresión: 12 capas / 50 categorías /
+1. Seed verde en CI (db:seed + suite nueva + regresión: 12 capas / 52 categorías /
    11 features de iglesia / catálogo de 49 fuentes sin duplicados).
 2. Convenciones de honestidad intactas: todo feature ilustrativo hasta validación
    (patrón NCAP-R5 para obras anunciadas); ADR-035 regla 1 sin cambios.

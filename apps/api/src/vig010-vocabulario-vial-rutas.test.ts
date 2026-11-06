@@ -5,7 +5,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 // NODO-VIG-3 VIG-010 (#381, épica #377): vocabulario vial y territorial
 // del nodo Iglesia — 9 capas nuevas (5 v5.1 reutilizadas del R1 Capital
 // sin vocabulario paralelo + obra_vial, punto_critico, parada_transporte,
-// cobertura_sos), 40 categorías N2 de los 9 dominios del AMC v0.3,
+// cobertura_sos), 40 categorías N2 de los 9 dominios del AMC v0.3 (el nodo
+// queda con 52 categorías: 10 demo + 2 VIG-009 patrimonio + 40 nuevas),
 // obras RN 150/derivadores con estado honesto del ciclo de obra
 // (R15: anuncio ≠ obra — declared/in_execution, coordenadas ilustrativas
 // is_synthetic=true), red SOS Paso Agua Negra (verified) y 4 fuentes al
@@ -112,9 +113,9 @@ describe.skipIf(!dbUp)('Vocabulario vial del nodo Iglesia (NODO-VIG-3 VIG-010, #
     expect(por('cobertura_sos').default_on).toBe(false);
   });
 
-  it('categorías: 50 (10 demo + 40 VIG-010 de los 9 dominios del AMC), todas con capa válida', async () => {
+  it('categorías: 52 (10 demo + 2 VIG-009 patrimonio + 40 VIG-010 de los 9 dominios del AMC), todas con capa válida', async () => {
     const { body } = await getJson('/api/nodos/iglesia/categorias');
-    expect(body.count).toBe(50);
+    expect(body.count).toBe(52);
     const cats: any[] = body.data;
     const cat = (code: string) => cats.find((c: any) => c.code === code);
     // Espacio público.
@@ -168,6 +169,10 @@ describe.skipIf(!dbUp)('Vocabulario vial del nodo Iglesia (NODO-VIG-3 VIG-010, #
     // 2 categorías REUTILIZADAS del vocabulario demo (sin duplicados).
     expect(cat('damaged_road')?.layer).toBe('rural_services');
     expect(cat('damaged_heritage')?.layer).toBe('tourism_resources');
+    // 2 categorías de VIG-009 ya en main (patrimonio del nodo sobre
+    // tourism_resources): 10 demo + 2 VIG-009 + 40 VIG-010 = 52.
+    expect(cat('patrimonio_deterioro')?.layer).toBe('tourism_resources');
+    expect(cat('patrimonio_perdida')?.layer).toBe('tourism_resources');
     // Toda categoría apunta a una capa existente del nodo.
     const capas = await getJson('/api/nodos/iglesia/capas');
     const capaKeys: string[] = capas.body.data.map((c: any) => c.key);
@@ -272,7 +277,7 @@ describe.skipIf(!dbUp)('Vocabulario vial del nodo Iglesia (NODO-VIG-3 VIG-010, #
     ]);
     expect(despues).toEqual(antes);
     expect(despues[0]).toBe(12);
-    expect(despues[1]).toBe(50);
+    expect(despues[1]).toBe(52); // 10 demo + 2 VIG-009 + 40 VIG-010
     expect(despues[2]).toBe(11); // 6 demo CORE-003 + 5 VIG-010
     expect(despues[3]).toBe(13);
   }, 60000);
