@@ -5,9 +5,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 // NODO-CAU R2 (#138/#147): catálogo de fuentes espaciales + procedencia por
 // conjunto — extremo a extremo contra servicios reales (PostgreSQL/PostGIS +
 // Redis):
-// - GET /api/fuentes: catálogo público anónimo (45 fuentes: 15 Caucete +
+// - GET /api/fuentes: catálogo público anónimo (49 fuentes: 15 Caucete +
 //   20 del Valle de Iglesia NVIG-R5 #172 + VIG-008 #240 + 1 SIIC web
-//   MARKET-CAP MK-2 #243 + 9 Capital NCAP-R3 #155 — con organismo,
+//   MARKET-CAP MK-2 #243 + 9 Capital NCAP-R3 #155 + 4 Iglesia VIG-010
+//   #381 — con organismo,
 //   estado honesto de
 //   disponibilidad y cautela) y GET /api/fuentes/:key
 // - POST /api/ingestas: alta curada por admin (decisión DH 2026-10-15);
@@ -94,6 +95,15 @@ describe.skipIf(!dbUp)('fuentes espaciales + procedencia (NODO-CAU R2 — regist
     'repavimentacion_microcentro_2026', 'datos_abiertos_sj',
   ];
 
+  // NODO-VIG-3 VIG-010 (#381, épica #377): 4 fuentes del nodo Iglesia al
+  // catálogo global por seed-vocabulario-vial-iglesia.sql (anuncios de obra
+  // RN 150/derivadores, portal Paso Agua Negra, agregador de transporte
+  // 600/601 y documento vecinal 11/2026).
+  const KEYS_IGLESIA = [
+    'prensa_obras_iglesia_2026_11', 'portal_paso_agua_negra',
+    'agregador_transporte_600_601', 'documento_vecinal_iglesia_2026_11',
+  ];
+
   // Ingesta de referencia: REFES 2026 recortado al departamento Caucete.
   const payloadIngesta = {
     source_id: 'refes-cau-2026-' + ts,
@@ -141,13 +151,13 @@ describe.skipIf(!dbUp)('fuentes espaciales + procedencia (NODO-CAU R2 — regist
     return ((await login.json()) as any).data.token as string;
   }
 
-  it('catálogo público: 45 fuentes (15 Caucete + 20 VIG + 1 MK-2 SIIC web + 9 Capital NCAP-R3 #155, NVIG-R5 #172 + VIG-008 #240 + MARKET-CAP MK-2 #243) con organismo, estado honesto y cautela', async () => {
+  it('catálogo público: 49 fuentes (15 Caucete + 20 VIG + 1 MK-2 SIIC web + 9 Capital NCAP-R3 #155 + 4 Iglesia VIG-010 #381, NVIG-R5 #172 + VIG-008 #240 + MARKET-CAP MK-2 #243) con organismo, estado honesto y cautela', async () => {
     const res = await fetch(base + '/api/fuentes');
     expect(res.status).toBe(200);
     const body: any = await res.json();
     expect(body.success).toBe(true);
-    expect(body.count).toBe(45);
-    expect(body.data.map((f: any) => f.key).sort()).toEqual([...KEYS_CAUCETE, ...KEYS_VIG, ...KEYS_MK2, ...KEYS_CAPITAL].sort());
+    expect(body.count).toBe(49);
+    expect(body.data.map((f: any) => f.key).sort()).toEqual([...KEYS_CAUCETE, ...KEYS_VIG, ...KEYS_MK2, ...KEYS_CAPITAL, ...KEYS_IGLESIA].sort());
     for (const f of body.data) {
       expect(f.organismo.length).toBeGreaterThan(3);
       expect(f.cautela.length).toBeGreaterThan(10);

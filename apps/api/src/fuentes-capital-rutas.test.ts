@@ -73,12 +73,12 @@ describe.skipIf(!dbUp)('fuentes del nodo Capital (NCAP-R3 — catálogo y proced
     datos_abiertos_sj: 'disponible',
   };
 
-  it('catálogo global: 45 fuentes (15 Caucete + 20 del valle + 1 SIIC web MARKET-CAP MK-2 #243 + 9 Capital NCAP-R3 #155) sin claves duplicadas', async () => {
+  it('catálogo global: 49 fuentes (15 Caucete + 20 del valle + 1 SIIC web MARKET-CAP MK-2 #243 + 9 Capital NCAP-R3 #155 + 4 Iglesia VIG-010 #381) sin claves duplicadas', async () => {
     const res = await fetch(base + '/api/fuentes');
     expect(res.status).toBe(200);
     const body: any = await res.json();
     expect(body.success).toBe(true);
-    expect(body.count).toBe(45);
+    expect(body.count).toBe(49);
     const keys = body.data.map((f: any) => f.key);
     expect(new Set(keys).size).toBe(keys.length);
     for (const k of KEYS_CAPITAL) expect(keys).toContain(k);
