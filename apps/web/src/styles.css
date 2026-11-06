@@ -1,3 +1,8 @@
+/* UX-001 (#221): capa de plataforma multiplataforma (perfiles tv/vehicle/desktop,
+   tipografia fluida, container queries, foco D-pad). Se importa al tope de este
+   archivo (regla @import de CSS; Vite la inlina en build) para mantener el lote
+   100% dentro del alcance estetico del scope-guard (ADR-034 s4.5). */
+@import './design/platform.css';
 :root {
   font-family: var(--font-sans, 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
 }
