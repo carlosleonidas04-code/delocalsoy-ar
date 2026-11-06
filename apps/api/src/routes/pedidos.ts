@@ -75,6 +75,12 @@ type PedidoRow = {
   evidencia_cluster_keys: string[];
 };
 
+// Filas tipadas de las lecturas: el cliente prisma se exporta any (patron
+// mock de pruebas en lib/prisma) — la forma de la fila se declara explicita
+// para que el callback de map quede contextualmente tipado (mismo patron
+// que reportes.ts, fix TS7006 del PR #151).
+type SelloRow = { payload: unknown; occurred_at: Date };
+
 function aFechaIso(f: Date): string {
   return f.toISOString().slice(0, 10);
 }
@@ -414,19 +420,20 @@ router.get('/:key', async (req: Request, res: Response) => {
       res.status(404).json({ success: false, error: 'Pedido no encontrado' });
       return;
     }
-    const sellos = await prisma.events_raw.findMany({
+    const sellos = (await prisma.events_raw.findMany({
       where: {
         type: { in: ['pedido.presentado', 'pedido.respondido'] },
         payload: { path: ['key'], equals: pedido.key },
       },
       orderBy: { occurred_at: 'asc' },
+    })) as SelloRow[];
+    const transiciones = sellos.map((s) => {
+      const p = s.payload as Record<string, unknown>;
+      return {
+        estado_nuevo: (p.estado_nuevo as string | undefined) ?? 'presentado',
+        occurred_at: s.occurred_at.toISOString(),
+      };
     });
-    const transiciones = sellos.map((s) => ({
-      estado_nuevo:
-        ((s.payload as Record<string, unknown>).estado_nuevo as string | undefined) ??
-        'presentado',
-      occurred_at: s.occurred_at.toISOString(),
-    }));
     res.json({
       success: true,
       data: {
