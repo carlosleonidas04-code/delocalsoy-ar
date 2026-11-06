@@ -12,6 +12,7 @@ import fuentesRouter from './routes/fuentes.js';
 import healthRouter from './routes/health.js';
 import healthDetailedRouter from './routes/healthDetailed.js';
 import mediadoresRouter from './routes/mediadores.js';
+import meRouter from './routes/me.js';
 import modeloFederadoRouter from './routes/modeloFederado.js';
 import nodosRouter from './routes/nodos.js';
 import oportunidadesRouter from './routes/oportunidades.js';
@@ -52,6 +53,14 @@ export function createApp(): Express {
   // HS256 y roles. Fail-closed sin JWT_SECRET. La API key R8 subsiste para
   // operaciones de sistema (guard R8 intocado).
   app.use('/api/auth', authRouter);
+
+  // Dominio «mi cuenta» (ARTEFACTOS-ROLES AR1, #400 — épica #399): atributo
+  // de residencia auto-declarado sobre la cuenta (vecino = ATRIBUTO, NO rol
+  // — decisión DH 2026-11-06) y lens del visitante (rol solo lectura v0.2).
+  // PUT /api/me/residencia: ciudadano|moderador|admin autenticado; solo la
+  // clave del subnodo REAL del vocabulario + timestamp — sin domicilio jamás
+  // (Ley 25.326 / ADR-027); sello residencia.declarada con rollback (R4/R15).
+  app.use('/api/me', meRouter);
 
   // A1 observabilidad (#290, hoja M1, RUNBOOK seccion 6): salud detallada por
   // componente (db, redis/streams, projection_lag, proceso) — acceso admin

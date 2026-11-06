@@ -13,7 +13,11 @@ import type { NextFunction, Request, Response } from 'express';
  * TERRITORIOS_API_KEY / HEALTH_MODE_API_KEY).
  */
 
-const ROLES = ['ciudadano', 'moderador', 'admin'] as const;
+// ARTEFACTOS-ROLES AR1 (#400, épica #399): 'visitante' es un rol REAL de la
+// API (cuenta ligera de tránsito, SOLO LECTURA en v0.2 — la API es la
+// compuerta: PUT /api/me/residencia responde 403 real). El vecino NO es rol:
+// residencia = atributo de la cuenta (decisión DH 2026-11-06).
+const ROLES = ['ciudadano', 'visitante', 'moderador', 'admin'] as const;
 export type Rol = (typeof ROLES)[number];
 
 // scrypt: parámetros por defecto de Node (N=16384, r=8, p=1), 64 bytes de hash.

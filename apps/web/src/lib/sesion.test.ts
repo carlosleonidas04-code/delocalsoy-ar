@@ -188,3 +188,57 @@ describe('sesion ART-R0 — gates de competencias (docs/artefactos/ v0.1)', () =
     expect(RATE_LIMIT_POR_ROL.auditor).toBe(500);
   });
 });
+
+describe('sesion AR1 — registro visitante (#400, épica #399)', () => {
+  const visitanteDemo = {
+    id: 'usr-vis-1',
+    email: 'visitante@ejemplo.test',
+    rol: 'visitante',
+    display_name: 'Turista Valle',
+    transito_subnodo_key: 'sj_iglesia_barreal',
+  };
+
+  it('POST /register-visitante con consentimiento: 201 devuelve el rol visitante real', async () => {
+    const e = crearEntorno();
+    const sesion = crearSesion({ transporte: e.transporte, almacen: e.almacen });
+    e.programar([{ status: 201, cuerpo: { success: true, data: visitanteDemo } }]);
+    const u = await sesion.registrarVisitante(
+      'visitante@ejemplo.test',
+      'clave-segura',
+      'Turista Valle',
+      'sj_iglesia_barreal',
+      true
+    );
+    expect(u.rol).toBe('visitante');
+    expect(u.transito_subnodo_key).toBe('sj_iglesia_barreal');
+    expect(e.llamadas[0].ruta).toBe('/api/auth/register-visitante');
+    const init = e.llamadas[0].init as { body: string };
+    const cuerpo = JSON.parse(init.body) as Record<string, unknown>;
+    expect(cuerpo.consentimiento).toEqual({ contacto_email: true });
+    expect(cuerpo.subnodo_transito_key).toBe('sj_iglesia_barreal');
+    // el registro no persiste token: hay que iniciar sesión (honesto).
+    expect(e.almacenMap.size).toBe(0);
+  });
+
+  it('SIN consentimiento → SesionError datos ANTES de llamar a la API (ADR-027)', async () => {
+    const e = crearEntorno();
+    const sesion = crearSesion({ transporte: e.transporte, almacen: e.almacen });
+    await expect(
+      sesion.registrarVisitante('visitante@ejemplo.test', 'clave-segura', 'Turista', 'sj_iglesia_barreal', false)
+    ).rejects.toMatchObject({ codigo: 'datos' });
+    expect(e.llamadas.length).toBe(0);
+  });
+
+  it('409 → SesionError email_existente', async () => {
+    const e = crearEntorno();
+    const sesion = crearSesion({ transporte: e.transporte, almacen: e.almacen });
+    e.programar([{ status: 409, cuerpo: { success: false, error: 'el email ya está registrado' } }]);
+    await expect(
+      sesion.registrarVisitante('x@y.test', 'clave-segura', 'Turista', 'sj_iglesia_barreal', true)
+    ).rejects.toMatchObject({ codigo: 'email_existente' });
+  });
+
+  it('techo de la cuenta ligera: RATE_LIMIT_POR_ROL.visitante = 10 (AR1)', () => {
+    expect(RATE_LIMIT_POR_ROL.visitante).toBe(10);
+  });
+});

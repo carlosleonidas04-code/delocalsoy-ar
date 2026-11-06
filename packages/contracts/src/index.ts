@@ -40,8 +40,10 @@ export const EvidenceStatusSchema = z.enum([
 
 // ─── CORE-004 R3 (ADR-031, #87): identidad por etapas ───
 
-// Roles ratificados (ADR-031): ciudadano | moderador | admin.
-export const RolSchema = z.enum(["ciudadano", "moderador", "admin"]);
+// Roles ratificados (ADR-031): ciudadano | moderador | admin. ARTEFACTOS-ROLES
+// AR1 (#400, épica #399) agrega el rol REAL 'visitante': cuenta ligera de
+// tránsito SOLO LECTURA en v0.2 — la API es la compuerta (403 real).
+export const RolSchema = z.enum(["ciudadano", "visitante", "moderador", "admin"]);
 
 // Registro: el email es el identificador de login (única PII persistida en
 // 'usuarios'; los sellos system.user_* de events_raw nunca lo contienen — Ley 25.326).
@@ -58,6 +60,49 @@ export * from './comercios.js';
 export const UsuarioLoginSchema = z.object({
   email: z.string().trim().toLowerCase().email("Email inválido"),
   password: z.string().min(1, "La contraseña es requerida"),
+});
+
+// ─── ARTEFACTOS-ROLES AR1 (#400, épica #399): residencia y visitante ───
+
+// AR1 — decisión DH 2026-11-06: el vecino es un ATRIBUTO de residencia sobre
+// la cuenta ciudadana, NO un rol. Solo la clave del subnodo real del
+// vocabulario (la ruta la valida contra la tabla subnodos): sin domicilio
+// jamás (Ley 25.326 / ADR-027), auto-declarada sin verificación (R15).
+export const ResidenciaAltaSchema = z.object({
+  subnodo_key: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9_]+$/, "subnodo_key: clave del vocabulario (minúsculas, dígitos o _)")
+    .min(3, "subnodo_key: al menos 3 caracteres")
+    .max(60, "subnodo_key: a lo sumo 60 caracteres"),
+});
+
+// AR1 — consentimiento GRANULAR del visitante (ADR-027): literal true. Sin
+// contacto_email true no hay cuenta visitante — nunca se pre-marca en el
+// cliente y el rechazo es ANTES de persistir.
+export const VisitanteConsentimientoSchema = z
+  .object({ contacto_email: z.boolean() })
+  .refine((c) => c.contacto_email === true, {
+    message: "Consentimiento de contacto: se exige contacto_email true (ADR-027)",
+  });
+
+// AR1 — cuenta ligera visitante (rol real 'visitante', SOLO LECTURA v0.2):
+// alias público (anti-PII en la ruta), subnodo de tránsito DECLARADO contra
+// el vocabulario (jamás geolocalizado) y consentimiento granular literal.
+export const VisitanteRegistroSchema = z.object({
+  email: z.string().trim().toLowerCase().email("Email inválido"),
+  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
+  alias: z
+    .string()
+    .trim()
+    .min(3, "El alias público debe tener al menos 3 caracteres")
+    .max(40, "El alias público debe tener a lo sumo 40 caracteres"),
+  subnodo_transito_key: z
+    .string()
+    .trim()
+    .min(3, "subnodo_transito_key: al menos 3 caracteres")
+    .max(60, "subnodo_transito_key: a lo sumo 60 caracteres"),
+  consentimiento: VisitanteConsentimientoSchema,
 });
 
 // ─── Serie Contracts NCAP-R2 (PR #233): índice extendido [agent: vibe] ───
@@ -1427,236 +1472,4 @@ export const AmcDominioSchema = z.enum([
   "patrimonio",
 ]);
 export type AmcDominio = z.infer<typeof AmcDominioSchema>;
-
-// Keyword oficial del canal WhatsApp por dominio (p.ej. «BACHE RN150 km
-// 12 frente a la escuela…»): la keyword abre el formulario de carga del
-// mediador — no hay bot conversando con el vecino (R15).
-export const AMC_KEYWORDS_POR_DOMINIO: Record<AmcDominio, string> = {
-  espacio_publico: "PLAZA",
-  infraestructura_vial: "BACHE",
-  movilidad: "PARADA",
-  agua_saneamiento: "AGUA",
-  clima_ambiente: "CLIMA",
-  conectividad: "SEÑALCEL",
-  servicios: "SERVICIO",
-  produccion_rural: "CAMINO",
-  patrimonio: "PATRIMONIO",
-};
-
-// Categorías N2 por dominio — espejo EXACTO del vocabulario VIG-010 (#381)
-// del nodo Iglesia (40 nuevas + damaged_road/damaged_heritage reutilizadas
-// + patrimonio_deterioro/patrimonio_perdida de VIG-009). La coherencia
-// dominio→categoría la valida la API contra esta tabla (400 si es ajena).
-export const AMC_CATEGORIAS_POR_DOMINIO: Record<AmcDominio, string[]> = {
-  espacio_publico: [
-    "street_lighting", "sidewalk_condition", "plaza_furniture", "waste_dumping",
-    "tree_damage", "stray_animals", "noise_dust_nuisance",
-  ],
-  infraestructura_vial: [
-    "road_surface", "urban_surface", "road_shoulder", "road_signage",
-    "road_barrier", "bridge_culvert", "work_zone_risk",
-  ],
-  movilidad: [
-    "bus_stop_issue", "service_frequency", "school_health_transport",
-    "pedestrian_crossing", "active_mobility_risk",
-  ],
-  agua_saneamiento: [
-    "drinking_water_issue", "sewer_drainage", "irrigation_conflict",
-  ],
-  clima_ambiente: [
-    "drought_scarcity", "snow_ice", "zonda_dust", "frost_hail",
-    "flash_flood_risk", "fog_visibility", "urban_rural_pests",
-  ],
-  conectividad: [
-    "cell_dead_zone", "internet_gap", "sos_coverage_gap",
-  ],
-  servicios: [
-    "power_grid_issue", "health_access_issue", "school_facility_issue",
-    "security_post_issue", "public_building_issue",
-  ],
-  produccion_rural: [
-    "productive_access", "agro_practice_issue", "wildlife_corridor", "damaged_road",
-  ],
-  patrimonio: [
-    "damaged_heritage", "patrimonio_deterioro", "patrimonio_perdida",
-  ],
-};
-
-export const AmcCanalIngresoSchema = z.enum(["web", "papel", "whatsapp", "presencial"]);
-export type AmcCanalIngreso = z.infer<typeof AmcCanalIngresoSchema>;
-
-// Precisión declarada del punto: el vecino dice qué sabe (R15 — nunca se
-// simula certeza GPS que no tiene). El cluster converge con lo declarado.
-export const AmcPrecisionSchema = z.enum(["gps", "referencial", "aproximado"]);
-
-// Consentimiento granular (ADR-027, Ley 25.326): guardar el alias comunitario
-// es opt-in explícito; la devolución al vecino va por el canal de origen
-// (web: su cuenta; papel/whatsapp: el mediador con aval). NUNCA se guarda
-// el nombre de la planilla — solo el alias elegido.
-export const ReporteAmcConsentimientoSchema = z.object({
-  acepta_devolucion_contacto: z.boolean(),
-  guarda_alias: z.boolean(),
-});
-
-// Alta AMC: ReporteAltaSchema (CORE-005) + el contexto de mediación. Sin
-// "dominio" en el cuerpo, la API aplica el contrato legacy intacto —
-// compatibilidad total del alta CORE-005 R2 (#206).
-export const ReporteAmcAltaSchema = ReporteAltaSchema.extend({
-  // Ancla territorial obligatoria: el reporte del AMC vive en un subnodo
-  // real del Valle de Iglesia (jerarquía VIG-001), no en el nodo abstracto.
-  subnodo_key: z
-    .string()
-    .trim()
-    .regex(/^[a-z0-9_]+$/, "subnodo_key: slug del subnodo (VIG-001), minúsculas y guiones bajos")
-    .min(4)
-    .max(60),
-  dominio: AmcDominioSchema,
-  tipo: z
-    .string()
-    .trim()
-    .regex(/^[a-z0-9_]+$/, "tipo N3: slug de la taxonomía VIG-000, minúsculas y guiones bajos")
-    .max(40)
-    .optional(),
-  canal_ingreso: AmcCanalIngresoSchema,
-  precision: AmcPrecisionSchema,
-  riesgo_inmediato: z.boolean(),
-  // Canal mediado (papel|whatsapp): quién con aval registró la carga.
-  mediador_ref: z
-    .string()
-    .trim()
-    .regex(/^[a-z0-9_]+$/, "mediador_ref: key del registro de mediadores (VIG-011)")
-    .max(60)
-    .optional(),
-  // Alias comunitario del vecino (planilla/WhatsApp): NUNCA el nombre —
-  // exige consentimiento granular guarda_alias (ADR-027, Ley 25.326).
-  reportado_por: z
-    .string()
-    .trim()
-    .min(2, "El alias comunitario requiere al menos 2 caracteres")
-    .max(80)
-    .optional(),
-  consentimiento: ReporteAmcConsentimientoSchema.optional(),
-  // Fecha del testimonio (carga diferida de planilla: puede ser anterior).
-  observado_en: z
-    .string()
-    .trim()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "observado_en: fecha YYYY-MM-DD del testimonio")
-    .optional(),
-})
-  .refine((a) => a.reportado_por === undefined || a.consentimiento?.guarda_alias === true, {
-    message: "guardar el alias comunitario exige consentimiento granular guarda_alias=true (ADR-027, Ley 25.326)",
-    path: ["consentimiento"],
-  })
-  .refine((a) => !(a.canal_ingreso === "papel" || a.canal_ingreso === "whatsapp") || a.mediador_ref !== undefined, {
-    message: "el canal papel|whatsapp exige mediador_ref del registro con aval (ingesta humana sin bot, R15)",
-    path: ["mediador_ref"],
-  })
-  .refine((a) => !(a.canal_ingreso === "papel" || a.canal_ingreso === "whatsapp") || a.reportado_por !== undefined, {
-    message: "el canal papel|whatsapp exige el alias comunitario del vecino (reportado_por, sin PII)",
-    path: ["reportado_por"],
-  });
-
-// Corroboración ciudadana (VIG-011): la comunidad corrobora, NUNCA verifica
-// (R15 — la promoción a "verified" es solo técnica: organismo, estudio,
-// inspección). Un reportante distinto = un peso.
-export const ReporteCorroboracionSchema = z.object({
-  precision: AmcPrecisionSchema.optional(),
-  nota: z.string().trim().max(500).optional(),
-});
-
-// Registro de mediadores (VIG-011): aval comunitario, no gubernamental.
-export const MediadorAvalSchema = z.enum(["asamblea", "comision_vecinal"]);
-
-export const MediadorAltaSchema = z.object({
-  nodo_key: SanJuanNodeSlugSchema,
-  key: z
-    .string()
-    .trim()
-    .regex(/^[a-z0-9_]+$/, "key: alias comunitario del mediador, minúsculas y guiones bajos")
-    .min(4)
-    .max(60),
-  label: z.string().trim().min(3, "El rol comunitario visible requiere al menos 3 caracteres").max(120),
-  aval: MediadorAvalSchema,
-});
-
-// ─── NODO-VIG-3 VIG-012 (#379, épica #377): pedidos formales ───
-//
-// La traducción al repo del libro de reclamos del plan vecinal: pedidos
-// formales a Vialidad Provincial (DPV) y su seguimiento público. La tabla
-// `pedidos` es la ÚNICA tabla nueva del módulo (decisión DH 2026-11-06) y
-// NACE VACÍA (R15): los 15 pedidos de la nota formal a DPV (bloques A-E)
-// son contenido DOCUMENTAL — fuente: documento vecinal interno,
-// procedencia declarada, citado sin firmantes expuestos (ADR-027) —, NO
-// filas precargadas. Preparar la nota ≠ presentarla (R15): cada pedido se
-// registra a medida que se presenta, con fecha real y sello
-// 'pedido.presentado'.
-
-// Bloques temáticos de la nota formal a DPV (A-E, ratificados por la DH).
-export const PedidoBloqueSchema = z.enum([
-  "proyecto_ejecutivo",
-  "seguridad_derivadores",
-  "datos_cargas",
-  "red_provincial_emergencias",
-  "seguimiento_vecinal",
-]);
-export type PedidoBloque = z.infer<typeof PedidoBloqueSchema>;
-
-// Los 15 pedidos de la nota formal a DPV — constante DOCUMENTAL del
-// tablero de cobertura: «X de 15 presentados · Y respondidos (fecha de
-// corte)». NUNCA son filas: la cobertura se mide contra el documento, no
-// contra un seed (R15).
-export const PEDIDOS_DPV_ESPERADOS = 15;
-
-// Ciclo de vida del pedido: presentado → respondido_en_plazo |
-// respondido_tardio. sin_respuesta NO se transita ni se sella: se DERIVA
-// honesto en lectura — presentado con plazo vencido y sin respuesta
-// (R15: no existe el evento «no contestaron», existe la fecha vencida).
-export const PedidoEstadoSchema = z.enum([
-  "presentado",
-  "respondido_en_plazo",
-  "respondido_tardio",
-  "sin_respuesta",
-]);
-export type PedidoEstado = z.infer<typeof PedidoEstadoSchema>;
-
-// Alta de un pedido REALMENTE presentado (admin — acto institucional del
-// nodo ante el organismo): fecha real de presentación (la ruta rechaza
-// fechas futuras: preparar la nota ≠ presentarla, R15), plazo declarado de
-// respuesta y evidencia opcional citando puntos críticos corroborados
-// del AMC (features pc-* community_validated de VIG-011 — N reportes de
-// M reportantes detrás, nunca un puntaje).
-export const PedidoAltaSchema = z.object({
-  nodo_key: SanJuanNodeSlugSchema,
-  key: z
-    .string()
-    .trim()
-    .regex(/^[a-z0-9_]+$/, "key: slug del pedido, minúsculas y guiones bajos")
-    .min(4)
-    .max(60),
-  bloque: PedidoBloqueSchema,
-  tema: z.string().trim().min(10, "El tema del pedido requiere al menos 10 caracteres").max(500),
-  destinatario: z.string().trim().min(2, "El destinatario requiere al menos 2 caracteres").max(120),
-  fecha_presentacion: z
-    .string()
-    .trim()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "fecha_presentacion: fecha real YYYY-MM-DD de la presentación"),
-  plazo_dias: z.number().int().min(1, "El plazo de respuesta requiere al menos 1 día").max(365),
-  evidencia_cluster_keys: z
-    .array(
-      z.string().regex(/^pc-/, "evidencia_cluster_keys: cluster keys pc-* del AMC (VIG-011)")
-    )
-    .max(10)
-    .optional(),
-});
-
-// Registro de la respuesta del organismo (admin): fecha real (la ruta
-// rechaza fechas futuras); el estado final lo DERIVA la ruta contra el
-// plazo (respondido_en_plazo | respondido_tardio) — nunca se declara a mano.
-export const PedidoRespuestaSchema = z.object({
-  fecha_respuesta: z
-    .string()
-    .trim()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "fecha_respuesta: fecha real YYYY-MM-DD de la respuesta"),
-  nota: z.string().trim().max(500).optional(),
-});
 
