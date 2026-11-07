@@ -112,7 +112,7 @@ for (const entrada of readdirSync(DIR_API, { withFileTypes: true })) {
 const SELLO = '[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)+';
 const RES_EMISION = [
   new RegExp("sellarEvento\\(\\s*'(" + SELLO + ")'", 'g'),
-  new RegExp("type:\\s*'(" + SELLO + "')", 'g'),
+  new RegExp("type:\\s*'(" + SELLO + ")'", 'g'),
   new RegExp("=\\s*'(" + SELLO + ")';", 'g'),
 ];
 
