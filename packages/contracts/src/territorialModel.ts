@@ -66,7 +66,7 @@ export const TerritorialEntitySchema = z.object({
   sourceIds: z.array(z.string()).default([]),
   validFrom: z.string().nullable().optional(),
   validTo: z.string().nullable().optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 export type TerritorialEntity = z.infer<typeof TerritorialEntitySchema>;
 
