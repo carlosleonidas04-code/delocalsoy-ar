@@ -53,7 +53,7 @@ Propósito (mejora C5 de la hoja de mantenimiento): hacer explícito el contrato
 | `cluster.creado` | features (clusters AMC) | VIG-011 #378 (EV-084) | main — fila tardía (deuda regla 5 saldada por ARTEFACTOS-ROLES AR4 #403) |
 | `residencia.declarada` | usuarios (AR1) | ARTEFACTOS-ROLES #400 (épica #399) | main |
 | `visitante.registrado` | usuarios (AR1) | ARTEFACTOS-ROLES #400 (épica #399) | main |
-| `comercio.relay_recibido` | comercios (MK-4 relay) | #427 (EV-098) | en cola |
+| `comercio.relay_recibido` | comercios (MK-4 relay) | #427 (EV-098) | main |
 
 ## Regla
 
