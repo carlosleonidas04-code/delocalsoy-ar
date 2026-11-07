@@ -52,6 +52,8 @@ Variables de entorno (nombres, nunca valores en el repo): `DATABASE_URL`, `TERRI
 
 **ARTEFACTOS-ROLES AR1 (#400, épica #399) en este PR:** el vecino es un atributo, no un rol — PUT `/api/me/residencia` declara la residencia contra un subnodo real del vocabulario (auto-declarada R15, sin domicilio jamás) con sello `residencia.declarada` sin PII y rollback; la cuenta ligera visitante es un rol real solo lectura v0.2 (`register-visitante` con consentimiento granular literal y sello `visitante.registrado`); GET `/api/auth/me` expone los campos reales y el panel web «Mi cuenta» (apps/web, montado en ArtefactosRoot) deriva los perfiles vecino|ciudadano|visitante — la API es la compuerta (403 real), nada se simula. OpenAPI v7.37.0 → v7.38.0 (59 → 61 paths: `/api/auth/register-visitante` y `/api/me/residencia`).
 
+**ARTEFACTOS-ROLES AR2 (#401, épica #399) en este PR:** la vista comerciante del panel A2 — búsqueda por facetas reales del directorio (`?nodo` `?rubro` `?habilitacion`, rubro por CÓDIGO), camino buscar → ver ficha → reclamar titularidad / editar atributos / cambiar habilitación con un click, y frontera honesta de la edición v0.2 (verificada en vivo contra `PATCH /api/comercios/:id`): los atributos operativos SÍ se editan; la descripción vive solo en el alta; el horario declarado NO existe en el contrato MK-1 (R15 — sin campo no hay vista). Sin rutas nuevas ni cambios de openapi (no hay superficie nueva — regla documental R9 no aplicada).
+
 Ver `docs/EVIDENCIA.md` para la matriz de evidencia y `docs/api/openapi.json` para el contrato vivo. Gobernanza: `docs/GOBERNANZA.md` y `docs/HITUB.md`. Backups de la DB: `scripts/backup-postgres.sh` y `scripts/restore-postgres.sh` — politica en `docs/BACKUPS.md` (D3, #286).
 
 

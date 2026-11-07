@@ -10,6 +10,7 @@ import {
   validarHabilitacionComercio,
   validarJustificacion,
   validarReclamoTitularidad,
+  validarBusquedaComercio,
   ErrorA2,
   NODOS_COMERCIO,
   type NuevaAltaComercio,
@@ -22,6 +23,10 @@ import { RATE_LIMIT_VISITANTE } from './sesion';
  * suite node SIN jsdom, transporte programado (patrón sesion.test.ts /
  * artefactoA1.test.ts / artefactoA3.test.ts). Superficie contrastada contra
  * main @ 1da44723 (routes/comercios.ts + contracts/comercios.ts).
+ *
+ * ARTEFACTOS-ROLES AR2 (#401, épica #399 — 2026-11-07): suite de la vista
+ * comerciante — pre-check de la búsqueda por facetas reales del directorio
+ * y query exacto de las tres facetas en una sola llamada.
  */
 
 interface Programada {
@@ -207,6 +212,37 @@ describe('ART-R4 — validadores de pre-check (la API es la compuerta real)', ()
     expect(validarReclamoTitularidad('cuit', '20', true)).toContain('identificador');
     expect(validarReclamoTitularidad('cuit', '20-12345678-9', false)).toContain('consentimiento');
     expect(validarReclamoTitularidad('dni' as never, 'x', true)).toContain('método');
+  });
+});
+
+describe('AR2 (#401, épica #399) — búsqueda del directorio: buscar → ver → reclamar', () => {
+  it('pre-check de búsqueda válido pasa; sin filtros también (directorio completo)', () => {
+    expect(
+      validarBusquedaComercio({ nodo: 'capital', rubro: 'food_drink', habilitacion: 'verificada' })
+    ).toBeNull();
+    expect(validarBusquedaComercio({})).toBeNull();
+  });
+
+  it('pre-check espejo de los guards de GET /api/comercios (el 400 se evita, no se reemplaza)', () => {
+    expect(validarBusquedaComercio({ nodo: 'mendoza' })).toContain('nodo');
+    expect(validarBusquedaComercio({ rubro: 'Comida y Bebida' })).toContain('rubro');
+    expect(validarBusquedaComercio({ rubro: 'cat-alimentos' })).toBeNull(); // legado válido
+    expect(validarBusquedaComercio({ habilitacion: 'rapida' })).toContain('habilitación');
+  });
+
+  it('las tres facetas viajan en UNA llamada con query exacto', async () => {
+    const t = crearTransporte();
+    const cliente = crearClienteA2({ transporte: t.transporte, token: () => null });
+    t.programar([{ status: 200, cuerpo: { success: true, data: [FICHA_PUBLICA] } }]);
+    const comercios = await cliente.directorio({
+      nodo: 'caucete',
+      rubro: 'food_drink',
+      habilitacion: 'verificada',
+    });
+    expect(comercios.length).toBe(1);
+    expect(t.llamadas[0].ruta).toBe(
+      '/api/comercios?nodo=caucete&rubro=food_drink&habilitacion=verificada'
+    );
   });
 });
 

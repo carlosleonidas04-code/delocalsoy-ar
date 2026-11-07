@@ -53,6 +53,11 @@
  *
  * Montaje único en ART-R5 (ArtefactosRoot): este módulo NO toca App.tsx ni
  * main.tsx (regla M0).
+ *
+ * ARTEFACTOS-ROLES AR2 (#401, épica #399 — 2026-11-07): vista comerciante —
+ * BusquedaComercio + validarBusquedaComercio: pre-check espejo de las
+ * facetas reales de GET /api/comercios (?nodo ?rubro ?habilitacion; el
+ * rubro por CÓDIGO, nunca por nombre).
  */
 import type { EstadoSesion, RolPlataforma, TransporteSesion } from './sesion';
 import { RATE_LIMIT_POR_ROL, RATE_LIMIT_VISITANTE } from './sesion';
@@ -542,6 +547,40 @@ export function validarReclamoTitularidad(
   }
   if (consentimiento !== true) {
     return 'la declaración de consentimiento es explícita y obligatoria — nunca pre-marcada (ADR-027)';
+  }
+  return null;
+}
+
+/* ------------------------------------------------------------------ */
+/* Búsqueda del directorio (ARTEFACTOS-ROLES AR2 #401: buscar → ver)   */
+/* ------------------------------------------------------------------ */
+
+/** Filtros de búsqueda del directorio público (subconjunto de ComerciosQuery). */
+export interface BusquedaComercio {
+  nodo?: string;
+  rubro?: string;
+  habilitacion?: string;
+}
+
+/**
+ * Pre-check de la búsqueda (AR2 #401): espejo de los guards de
+ * GET /api/comercios — nodo del enum, rubro por CÓDIGO (regex del contrato,
+ * canon food_drink o legado cat-*) y estado epistémico de la habilitación.
+ * La API sigue siendo la compuerta real (R15): el pre-check evita el 400,
+ * no lo reemplaza.
+ */
+export function validarBusquedaComercio(b: BusquedaComercio): string | null {
+  if (b.nodo !== undefined && !NODOS_COMERCIO.includes(b.nodo as NodoKeyComercio)) {
+    return "nodo inválido: '" + b.nodo + "' (capital|caucete|iglesia)";
+  }
+  if (b.rubro !== undefined && b.rubro !== '' && !REGEX_RUBRO.test(b.rubro)) {
+    return 'rubro: código del canon (food_drink) o legado (cat-*) — nunca el nombre';
+  }
+  if (
+    b.habilitacion !== undefined &&
+    !ESTADOS_HABILITACION_COMERCIO.includes(b.habilitacion as EstadoHabilitacionComercio)
+  ) {
+    return "estado de habilitación inválido: '" + b.habilitacion + "'";
   }
   return null;
 }
