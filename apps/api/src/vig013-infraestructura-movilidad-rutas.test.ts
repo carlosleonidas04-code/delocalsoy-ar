@@ -223,9 +223,9 @@ describe.skipIf(!dbUp)('Dashboard infraestructura-movilidad VIG-013 (#382, épic
     );
   });
 
-  it('KPIs set v2 (patrón VIG-003): recompute 15, lectura 15 y dashboard 6 consistentes', async () => {
+  it('KPIs set v2 (patrón VIG-003): recompute 21, lectura 21 y dashboard 6 consistentes', async () => {
     // Idempotencia estructural VIG-003: el recompute RE-DERIVA desde el
-    // dominio — set v1 (9) + set v2 (6) = 15 snapshots.
+    // dominio — set v1 (9) + set v2 (6) + set v2 mercado (6, MK-3a #426) = 21 snapshots.
     const snapshots = await recomputeKpisForNode('iglesia');
     expect(snapshots.length).toBe(21); // set v1 (VIG-003) + set v2 (VIG-013) + set v2 mercado (MK-3a #426)
 
