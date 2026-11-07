@@ -21,8 +21,8 @@ function clienteCon(respuesta: (ruta: string) => RespuestaFake, rutasVistas: str
 }
 
 describe('ARTEFACTOS-ROLES AR4 — matriz de sellos v0.2 (#403)', () => {
-  it('el espejo MATRIZ_SELLOS_V0_2 tiene 34 filas — las 33 de docs v0.2 + cluster.creado saldada por AR4', () => {
-    expect(MATRIZ_SELLOS_V0_2).toHaveLength(34);
+  it('el espejo MATRIZ_SELLOS_V0_2 tiene 38 filas — 33 de docs v0.2 + cluster.creado (AR4) + 4 de deuda saldadas por C5 (#412)', () => {
+    expect(MATRIZ_SELLOS_V0_2).toHaveLength(38);
   });
 
   it('incluye la fila saldada cluster.creado (VIG-011 #378) y los sellos AR1 residencia.declarada/visitante.registrado', () => {
@@ -52,9 +52,9 @@ describe('ARTEFACTOS-ROLES AR4 — cobertura de la matriz (#403)', () => {
     expect(cobertura.sinFilaEnMatriz).toEqual([{ type: 'system.mode_change', count: 3 }]);
   });
 
-  it('la cobertura es exhaustiva: documentados + sinEventosAun = 34 filas de la matriz', () => {
+  it('la cobertura es exhaustiva: documentados + sinEventosAun = 38 filas de la matriz', () => {
     const cobertura = coberturaSellos(MATRIZ_SELLOS_V0_2.map((f, i) => ({ type: f.sello, count: i + 1 })));
-    expect(cobertura.documentados).toHaveLength(34);
+    expect(cobertura.documentados).toHaveLength(38);
     expect(cobertura.sinEventosAun).toHaveLength(0);
     expect(cobertura.sinFilaEnMatriz).toHaveLength(0);
   });

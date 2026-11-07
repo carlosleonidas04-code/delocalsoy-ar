@@ -82,7 +82,7 @@ export const COMPONENTES_A4: readonly ComponenteA4[] = [
     id: 'libro_contable',
     titulo: 'Libro contable (events_raw)',
     resumen:
-      'Sellos inmutables 1:1 con cada transición, append-only con hash único idempotente (ADR-032). AR4 (#403): lectura pública directa — GET /api/sellos con filtros ?nodo= ?type= y paginación, GET /api/sellos/tipos para la cobertura contra docs/MATRIZ_SELLOS.md v0.2 (34 sellos).',
+      'Sellos inmutables 1:1 con cada transición, append-only con hash único idempotente (ADR-032). AR4 (#403): lectura pública directa — GET /api/sellos con filtros ?nodo= ?type= y paginación, GET /api/sellos/tipos para la cobertura contra docs/MATRIZ_SELLOS.md v0.2 (38 sellos).',
     estado: 'en_main',
     traza: 'ADR-032 / CORE-004 R4a (#213, EV-054) / AR4 #403 (épica #399)',
   },
@@ -711,13 +711,15 @@ export interface FilaMatrizSello {
   origen: string;
 }
 
-// Matriz v0.2 (revisión M0 2026-11-06 + fila cluster.creado saldada por AR4
-// #403): 34 sellos documentados. Espejo de docs/MATRIZ_SELLOS.md — si la
-// matriz cambia en un PR, este espejo cambia en el MISMO PR (regla 5).
+// Matriz v0.2 (revisión M0 2026-11-06 + cluster.creado saldada por AR4 #403
+// + 4 filas de deuda saldadas por C5 #412): 38 sellos documentados. Espejo de
+// docs/MATRIZ_SELLOS.md — si la matriz cambia en un PR, este espejo cambia en
+// el MISMO PR (regla 5).
 export const MATRIZ_SELLOS_V0_2: readonly FilaMatrizSello[] = [
   { sello: 'subnodo.creado', dominio: 'subnodos', origen: 'VIG-001 (#175), Fase C (#198)' },
   { sello: 'activo.propuesto', dominio: 'activos', origen: 'CORE-004 R6 (#204, EV-035)' },
   { sello: 'activo.ingestado', dominio: 'activos (seed VIG-002)', origen: '#179' },
+  { sello: 'activo.estado_cambiado', dominio: 'activos (PATCH moderación)', origen: 'CORE-004 R5b (#111, EV-034) — fila saldada por C5 #412' },
   { sello: 'patrimonio.ingestado', dominio: 'patrimonio (seed VIG-004)', origen: '#186' },
   { sello: 'patrimonio.custodiado', dominio: 'patrimonio (PATCH custodia)', origen: '#186' },
   { sello: 'patrimonio.observado', dominio: 'patrimonio_observaciones', origen: 'VIG-009 (#253 → #301, EV-072)' },
@@ -726,6 +728,9 @@ export const MATRIZ_SELLOS_V0_2: readonly FilaMatrizSello[] = [
   { sello: 'producto.estado_cambiado', dominio: 'productos', origen: '#189' },
   { sello: 'oportunidad.propuesta', dominio: 'oportunidades (Bloque 9)', origen: '#160 (EV-039)' },
   { sello: 'oportunidad.estado_cambiado', dominio: 'oportunidades', origen: '#160' },
+  { sello: 'oportunidad.conexion_creada', dominio: 'oportunidades (vínculos actores)', origen: 'NCAP-R6-ext (#165) — fila saldada por C5 #412' },
+  { sello: 'oportunidad.evidencia_validada', dominio: 'oportunidades (gate de evidencia)', origen: 'NCAP-R6-ext (#165, ADR-035) — fila saldada por C5 #412' },
+  { sello: 'oportunidad.scoring_declarado', dominio: 'oportunidades (niveles cualitativos)', origen: 'NCAP-R6-ext (#165, ADR-035) — fila saldada por C5 #412' },
   { sello: 'ficha_valoracion.propuesta', dominio: 'fichas_valoracion', origen: '#196 (EV-038)' },
   { sello: 'ficha_valoracion.estado_cambiado', dominio: 'fichas_valoracion', origen: '#196 (EV-038)' },
   { sello: 'reporte.recibido', dominio: 'reportes', origen: 'CORE-005 R2 (#209, EV-052)' },
