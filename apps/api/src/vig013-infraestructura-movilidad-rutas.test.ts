@@ -13,8 +13,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 // interno). Las aserciones se DERIVAN del dominio vivo (GET
 // /api/nodos/:key/features y la tabla pedidos) para no contaminarse con
 // las escrituras de otras suites del mismo job (lección VIG-011). El
-// bloque kpis ejerce el patrón VIG-003: recompute idempotente → 15
-// snapshots (set v1 + set v2) y lectura consistente en AMBAS superficies
+// bloque kpis ejerce el patrón VIG-003: recompute idempotente → 21
+// snapshots (set v1 + set v2 + set v2 mercado MK-3a #426) y lectura consistente en AMBAS superficies
 // (GET /api/nodos/:key/kpis y el dashboard). Requiere Postgres/PostGIS
 // real; sin base → skip honesto.
 
@@ -227,11 +227,11 @@ describe.skipIf(!dbUp)('Dashboard infraestructura-movilidad VIG-013 (#382, épic
     // Idempotencia estructural VIG-003: el recompute RE-DERIVA desde el
     // dominio — set v1 (9) + set v2 (6) = 15 snapshots.
     const snapshots = await recomputeKpisForNode('iglesia');
-    expect(snapshots.length).toBe(15);
+    expect(snapshots.length).toBe(21); // set v1 (VIG-003) + set v2 (VIG-013) + set v2 mercado (MK-3a #426)
 
     const kpisRes = await getJson('/api/nodos/iglesia/kpis');
     expect(kpisRes.status).toBe(200);
-    expect(kpisRes.body.count).toBe(15);
+    expect(kpisRes.body.count).toBe(21); // set v1 (VIG-003) + set v2 (VIG-013) + set v2 mercado (MK-3a #426)
     const porKey = new Map<string, any>();
     for (const row of kpisRes.body.data ?? []) porKey.set(row.kpi_key, row);
 
