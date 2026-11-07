@@ -1,6 +1,7 @@
 /**
  * DELocalSoy.AR — Panel del Artefacto A3: gestor y admin de nodo
- * (ART-R2, #271, épica #268). Consume useSesion (ART-R0) y el cliente puro
+ * (ART-R2, #271, épica #268 · AR3 cola unificada #402, épica #399). Consume
+ * useSesion (ART-R0) y el cliente puro
  * lib/artefactoA3.ts contra las superficies REALES de moderación y gestión.
  *
  * Reglas vivas: R5 (errores visibles, jamás []) · R15 (sin simulación: la
@@ -30,6 +31,9 @@ import {
   validarTransicionIngesta,
   validarCambioFicha,
   REPORTE_TRANSICIONES_A3,
+  COMERCIO_TRANSICIONES_A3,
+  SELLOS_ESPERADOS_A3,
+  ESTADOS_PENDIENTES_A3,
   OPORTUNIDAD_TRANSICIONES_A3,
   INGESTA_TRANSICIONES_A3,
   ErrorA3,
@@ -52,6 +56,8 @@ import {
   type ReportePublico,
   type TransicionReporte,
   type VisibilidadActivo,
+  type EstadoComercio,
+  type ActivoResumen,
 } from '../../lib/artefactoA3';
 
 const NODOS = ['capital', 'caucete', 'iglesia'] as const;
@@ -132,6 +138,7 @@ function A3GestorAdmin() {
         })}
       </ul>
 
+      <ColaPendientes cliente={cliente} caps={caps} />
       <BandejaReportes cliente={cliente} caps={caps} />
       <ModeracionProductos cliente={cliente} caps={caps} />
       <CorroboracionFichas cliente={cliente} caps={caps} />
@@ -143,7 +150,8 @@ function A3GestorAdmin() {
       <h3>Sin cablear aún (honesto, R15)</h3>
       <ul>
         <li>
-          moderación de comercios — MK-1 #246–#250 y MK-2 #251/#254 en cola de merge: no se simula
+          comercios propuestos — NO listables (GET /api/comercios solo publica aprobados): la cola
+          AR3 los administra por id, patrón ingestas (R15)
         </li>
         <li>
           alcance por nodo (NODE_SCOPE_FORBIDDEN) — ◇ diseño lote-2 / #136 (trabado), a ratificar
@@ -159,6 +167,375 @@ function A3GestorAdmin() {
           pendientes
         </li>
       </ul>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Sección: cola unificada de pendientes (ARTEFACTOS-ROLES AR3, #402)  */
+/* ------------------------------------------------------------------ */
+
+function ColaPendientes({ cliente, caps }: PropsSeccion) {
+  const [nodo, setNodo] = useState<string>('capital');
+  const [cargando, setCargando] = useState(false);
+  const [errores, setErrores] = useState<string[]>([]);
+  const [reportes, setReportes] = useState<ReportePublico[] | null>(null);
+  const [fichas, setFichas] = useState<FichaPublica[] | null>(null);
+  const [oportunidades, setOportunidades] = useState<Oportunidad[] | null>(null);
+  const [activos, setActivos] = useState<ActivoResumen[] | null>(null);
+
+  // Moderación inline del activo propuesto: el sello esperado se muestra
+  // ANTES de confirmar (AR3) — la API es la compuerta (403/409/400 reales).
+  const [activoSeleccionado, setActivoSeleccionado] = useState<ActivoResumen | null>(null);
+  const [destinoActivo, setDestinoActivo] = useState<'aprobado' | 'rechazado' | 'archivado' | ''>('');
+  const [motivoActivo, setMotivoActivo] = useState('');
+  const [exito, setExito] = useState<string | null>(null);
+  const [errorAccion, setErrorAccion] = useState<string | null>(null);
+  const [trabajando, setTrabajando] = useState(false);
+
+  // Comercios (MK-2 en main): los propuestos NO son listables — se administran
+  // por id, patrón ingestas (R15). La matriz se muestra completa.
+  const [comercioId, setComercioId] = useState('');
+  const [destinoComercio, setDestinoComercio] = useState<EstadoComercio | ''>('');
+  const [justificacionComercio, setJustificacionComercio] = useState('');
+
+  const cargar = async () => {
+    setCargando(true);
+    setErrores([]);
+    setExito(null);
+    const [rep, fic, oDet, oRev, act] = await Promise.allSettled([
+      cliente.reportesDeNodo(nodo),
+      cliente.fichas({ estado: 'testimonio', nodo }),
+      cliente.oportunidades({ estado: 'detected', nodo }),
+      cliente.oportunidades({ estado: 'under_review', nodo }),
+      cliente.activosPropuestos({ nodo }),
+    ]);
+    const errs: string[] = [];
+    if (rep.status === 'fulfilled') {
+      setReportes(rep.value.filter((x) => (ESTADOS_PENDIENTES_A3.reportes as readonly string[]).includes(x.estado)));
+    } else {
+      errs.push('reportes: ' + mensajeError(rep.reason));
+    }
+    if (fic.status === 'fulfilled') {
+      setFichas(fic.value);
+    } else {
+      errs.push('fichas: ' + mensajeError(fic.reason));
+    }
+    if (oDet.status === 'fulfilled' && oRev.status === 'fulfilled') {
+      setOportunidades([...oDet.value, ...oRev.value]);
+    } else if (oDet.status === 'rejected') {
+      errs.push('oportunidades: ' + mensajeError(oDet.reason));
+    } else if (oRev.status === 'rejected') {
+      errs.push('oportunidades: ' + mensajeError(oRev.reason));
+    }
+    if (act.status === 'fulfilled') {
+      setActivos(act.value);
+    } else {
+      errs.push('activos propuestos: ' + mensajeError(act.reason));
+    }
+    setErrores(errs);
+    setCargando(false);
+  };
+
+  const moderarActivoSeleccionado = async () => {
+    setErrorAccion(null);
+    setExito(null);
+    if (activoSeleccionado === null || destinoActivo === '') {
+      setErrorAccion('elegí el activo pendiente y el estado destino');
+      return;
+    }
+    if (!caps.puedeModerar) {
+      setErrorAccion('la moderación exige rol moderador o admin con sesión iniciada');
+      return;
+    }
+    const motivoError = validarMotivo(motivoActivo);
+    if (motivoError !== null) {
+      setErrorAccion(motivoError);
+      return;
+    }
+    setTrabajando(true);
+    try {
+      const actualizado =
+        motivoActivo.trim() === ''
+          ? await cliente.moderarActivo(activoSeleccionado.id, destinoActivo)
+          : await cliente.moderarActivo(activoSeleccionado.id, destinoActivo, motivoActivo.trim());
+      setExito(
+        'activo ' + actualizado.id + ' → ' + actualizado.estado + ' (sello ' +
+          SELLOS_ESPERADOS_A3.activos + ' en events_raw — la API es la compuerta)'
+      );
+      setActivoSeleccionado(null);
+      setDestinoActivo('');
+      setMotivoActivo('');
+    } catch (e) {
+      setErrorAccion(mensajeError(e));
+    } finally {
+      setTrabajando(false);
+    }
+  };
+
+  const moderarComercioPorId = async () => {
+    setErrorAccion(null);
+    setExito(null);
+    if (comercioId.trim() === '' || destinoComercio === '') {
+      setErrorAccion('indicá el id del comercio y el estado destino');
+      return;
+    }
+    if (!caps.puedeModerar) {
+      setErrorAccion('la moderación de comercios exige rol moderador o admin');
+      return;
+    }
+    const justificacionError = validarJustificacion(justificacionComercio);
+    if (justificacionError !== null) {
+      setErrorAccion(justificacionError);
+      return;
+    }
+    setTrabajando(true);
+    try {
+      const c2 = await cliente.moderarComercio(comercioId.trim(), destinoComercio, justificacionComercio.trim());
+      setExito('comercio ' + c2.id + ' → ' + c2.estado + ' (sello ' + SELLOS_ESPERADOS_A3.comercios + ')');
+      setComercioId('');
+      setDestinoComercio('');
+      setJustificacionComercio('');
+    } catch (e) {
+      setErrorAccion(mensajeError(e));
+    } finally {
+      setTrabajando(false);
+    }
+  };
+
+  return (
+    <section aria-label="Cola unificada de pendientes">
+      <h3>Cola unificada de pendientes (AR3)</h3>
+      <p>
+        <select value={nodo} onChange={(e) => setNodo(e.target.value)} aria-label="nodo de la cola">
+          {NODOS.map((n) => (
+            <option key={n} value={n}>
+              {n}
+            </option>
+          ))}
+        </select>{' '}
+        <button type="button" onClick={() => void cargar()} disabled={cargando}>
+          {cargando ? 'cargando…' : 'cargar pendientes'}
+        </button>
+      </p>
+
+      <details>
+        <summary>matriz de transiciones y sello esperado por dominio</summary>
+        <ul>
+          <li>
+            <strong>reportes</strong> (sello <code>{SELLOS_ESPERADOS_A3.reportes}</code>): received →
+            evaluating · evaluating → in_progress · in_progress → resolved · cualquier abierto → descartado (ADR-038)
+          </li>
+          <li>
+            <strong>activos</strong> (sello <code>{SELLOS_ESPERADOS_A3.activos}</code>): sin matriz — la API
+            rechaza el mismo estado (409)
+          </li>
+          <li>
+            <strong>productos</strong> (sello <code>{SELLOS_ESPERADOS_A3.productos}</code>): sin matriz — 409
+            por mismo estado
+          </li>
+          <li>
+            <strong>fichas de valoración</strong> (sello <code>{SELLOS_ESPERADOS_A3.fichas}</code>):
+            testimonio → corroborada (exige instancia) | descartada
+          </li>
+          <li>
+            <strong>oportunidades</strong> (sello <code>{SELLOS_ESPERADOS_A3.oportunidades}</code>): matriz
+            Bloque 9 — detected → under_review → validated → prioritized → in_development → active →
+            implemented; laterales paused/discarded
+          </li>
+          <li>
+            <strong>comercios</strong> (sello <code>{SELLOS_ESPERADOS_A3.comercios}</code>): propuesto →
+            aprobado|rechazado · aprobado → rechazado|archivado · rechazado|archivado → propuesto
+          </li>
+          <li>
+            <strong>patrimonio</strong> (sello <code>{SELLOS_ESPERADOS_A3.patrimonio}</code>): upsert de
+            custodia con visibilidad (ADR-036)
+          </li>
+          <li>
+            <strong>ingestas</strong> (sello <code>{SELLOS_ESPERADOS_A3.ingestas}</code>): forward-only
+            recibido → validado_tecnicamente → validado_territorialmente → publicado
+          </li>
+        </ul>
+      </details>
+
+      {errores.length > 0 && (
+        <ul role="alert">
+          {errores.map((e, i) => (
+            <li key={i}>{e}</li>
+          ))}
+        </ul>
+      )}
+
+      {reportes !== null && (
+        <div>
+          <h4>reportes abiertos ({reportes.length})</h4>
+          {reportes.length === 0 ? (
+            <p>sin reportes received/evaluating en {nodo} (count 0 honesto).</p>
+          ) : (
+            <ul>
+              {reportes.map((x) => (
+                <li key={x.id}>
+                  <strong>{x.id}</strong> — {x.categoria} · {ETIQUETA_ESTADO_REPORTE[x.estado] ?? x.estado}{' '}
+                  <small>({x.created_at})</small> — la transición se hace en la bandeja de reportes (abajo).
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {fichas !== null && (
+        <div>
+          <h4>fichas testimonio ({fichas.length})</h4>
+          {fichas.length === 0 ? (
+            <p>sin fichas testimonio en {nodo}.</p>
+          ) : (
+            <ul>
+              {fichas.map((f) => (
+                <li key={f.id}>
+                  <strong>{f.id}</strong> — {f.feature_titulo ?? f.feature_id} — corroboración en la sección
+                  de fichas (abajo).
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {oportunidades !== null && (
+        <div>
+          <h4>oportunidades detected/under_review ({oportunidades.length})</h4>
+          {oportunidades.length === 0 ? (
+            <p>sin oportunidades detectadas o en revisión en {nodo}.</p>
+          ) : (
+            <ul>
+              {oportunidades.map((o) => (
+                <li key={o.id}>
+                  <strong>{o.id}</strong> — {o.titulo} · {ETIQUETA_ESTADO_OPORTUNIDAD[o.estado] ?? o.estado} —
+                  transición en la sección de oportunidades (abajo).
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {activos !== null && (
+        <div>
+          <h4>activos propuestos ({activos.length})</h4>
+          {activos.length === 0 ? (
+            <p>sin activos propuestos en {nodo}.</p>
+          ) : (
+            <ul>
+              {activos.map((a) => (
+                <li key={a.id}>
+                  <strong>{a.id}</strong> — {a.titulo} · {a.tipo}
+                  {a.is_synthetic ? ' · SINTÉTICO' : ''}{' '}
+                  <button type="button" onClick={() => setActivoSeleccionado(a)}>
+                    moderar
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {activoSeleccionado !== null && caps.puedeModerar && (
+            <form
+              onSubmit={(e: FormEvent) => {
+                e.preventDefault();
+                void moderarActivoSeleccionado();
+              }}
+            >
+              <p>
+                <strong>{activoSeleccionado.id}</strong> — {activoSeleccionado.titulo} · estado destino{' '}
+                <select
+                  value={destinoActivo}
+                  onChange={(e) => setDestinoActivo(e.target.value as 'aprobado' | 'rechazado' | 'archivado' | '')}
+                  aria-label="estado destino del activo"
+                >
+                  <option value="">destino…</option>
+                  <option value="aprobado">aprobado</option>
+                  <option value="rechazado">rechazado</option>
+                  <option value="archivado">archivado</option>
+                </select>{' '}
+                <input
+                  value={motivoActivo}
+                  onChange={(e) => setMotivoActivo(e.target.value)}
+                  placeholder="motivo (opcional, <=500)"
+                  aria-label="motivo del cambio de estado del activo"
+                />
+              </p>
+              <p>
+                sello esperado al confirmar: <code>{SELLOS_ESPERADOS_A3.activos}</code>
+              </p>
+              <button type="submit" disabled={trabajando}>
+                {trabajando ? 'sellando…' : 'confirmar transición'}
+              </button>{' '}
+              <button type="button" onClick={() => setActivoSeleccionado(null)}>
+                cancelar
+              </button>
+            </form>
+          )}
+        </div>
+      )}
+
+      <div>
+        <h4>comercios: moderación por id (MK-2)</h4>
+        <p>
+          los comercios propuestos NO son listables (GET /api/comercios solo publica aprobados) — se
+          administra por id, patrón ingestas (R15).
+        </p>
+        {caps.puedeModerar ? (
+          <form
+            onSubmit={(e: FormEvent) => {
+              e.preventDefault();
+              void moderarComercioPorId();
+            }}
+          >
+            <p>
+              <input
+                value={comercioId}
+                onChange={(e) => setComercioId(e.target.value)}
+                placeholder="id del comercio"
+                aria-label="id del comercio"
+              />{' '}
+              <select
+                value={destinoComercio}
+                onChange={(e) => setDestinoComercio(e.target.value as EstadoComercio | '')}
+                aria-label="estado destino del comercio"
+              >
+                <option value="">destino…</option>
+                {(Object.keys(COMERCIO_TRANSICIONES_A3) as EstadoComercio[]).map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>{' '}
+              <input
+                value={justificacionComercio}
+                onChange={(e) => setJustificacionComercio(e.target.value)}
+                placeholder="justificación pública (>=10 caracteres, ADR-038)"
+                aria-label="justificación para el comercio"
+              />
+            </p>
+            <p>
+              sello esperado al confirmar: <code>{SELLOS_ESPERADOS_A3.comercios}</code>
+            </p>
+            <button type="submit" disabled={trabajando}>
+              {trabajando ? 'sellando…' : 'transicionar comercio'}
+            </button>
+          </form>
+        ) : (
+          <p>la moderación de comercios exige sesión de moderador/admin.</p>
+        )}
+      </div>
+
+      <p>
+        <strong>No listables (honesto, R15):</strong> productos propuestos (solo por activo — sección de
+        productos), comercios propuestos (por id arriba), ingestas en curso (GET público solo expone
+        publicado).
+      </p>
+      {exito !== null && <p role="status">{exito}</p>}
+      {errorAccion !== null && <p role="alert">{errorAccion}</p>}
     </section>
   );
 }

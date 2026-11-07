@@ -26,6 +26,12 @@
  *                                 reclamar/editar con un click; frontera honesta de la
  *                                 edición (horario declarado NO existe en MK-1 v0.2, R15)
  *     <A3GestorAdmin />            ART-R2 (#271): moderación con justificación (ADR-038)
+ *                                 ARTEFACTOS-ROLES AR3 (#402, épica #399): cola
+ *                                 unificada de pendientes del gestor — reportes,
+ *                                 fichas testimonio, oportunidades y activos
+ *                                 propuestos leídos de las superficies REALES,
+ *                                 matriz de transiciones y sello esperado
+ *                                 visibles ANTES de confirmar
  *     <A4AuditorDatosAbiertos />   ART-R3 (#272): auditoría y datos abiertos (lectura pura)
  *
  * Reglas vivas: R15 (el alta pública solo crea 'ciudadano' — ADR-031; la

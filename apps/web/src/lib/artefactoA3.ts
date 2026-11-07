@@ -1,7 +1,9 @@
 /**
  * DELocalSoy.AR — Artefacto A3 (gestor y admin de nodo): matriz de permisos
  * v0.1, capacidades por sesión y cliente HTTP puro para las superficies
- * REALES de moderación y gestión (ART-R2, #271, épica #268).
+ * REALES de moderación y gestión (ART-R2, #271, épica #268 · AR3 #402,
+ * épica #399: cola unificada de pendientes, matriz visible y sello esperado
+ * ANTES de confirmar).
  *
  * Superficies contrastadas contra main @ 77500be (apps/api/src/routes +
  * packages/contracts/src/index.ts):
@@ -21,6 +23,8 @@
  *   POST  /api/ingestas                  (admin) ingesta curada NC-EV-09
  *   PATCH /api/ingestas/:id/estado        (admin) pipeline forward-only (#147)
  *   GET   /api/nodos/:key/kpis           (público) valor null != 0 (R15)
+ *   GET   /api/activos?estado=propuesto  (público) cola de propuestos (AR3)
+ *   PATCH /api/comercios/:id/estado       (moderador|admin) {estado, justificacion >=10} matriz COMERCIO_TRANSICIONES
  *
  * Reglas vivas: R5 (errores tipados, jamás []) · R15 (sin simulación: la
  * moderación ES la validación comunitaria; nada de lo descartado se simula)
@@ -73,6 +77,7 @@ export type ComponenteA3Id =
   | 'fuentes_ingestas'
   | 'kpis_nodo'
   | 'corroboracion_fichas'
+  | 'cola_pendientes'
   | 'alcance_por_nodo';
 
 export type EstadoComponente = 'en_main' | 'en_rama' | 'propuesto';
@@ -107,9 +112,9 @@ export const COMPONENTES_A3: readonly ComponenteA3[] = [
     id: 'moderacion_comercios',
     titulo: 'Moderación de comercios',
     resumen:
-      'Matriz COMERCIO_TRANSICIONES, verificación de titularidad, habilitación SIIC — en rama, sin merge: no se cablea (R15).',
-    estado: 'en_rama',
-    traza: 'MK-1/MK-2 (#246–#250, #251/#254)',
+      'PATCH /api/comercios/:id/estado con matriz COMERCIO_TRANSICIONES y justificación pública >=10 (ADR-038); los comercios propuestos NO son listables (GET /api/comercios solo publica aprobados) — moderación por id, patrón ingestas (R15).',
+    estado: 'en_main',
+    traza: 'MARKET-CAP MK-1/MK-2 (#243, PRs #246–#254)',
   },
   {
     id: 'custodia_patrimonial',
@@ -140,6 +145,14 @@ export const COMPONENTES_A3: readonly ComponenteA3[] = [
     resumen: 'testimonio -> corroborada|descartada; corroborar exige instancia (individual|taller_comunitario) — decisión #149.',
     estado: 'en_main',
     traza: 'NODO-CAU R4 (#149, EV-038)',
+  },
+  {
+    id: 'cola_pendientes',
+    titulo: 'Cola unificada de pendientes (AR3)',
+    resumen:
+      'AR3 (#402): reportes received/evaluating + fichas testimonio + oportunidades detected/under_review + activos propuestos en una sola vista por nodo; matriz de transiciones visible por dominio y sello esperado mostrado ANTES de confirmar.',
+    estado: 'en_main',
+    traza: 'ARTEFACTOS-ROLES AR3 (#402, épica #399)',
   },
   {
     id: 'alcance_por_nodo',
@@ -178,6 +191,7 @@ export const MATRIZ_PERMISOS_A3: Record<ComponenteA3Id, ColumnasPermisoA3> = {
   fuentes_ingestas: { moderador: 'leer', gestor: 'leer', custodio_territorial: null, admin: 'administrar', visitante: 'leer' },
   kpis_nodo: { moderador: 'leer', gestor: 'leer', custodio_territorial: 'leer', admin: 'leer', visitante: 'leer' },
   corroboracion_fichas: { moderador: 'moderar', gestor: null, custodio_territorial: null, admin: 'moderar', visitante: 'leer' },
+  cola_pendientes: { moderador: 'moderar', gestor: null, custodio_territorial: null, admin: 'moderar', visitante: 'leer' },
   alcance_por_nodo: { moderador: null, gestor: null, custodio_territorial: null, admin: null, visitante: null },
 };
 
@@ -352,6 +366,65 @@ export const INGESTA_TRANSICIONES_A3: Readonly<Record<EstadoIngesta, readonly Es
 };
 
 /* ------------------------------------------------------------------ */
+/* AR3 (#402): comercios espejo MK-1 + sellos esperados + pendientes   */
+/* ------------------------------------------------------------------ */
+
+export type EstadoComercio = 'propuesto' | 'aprobado' | 'rechazado' | 'archivado';
+
+/** COMERCIO_TRANSICIONES (contracts, MK-1 #243): espejo exacto. */
+export const COMERCIO_TRANSICIONES_A3: Readonly<Record<EstadoComercio, readonly EstadoComercio[]>> = {
+  propuesto: ['aprobado', 'rechazado'],
+  aprobado: ['rechazado', 'archivado'],
+  rechazado: ['propuesto'],
+  archivado: ['propuesto'],
+};
+
+/** Sello esperado por dominio (AR3): fuente canónica docs/MATRIZ_SELLOS.md v0.2. */
+export type DominioSelloA3 =
+  | 'reportes'
+  | 'activos'
+  | 'productos'
+  | 'fichas'
+  | 'oportunidades'
+  | 'comercios'
+  | 'patrimonio'
+  | 'ingestas';
+
+export const SELLOS_ESPERADOS_A3: Readonly<Record<DominioSelloA3, string>> = {
+  reportes: 'reporte.estado_cambiado',
+  activos: 'activo.estado_cambiado',
+  productos: 'producto.estado_cambiado',
+  fichas: 'ficha_valoracion.estado_cambiado',
+  oportunidades: 'oportunidad.estado_cambiado',
+  comercios: 'comercio.estado_cambiado',
+  patrimonio: 'patrimonio.custodiado',
+  ingestas: 'ingesta.estado_cambiado',
+};
+
+/** Estados pendientes LISTABLES por dominio (AR3): solo lo que la API expone. */
+export const ESTADOS_PENDIENTES_A3 = {
+  reportes: ['received', 'evaluating'],
+  fichas: ['testimonio'],
+  oportunidades: ['detected', 'under_review'],
+  activos: ['propuesto'],
+} as const;
+
+/** Resumen público del activo (GET /api/activos — cola de propuestos AR3). */
+export interface ActivoResumen {
+  id: string;
+  tipo: string;
+  titulo: string;
+  descripcion: string | null;
+  estado: string;
+  nodo_key: string;
+  subnodo_key: string | null;
+  lat: number | null;
+  lng: number | null;
+  is_synthetic: boolean;
+  created_at: string;
+}
+
+/* ------------------------------------------------------------------ */
 /* Validadores de pre-check (la API sigue siendo la compuerta real)    */
 /* ------------------------------------------------------------------ */
 
@@ -398,6 +471,14 @@ export function validarTransicionOportunidad(
 export function validarTransicionIngesta(desde: EstadoIngesta, hacia: EstadoIngesta): string | null {
   if (!INGESTA_TRANSICIONES_A3[desde].includes(hacia)) {
     return "transición inválida: '" + desde + "' -> '" + hacia + "' (pipeline de procedencia #147)";
+  }
+  return null;
+}
+
+/** Salto válido de comercio contra la matriz espejo (MK-1 #243). */
+export function validarTransicionComercio(desde: EstadoComercio, hacia: EstadoComercio): string | null {
+  if (!COMERCIO_TRANSICIONES_A3[desde].includes(hacia)) {
+    return "transición inválida: '" + desde + "' -> '" + hacia + "' (matriz COMERCIO_TRANSICIONES, #243)";
   }
   return null;
 }
@@ -552,6 +633,11 @@ export interface ClienteA3 {
   avanzarIngesta(ingestaId: string, estado: EstadoIngesta, motivo?: string): Promise<Ingesta>;
   // KPIs del nodo (público)
   kpis(nodoKey: string): Promise<KpiSnapshot[]>;
+  // Cola unificada AR3 (#402): activos propuestos (lectura pública ?estado=propuesto)
+  activosPropuestos(filtros?: { nodo?: string }): Promise<ActivoResumen[]>;
+  moderarActivo(activoId: string, estado: 'aprobado' | 'rechazado' | 'archivado', motivo?: string): Promise<ActivoResumen>;
+  // Comercios (MK-2 en main): moderación POR ID — los propuestos NO son listables
+  moderarComercio(comercioId: string, estado: EstadoComercio, justificacion: string): Promise<{ id: string; estado: string }>;
 }
 
 export interface OpcionesClienteA3 {
@@ -565,6 +651,7 @@ export interface OpcionesClienteA3 {
   baseProductos?: string;
   basePatrimonio?: string;
   baseFuentes?: string;
+  baseComercios?: string;
 }
 
 interface Envelope {
@@ -704,6 +791,22 @@ function parseProducto(crudo: Record<string, unknown>): ProductoCatalogo {
   };
 }
 
+function parseActivoResumen(crudo: Record<string, unknown>): ActivoResumen {
+  return {
+    id: texto(crudo.id),
+    tipo: texto(crudo.tipo),
+    titulo: texto(crudo.titulo),
+    descripcion: textoOnulo(crudo.descripcion),
+    estado: texto(crudo.estado),
+    nodo_key: texto(crudo.nodo_key),
+    subnodo_key: textoOnulo(crudo.subnodo_key),
+    lat: numeroOnulo(crudo.lat),
+    lng: numeroOnulo(crudo.lng),
+    is_synthetic: crudo.is_synthetic === true,
+    created_at: texto(crudo.created_at),
+  };
+}
+
 function parseFuente(crudo: Record<string, unknown>): FuenteEspacial {
   return {
     key: texto(crudo.key),
@@ -766,6 +869,7 @@ export function crearClienteA3(opts: OpcionesClienteA3): ClienteA3 {
   const baseProductos: string = opts.baseProductos ?? '/api/productos';
   const basePatrimonio: string = opts.basePatrimonio ?? '/api/patrimonio';
   const baseFuentes: string = opts.baseFuentes ?? '/api';
+  const baseComercios: string = opts.baseComercios ?? '/api/comercios';
 
   const llamar = async (
     ruta: string,
@@ -1062,6 +1166,36 @@ export function crearClienteA3(opts: OpcionesClienteA3): ClienteA3 {
     return lista(data).map(parseKpi);
   };
 
+  const activosPropuestos = async (filtros?: { nodo?: string }): Promise<ActivoResumen[]> => {
+    const data = await lectura(baseActivos + query({ estado: 'propuesto', nodo: filtros?.nodo }));
+    return lista(data).map(parseActivoResumen);
+  };
+
+  const moderarActivo = async (
+    activoId: string,
+    estado: 'aprobado' | 'rechazado' | 'archivado',
+    motivo?: string
+  ): Promise<ActivoResumen> => {
+    const cuerpo: Record<string, unknown> = { estado };
+    if (motivo !== undefined && motivo.trim() !== '') {
+      cuerpo.motivo = motivo.trim();
+    }
+    const crudo = await moderar(baseActivos + '/' + encodeURIComponent(activoId) + '/estado', cuerpo);
+    return parseActivoResumen(crudo);
+  };
+
+  const moderarComercio = async (
+    comercioId: string,
+    estado: EstadoComercio,
+    justificacion: string
+  ): Promise<{ id: string; estado: string }> => {
+    const crudo = await moderar(baseComercios + '/' + encodeURIComponent(comercioId) + '/estado', {
+      estado,
+      justificacion,
+    });
+    return { id: texto(crudo.id), estado: texto(crudo.estado) };
+  };
+
   return {
     reportesDeNodo,
     historialReporte,
@@ -1079,5 +1213,8 @@ export function crearClienteA3(opts: OpcionesClienteA3): ClienteA3 {
     crearIngesta,
     avanzarIngesta,
     kpis,
+    activosPropuestos,
+    moderarActivo,
+    moderarComercio,
   };
 }
