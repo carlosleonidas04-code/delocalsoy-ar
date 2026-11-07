@@ -153,7 +153,7 @@ router.post('/', requireJwt, requireRole('admin'), async (req: Request, res: Res
     parsed = PedidoAltaSchema.parse(req.body);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ success: false, error: 'datos inválidos', details: error.errors });
+      res.status(400).json({ success: false, error: 'datos inválidos', details: error.issues });
       return;
     }
     throw error;
@@ -284,7 +284,7 @@ router.post('/:key/respuesta', requireJwt, requireRole('admin'), async (req: Req
     parsed = PedidoRespuestaSchema.parse(req.body);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ success: false, error: 'datos inválidos', details: error.errors });
+      res.status(400).json({ success: false, error: 'datos inválidos', details: error.issues });
       return;
     }
     throw error;

@@ -337,7 +337,7 @@ router.post('/', requireJwt, async (req: Request, res: Response) => {
     }
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ success: false, error: 'datos inválidos', details: error.errors });
+      res.status(400).json({ success: false, error: 'datos inválidos', details: error.issues });
       return;
     }
     throw error;
@@ -577,7 +577,7 @@ router.patch('/:id/estado', requireJwt, requireRole('moderador', 'admin'), async
     parsed = ReporteEstadoCambioSchema.parse(req.body);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ success: false, error: 'datos inválidos', details: error.errors });
+      res.status(400).json({ success: false, error: 'datos inválidos', details: error.issues });
       return;
     }
     throw error;
@@ -671,7 +671,7 @@ router.post('/:id/corroboracion', requireJwt, async (req: Request, res: Response
     parsed = ReporteCorroboracionSchema.parse(req.body ?? {});
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ success: false, error: 'datos inválidos', details: error.errors });
+      res.status(400).json({ success: false, error: 'datos inválidos', details: error.issues });
       return;
     }
     throw error;

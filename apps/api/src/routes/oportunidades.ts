@@ -128,7 +128,7 @@ router.post('/', requireJwt, async (req: Request, res: Response) => {
     parsed = OportunidadAltaSchema.parse(req.body);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ success: false, error: 'datos inválidos', details: error.errors });
+      res.status(400).json({ success: false, error: 'datos inválidos', details: error.issues });
       return;
     }
     throw error;
@@ -234,7 +234,7 @@ router.get('/', async (req: Request, res: Response) => {
     if (estadoCrudo !== undefined) {
       const parsedEstado = OportunidadEstadoPublicoFiltroSchema.safeParse(estadoCrudo);
       if (!parsedEstado.success) {
-        res.status(400).json({ success: false, error: 'estado inválido (discarded no es publicable)', details: parsedEstado.error.errors });
+        res.status(400).json({ success: false, error: 'estado inválido (discarded no es publicable)', details: parsedEstado.error.issues });
         return;
       }
       estado = parsedEstado.data;
@@ -244,7 +244,7 @@ router.get('/', async (req: Request, res: Response) => {
     if (nodoCrudo !== undefined) {
       const parsedNodo = SanJuanNodeSlugSchema.safeParse(nodoCrudo);
       if (!parsedNodo.success) {
-        res.status(400).json({ success: false, error: 'nodo inválido', details: parsedNodo.error.errors });
+        res.status(400).json({ success: false, error: 'nodo inválido', details: parsedNodo.error.issues });
         return;
       }
       nodo = parsedNodo.data;
@@ -254,7 +254,7 @@ router.get('/', async (req: Request, res: Response) => {
     if (tipoCrudo !== undefined) {
       const parsedTipo = OportunidadTipoSchema.safeParse(tipoCrudo);
       if (!parsedTipo.success) {
-        res.status(400).json({ success: false, error: 'tipo inválido', details: parsedTipo.error.errors });
+        res.status(400).json({ success: false, error: 'tipo inválido', details: parsedTipo.error.issues });
         return;
       }
       tipo = parsedTipo.data;
@@ -273,7 +273,7 @@ router.get('/', async (req: Request, res: Response) => {
       offset: typeof req.query.offset === 'string' && req.query.offset !== '' ? Number(req.query.offset) : undefined,
     });
     if (!paginacion.success) {
-      res.status(400).json({ success: false, error: 'paginación inválida (limit 1-100, offset ≥ 0)', details: paginacion.error.errors });
+      res.status(400).json({ success: false, error: 'paginación inválida (limit 1-100, offset ≥ 0)', details: paginacion.error.issues });
       return;
     }
     const { limit, offset } = paginacion.data;
@@ -390,7 +390,7 @@ router.post('/:id/conexiones', requireJwt, async (req: Request, res: Response) =
     parsed = OportunidadConexionSchema.parse(req.body);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ success: false, error: 'datos inválidos', details: error.errors });
+      res.status(400).json({ success: false, error: 'datos inválidos', details: error.issues });
       return;
     }
     throw error;
@@ -483,7 +483,7 @@ router.patch('/:id/evidencia', requireJwt, requireRole('moderador', 'admin'), as
     parsed = OportunidadEvidenciaValidacionSchema.parse(req.body);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ success: false, error: 'datos inválidos', details: error.errors });
+      res.status(400).json({ success: false, error: 'datos inválidos', details: error.issues });
       return;
     }
     throw error;
@@ -551,7 +551,7 @@ router.patch('/:id/scoring', requireJwt, requireRole('moderador', 'admin'), asyn
     parsed = OportunidadScoringSchema.parse(req.body);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ success: false, error: 'datos inválidos', details: error.errors });
+      res.status(400).json({ success: false, error: 'datos inválidos', details: error.issues });
       return;
     }
     throw error;
@@ -615,7 +615,7 @@ router.patch('/:id/estado', requireJwt, requireRole('moderador', 'admin'), async
     parsed = OportunidadEstadoCambioSchema.parse(req.body);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ success: false, error: 'datos inválidos', details: error.errors });
+      res.status(400).json({ success: false, error: 'datos inválidos', details: error.issues });
       return;
     }
     throw error;

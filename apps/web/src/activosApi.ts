@@ -99,7 +99,7 @@ export function validarAltaActivo(input: ActivoAltaInput): ResultadoValidacion {
     lng: input.lng,
   });
   if (!parseo.success) {
-    return { ok: false, errores: parseo.error.errors.map((e) => e.message) };
+    return { ok: false, errores: parseo.error.issues.map((e) => e.message) };
   }
   return { ok: true, data: parseo.data };
 }
