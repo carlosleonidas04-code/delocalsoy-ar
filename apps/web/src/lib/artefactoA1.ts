@@ -96,6 +96,44 @@ export const MATRIZ_PERMISOS_A1: Record<ComponenteA1Id, ColumnasPermiso> = {
 /* Capacidades derivadas del estado de sesión                          */
 /* ------------------------------------------------------------------ */
 
+/* ------------------------------------------------------------------ */
+/* PROT-A1 R3 (#420, épica #418): vistas del artefacto. La vista ES el */
+/* estado: mini-router interno del panel (Opción A de #419 ratificada — */
+/* pliegue al M0, sin react-router ni URL global de la app contenedora). */
+/* ------------------------------------------------------------------ */
+
+export type VistaA1 =
+  | 'inicio'
+  | 'estado'
+  | 'reportes'
+  | 'territorio'
+  | 'fichas'
+  | 'oportunidades'
+  | 'directorio'
+  | 'kpis'
+  | 'asistente';
+
+export interface VistaDefA1 {
+  id: VistaA1;
+  titulo: string;
+  descripcion: string;
+  /** La vista incluye escritura ciudadana: exige sesión iniciada (guard honesto, no fricción). */
+  escritura: boolean;
+}
+
+/** Las 9 vistas del Ciudadano Residente (prototipo A1 v0.5 aterrizado). */
+export const VISTAS_A1: readonly VistaDefA1[] = [
+  { id: 'inicio', titulo: 'Inicio', descripcion: 'qué puedo hacer acá y con qué techo honesto', escritura: false },
+  { id: 'estado', titulo: 'Componentes y estado', descripcion: 'los 9 componentes de la spec con estado honesto y permisos reales', escritura: false },
+  { id: 'reportes', titulo: 'Reportes', descripcion: 'lectura pública del nodo, reportar un hecho observable y mis reportes', escritura: true },
+  { id: 'territorio', titulo: 'Territorio', descripcion: 'features y subnodos del vocabulario del nodo (carga perezosa)', escritura: false },
+  { id: 'fichas', titulo: 'Fichas de valoración', descripcion: 'testimonios comunitarios de espacio público (7 dimensiones)', escritura: true },
+  { id: 'oportunidades', titulo: 'Banco de Potencialidades', descripcion: 'potencialidades del Bloque 9 con evidencia obligatoria', escritura: true },
+  { id: 'directorio', titulo: 'Directorio y producción', descripcion: 'productos y operativa de activos del catálogo (solo lo verificado)', escritura: false },
+  { id: 'kpis', titulo: 'KPIs', descripcion: 'set honesto v1 con count 0 y null ≠ 0', escritura: false },
+  { id: 'asistente', titulo: 'Asistente territorial', descripcion: 'RAG sin LLM sobre contenido autorizado del nodo', escritura: false },
+];
+
 export interface CapacidadesA1 {
   esVisitante: boolean;
   /** Modo synthetic: demo SINTÉTICO declarada — las escrituras no se acreditan (R15). */

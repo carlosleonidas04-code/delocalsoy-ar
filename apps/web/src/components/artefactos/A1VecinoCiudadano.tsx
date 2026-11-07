@@ -12,12 +12,18 @@
  *
  * Montaje único en ART-R5 (ArtefactosRoot): este archivo NO toca App.tsx
  * ni main.tsx (regla M0).
+ *
+ * PROT-A1 R3 (#420, épica #418): navegación por vistas — la vista ES el
+ * estado (mini-router interno, Opción A de #419 ratificada: pliegue al M0,
+ * sin react-router ni URL global). WCAG 2.2: botones >=24px (SC 2.5.8),
+ * aria-current y foco a la región al navegar (patrón MK-3c).
  */
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useSesion } from './SesionProvider';
 import { CLAVE_TOKEN_SESION } from '../../lib/sesion';
 import {
   COMPONENTES_A1,
+  VISTAS_A1,
   capacidadesA1,
   permisoVisible,
   crearClienteA1,
@@ -38,6 +44,7 @@ import {
   type RespuestaAsk,
   type SubnodoNodo,
   type TransicionReporte,
+  type VistaA1,
 } from '../../lib/artefactoA1';
 
 const ETIQUETA_ESTADO: Record<string, string> = {
@@ -68,6 +75,13 @@ const USOS_POSIBLES = ['recreo', 'deporte', 'reunion', 'descanso', 'feria', 'cul
 
 type CampoEquipamiento = 'bancos' | 'juegos_infantiles' | 'canchas' | 'basureros' | 'bebedero';
 
+
+/** Detalle navegable (PROT-A1 R3, #420): historial/ficha/oportunidad abiertos. */
+type DetalleA1 =
+  | { tipo: 'historial' }
+  | { tipo: 'ficha'; id: string }
+  | { tipo: 'oportunidad'; id: string };
+
 /* ------------------------------------------------------------------ */
 /* Panel                                                               */
 /* ------------------------------------------------------------------ */
@@ -95,6 +109,40 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
       void refrescar();
     }
   }, [modo]); // eslint-disable-line react-hooks/exhaustive-deps
+
+
+  /* ---------- mini-router interno (PROT-A1 R3, #420): la vista ES el estado ---------- */
+
+  const [vista, setVista] = useState<VistaA1>('inicio');
+  const [detalle, setDetalle] = useState<DetalleA1 | null>(null);
+  const regionRef = useRef<HTMLDivElement | null>(null);
+
+  const enfocarRegion = useCallback(() => {
+    window.scrollTo(0, 0); // scroll-top al navegar (prototipo v0.5)
+    regionRef.current?.focus();
+  }, []);
+
+  const irA = useCallback(
+    (destino: VistaA1) => {
+      setDetalle(null);
+      setVista(destino);
+      enfocarRegion();
+    },
+    [enfocarRegion]
+  );
+
+  const verDetalle = useCallback(
+    (d: DetalleA1) => {
+      setDetalle(d);
+      enfocarRegion();
+    },
+    [enfocarRegion]
+  );
+
+  const volverDeDetalle = useCallback(() => {
+    setDetalle(null);
+    enfocarRegion();
+  }, [enfocarRegion]);
 
   /* ---------- carga perezosa: cada sección declara SU estado ---------- */
 
@@ -435,6 +483,52 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
         {aviso !== null && <p>{aviso}</p>}
       </header>
 
+      {/* PROT-A1 R3 (#420, épica #418): navegación por vistas — la vista ES el estado.
+          WCAG 2.2: botones >=24px (SC 2.5.8), aria-current en la activa (SC 2.4.8),
+          indicador role=status (SC 4.1.3) y foco a la región al navegar (patrón MK-3c). */}
+      <nav aria-label="vistas del artefacto A1">
+        <ul>
+          {VISTAS_A1.map((v) => (
+            <li key={v.id}>
+              <button
+                type="button"
+                onClick={() => irA(v.id)}
+                aria-current={vista === v.id ? 'page' : undefined}
+                style={{ minHeight: '24px', minWidth: '24px' }}
+              >
+                {v.titulo}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </nav>
+      <p role="status">
+        vista: {VISTAS_A1.find((v) => v.id === vista)?.titulo ?? vista}
+        {detalle !== null ? ' · detalle abierto' : ''}
+      </p>
+
+      <div ref={regionRef} tabIndex={-1} role="region" aria-label="contenido de la vista activa">
+        {detalle === null ? (
+          <>
+        {vista === 'inicio' && (
+          <div>
+            <h3>Inicio — qué puedo hacer acá</h3>
+            <ul>
+              {VISTAS_A1.filter((v) => v.id !== 'inicio').map((v) => (
+                <li key={v.id}>
+                  <strong>{v.titulo}</strong> — {v.descripcion}
+                  {v.escritura ? ' · escritura: exige sesión iniciada' : ''}
+                </li>
+              ))}
+            </ul>
+            <p>
+              techo real {caps.techoReqsMin} req/min — la carga es perezosa por vista: navegar
+              no gasta lecturas, cargar datos sí (diseño honesto del visitante).
+            </p>
+          </div>
+        )}
+        {vista === 'estado' && (
+        <>
       <h3>Componentes y estado honesto</h3>
       <ul>
         {COMPONENTES_A1.map((c) => {
@@ -449,6 +543,10 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
         })}
       </ul>
 
+        </>
+      )}
+      {vista === 'reportes' && (
+        <>
       <h3>Reportes del nodo (lectura pública)</h3>
       {error !== null && <p role="alert">{error}</p>}
       {reportes === null && cargando === 'reportes' && <p>cargando…</p>}
@@ -464,29 +562,11 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
             <li key={r.id}>
               <strong>{r.categoria}</strong> · estado: {r.estado}
               {r.is_synthetic ? ' · SINTÉTICO' : ''} · {r.descripcion}{' '}
-              <button type="button" onClick={() => void verHistorial(r.id)}>ver historial</button>
+              <button type="button" onClick={() => { void verHistorial(r.id); verDetalle({ tipo: 'historial' }); }} style={{ minHeight: '24px', minWidth: '24px' }}>ver historial</button>
             </li>
           ))}
         </ul>
       )}
-      {historial !== null && (
-        <div>
-          <h4>Historial público del reporte {historial.id}</h4>
-          {historial.transiciones.length === 0 ? (
-            <p>sin transiciones aún — nació recibido y nadie lo movió: honesto (R15)</p>
-          ) : (
-            <ul>
-              {historial.transiciones.map((t, i) => (
-                <li key={i}>
-                  {t.estado_anterior} → {t.estado_nuevo}: «{t.justificacion}» (moderador {t.moderador_hash.slice(0, 8)}…)
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-      {errorHistorial !== null && <p role="alert">{errorHistorial}</p>}
-
       <h3>Reportar un hecho observable</h3>
       {!caps.puedeEscribir && (
         <p role="note">
@@ -564,6 +644,10 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
         </>
       )}
 
+        </>
+      )}
+      {vista === 'territorio' && (
+        <>
       <h3>Mapa y territorio (carga perezosa: 2 req)</h3>
       {features === null && subnodos === null && (
         <BotonCargar id="territorio" texto="cargar features y subnodos del nodo" alCargar={() => void cargarTerritorio()} />
@@ -585,6 +669,10 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
         </ul>
       )}
 
+        </>
+      )}
+      {vista === 'fichas' && (
+        <>
       <h3>Fichas de valoración de espacio público</h3>
       {fichas === null && (
         <BotonCargar id="fichas" texto="cargar fichas y espacios públicos" alCargar={() => void cargarFichas()} />
@@ -597,7 +685,8 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
           {fichas.map((f) => (
             <li key={f.id}>
               {f.feature_titulo ?? 'espacio ' + f.feature_id} · {f.estado_publico}
-              {f.corroboracion !== null ? ' (' + f.corroboracion + ')' : ''} · versión {f.version}
+              {f.corroboracion !== null ? ' (' + f.corroboracion + ')' : ''} · versión {f.version}{' '}
+              <button type="button" onClick={() => verDetalle({ tipo: 'ficha', id: f.id })} style={{ minHeight: '24px', minWidth: '24px' }}>ver detalle</button>
             </li>
           ))}
         </ul>
@@ -742,6 +831,10 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
       )}
       {errorFicha !== null && <p role="alert">{errorFicha}</p>}
 
+        </>
+      )}
+      {vista === 'oportunidades' && (
+        <>
       <h3>Banco de Potencialidades (Bloque 9)</h3>
       {oportunidades === null && (
         <BotonCargar id="oportunidades" texto="cargar oportunidades del nodo" alCargar={() => void cargarOportunidades()} />
@@ -753,7 +846,8 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
         <ul>
           {oportunidades.map((o) => (
             <li key={o.id}>
-              <strong>{o.titulo}</strong> · {o.tipo} · estado: {o.estado} · {o.descripcion}
+              <strong>{o.titulo}</strong> · {o.tipo} · estado: {o.estado} · {o.descripcion}{' '}
+              <button type="button" onClick={() => verDetalle({ tipo: 'oportunidad', id: o.id })} style={{ minHeight: '24px', minWidth: '24px' }}>ver detalle</button>
             </li>
           ))}
         </ul>
@@ -824,6 +918,10 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
       )}
       {errorOp !== null && <p role="alert">{errorOp}</p>}
 
+        </>
+      )}
+      {vista === 'directorio' && (
+        <>
       <h3>Directorio y producción (lectura)</h3>
       <p>consultá productos y operativa de un activo del catálogo (solo lo aprobado+public; restricted = 404 sin eco).</p>
       <label>
@@ -845,6 +943,10 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
       )}
       {operativaTexto !== null && <p>{operativaTexto}</p>}
 
+        </>
+      )}
+      {vista === 'kpis' && (
+        <>
       <h3>KPIs públicos (set honesto v1)</h3>
       {kpis === null && <BotonCargar id="kpis" texto="cargar KPIs del nodo" alCargar={() => void cargarKpis()} />}
       {kpis !== null && kpis.length === 0 && <p>el nodo aún no tiene snapshots — count 0 honesto (R15)</p>}
@@ -862,6 +964,10 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
         </ul>
       )}
 
+        </>
+      )}
+      {vista === 'asistente' && (
+        <>
       <h3>Asistente territorial (sin LLM — plantillas autorizadas)</h3>
       <form onSubmit={preguntar}>
         <label>
@@ -904,6 +1010,73 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
           </p>
         </div>
       )}
+
+        </>
+      )}
+          </>
+        ) : (
+          <>
+            {detalle.tipo === 'historial' && (
+              <div>
+                <button type="button" onClick={volverDeDetalle} style={{ minHeight: '24px', minWidth: '24px' }}>← volver a reportes</button>
+                <h3>Historial público del reporte {historial !== null ? historial.id : '…'}</h3>
+                {historial === null ? (
+                  <p>cargando historial…</p>
+                ) : historial.transiciones.length === 0 ? (
+                  <p>sin transiciones aún — nació recibido y nadie lo movió: honesto (R15)</p>
+                ) : (
+                  <ul>
+                    {historial.transiciones.map((t, i) => (
+                      <li key={i}>
+                        {t.estado_anterior} → {t.estado_nuevo}: «{t.justificacion}» (moderador {t.moderador_hash.slice(0, 8)}…)
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {errorHistorial !== null && <p role="alert">{errorHistorial}</p>}
+              </div>
+            )}
+            {detalle.tipo === 'ficha' && (
+              <div>
+                <button type="button" onClick={volverDeDetalle} style={{ minHeight: '24px', minWidth: '24px' }}>← volver a fichas</button>
+                {(() => {
+                  const f = (fichas ?? []).find((x) => x.id === detalle.id);
+                  if (f === undefined) {
+                    return <p>la ficha {detalle.id} no está en la lista cargada — volvé y cargá de nuevo (R15).</p>;
+                  }
+                  return (
+                    <div>
+                      <h3>Ficha de {f.feature_titulo ?? 'espacio ' + f.feature_id}</h3>
+                      <p>
+                        id: {f.id} · estado público: {f.estado_publico}
+                        {f.corroboracion !== null ? ' · corroboración: ' + f.corroboracion : ''} · versión {f.version}
+                      </p>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+            {detalle.tipo === 'oportunidad' && (
+              <div>
+                <button type="button" onClick={volverDeDetalle} style={{ minHeight: '24px', minWidth: '24px' }}>← volver al Banco de Potencialidades</button>
+                {(() => {
+                  const o = (oportunidades ?? []).find((x) => x.id === detalle.id);
+                  if (o === undefined) {
+                    return <p>la oportunidad {detalle.id} no está en la lista cargada — volvé y cargá de nuevo (R15).</p>;
+                  }
+                  return (
+                    <div>
+                      <h3>{o.titulo}</h3>
+                      <p>tipo: {o.tipo} · estado: {o.estado}</p>
+                      <p>{o.descripcion}</p>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
       <h3>Sin cablear aún (honesto, R15)</h3>
       <ul>
