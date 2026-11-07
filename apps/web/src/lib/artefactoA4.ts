@@ -82,7 +82,7 @@ export const COMPONENTES_A4: readonly ComponenteA4[] = [
     id: 'libro_contable',
     titulo: 'Libro contable (events_raw)',
     resumen:
-      'Sellos inmutables 1:1 con cada transición, append-only con hash único idempotente (ADR-032). AR4 (#403): lectura pública directa — GET /api/sellos con filtros ?nodo= ?type= y paginación, GET /api/sellos/tipos para la cobertura contra docs/MATRIZ_SELLOS.md v0.2 (38 sellos).',
+      'Sellos inmutables 1:1 con cada transición, append-only con hash único idempotente (ADR-032). AR4 (#403): lectura pública directa — GET /api/sellos con filtros ?nodo= ?type= y paginación, GET /api/sellos/tipos para la cobertura contra docs/MATRIZ_SELLOS.md v0.2 (39 sellos).',
     estado: 'en_main',
     traza: 'ADR-032 / CORE-004 R4a (#213, EV-054) / AR4 #403 (épica #399)',
   },
@@ -712,7 +712,8 @@ export interface FilaMatrizSello {
 }
 
 // Matriz v0.2 (revisión M0 2026-11-06 + cluster.creado saldada por AR4 #403
-// + 4 filas de deuda saldadas por C5 #412): 38 sellos documentados. Espejo de
+// + 4 filas de deuda saldadas por C5 #412 + producto.atributos_editados
+// MK-3b #426): 39 sellos documentados. Espejo de
 // docs/MATRIZ_SELLOS.md — si la matriz cambia en un PR, este espejo cambia en
 // el MISMO PR (regla 5).
 export const MATRIZ_SELLOS_V0_2: readonly FilaMatrizSello[] = [
@@ -726,6 +727,7 @@ export const MATRIZ_SELLOS_V0_2: readonly FilaMatrizSello[] = [
   { sello: 'operativa.ingestado', dominio: 'activos_operativa (seed VIG-005)', origen: '#189' },
   { sello: 'producto.propuesto', dominio: 'productos', origen: '#189' },
   { sello: 'producto.estado_cambiado', dominio: 'productos', origen: '#189' },
+  { sello: 'producto.atributos_editados', dominio: 'productos (MK-3b, PATCH de oferta)', origen: '#426 (EV-095)' },
   { sello: 'oportunidad.propuesta', dominio: 'oportunidades (Bloque 9)', origen: '#160 (EV-039)' },
   { sello: 'oportunidad.estado_cambiado', dominio: 'oportunidades', origen: '#160' },
   { sello: 'oportunidad.conexion_creada', dominio: 'oportunidades (vínculos actores)', origen: 'NCAP-R6-ext (#165) — fila saldada por C5 #412' },

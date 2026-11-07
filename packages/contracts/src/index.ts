@@ -950,6 +950,98 @@ export const ProductoEstadoCambioSchema = z.object({
   motivo: z.string().trim().max(500).optional(),
 });
 
+// ─── MARKET-CAP MK-3b (#426, sub-épica #152): ofertas del Mercado ───
+
+// Precio en centavos AR ENTEROS — jamás float (D2 del diseño MK-3 ratificada
+// por la DH 2026-10-30): el centavo es la unidad mínima de la moneda real.
+// null = sin precio declarado (sin_dato honesto, R15) — distinto de 0.
+export const ProductoPrecioCentavosSchema = z
+  .number()
+  .int("precio_centavos: entero — jamás float (MK-3 D2)")
+  .min(1, "precio_centavos: mínimo 1 centavo — sin precio publicado se declara null, no 0")
+  .max(100000000, "precio_centavos: máximo ARS 1.000.000,00");
+
+// Fecha de vigencia YYYY-MM-DD (caducidad DECLARADA, no silenciosa — RFC-027):
+// la oferta con ventana vencida sigue publicada con estado DERIVADO 'vencida'
+// en la lectura — nunca desaparece en silencio.
+export const ProductoFechaSchema = z
+  .string()
+  .trim()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "vigencia: fecha YYYY-MM-DD");
+
+// Edición de oferta (MK-3b, patrón PATCH habilitación MK-2 #254): titular
+// verificado del comercio padre o moderador|admin — la API es la compuerta
+// (403 real sin eco, Ley 25.326). Justificación pública >=10 (ADR-038).
+// Al menos un campo editable: el PATCH vacío es un error de datos, no un
+// no-op silencioso (R15). Todos los campos son opcionales (edición parcial);
+// null limpia el campo declarado (sin precio / sin ventana de vigencia).
+export const ProductoEdicionSchema = z
+  .object({
+    nombre: z.string().trim().min(3, "El nombre debe tener al menos 3 caracteres").max(120).optional(),
+    categoria: z
+      .string()
+      .trim()
+      .regex(/^[a-z0-9_]+$/, "categoria: slug en minúsculas y guiones bajos")
+      .min(2)
+      .max(40)
+      .optional(),
+    temporada_meses: z
+      .array(z.number().int().min(1, "mes: 1-12").max(12, "mes: 1-12"))
+      .max(12)
+      .optional(),
+    precio_centavos: ProductoPrecioCentavosSchema.nullable().optional(),
+    vigencia_desde: ProductoFechaSchema.nullable().optional(),
+    vigencia_hasta: ProductoFechaSchema.nullable().optional(),
+    justificacion: z
+      .string()
+      .trim()
+      .min(10, "ADR-038: el cambio exige justificación pública (mínimo 10 caracteres)")
+      .max(500),
+  })
+  .strict()
+  .superRefine((v, ctx) => {
+    const campos = ["nombre", "categoria", "temporada_meses", "precio_centavos", "vigencia_desde", "vigencia_hasta"] as const;
+    if (!campos.some((c) => v[c] !== undefined)) {
+      ctx.addIssue({ code: "custom", message: "sin campos para editar — el PATCH vacío es un error de datos (R15)" });
+      return;
+    }
+    if (
+      v.vigencia_desde !== null && v.vigencia_desde !== undefined &&
+      v.vigencia_hasta !== null && v.vigencia_hasta !== undefined &&
+      v.vigencia_hasta < v.vigencia_desde
+    ) {
+      ctx.addIssue({ code: "custom", message: "vigencia_hasta no puede ser anterior a vigencia_desde" });
+    }
+  });
+
+// Filtros del catálogo público de ofertas (GET /api/productos, MK-3b — decisión
+// DH 2026-11-07: catálogo dentro de MK-3b mismo PR): todos opcionales. q es
+// LIKE simple por nombre (decisión DH 2026-11-07) — la búsqueda semántica
+// vive en el RAG territorial (VIG-006), no en el catálogo. nodo/subnodo/rubro
+// se validan contra el vocabulario real en la ruta (reconciliación 404/400
+// patrón MK-0 §2.5: el enum acredita la forma; la tabla acredita la existencia).
+export const ProductoFiltroSchema = z.object({
+  nodo: SanJuanNodeSlugSchema.optional(),
+  subnodo: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9_]+$/, "subnodo: slug en minúsculas y guiones bajos")
+    .max(60)
+    .optional(),
+  rubro: z
+    .string()
+    .trim()
+    .regex(/^[a-z][a-z0-9_-]*(\.[a-z0-9_-]+)?$/, "rubro: código del canon (food_drink) o legado (cat-*)")
+    .max(60)
+    .optional(),
+  precio_max: z.coerce.number().int().min(1).max(100000000).optional(),
+  vigente: z.enum(["true", "false"]).optional(),
+  q: z.string().trim().min(2, "q: al menos 2 caracteres").max(60).optional(),
+});
+
+export type ProductoEdicion = z.infer<typeof ProductoEdicionSchema>;
+export type ProductoFiltro = z.infer<typeof ProductoFiltroSchema>;
+
 // Estado honesto de la capacidad (R15): unknown = sin aforo, plazas ni
 // protocolo verificado en nuestras fuentes (Cuesta del Viento, tanda 3).
 export const OperativaCapacityStatusSchema = z.enum(["aforo_verificado", "guia_oficial", "unknown"]);
