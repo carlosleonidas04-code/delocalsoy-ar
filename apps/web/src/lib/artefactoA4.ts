@@ -82,7 +82,7 @@ export const COMPONENTES_A4: readonly ComponenteA4[] = [
     id: 'libro_contable',
     titulo: 'Libro contable (events_raw)',
     resumen:
-      'Sellos inmutables 1:1 con cada transición, append-only con hash único idempotente (ADR-032). AR4 (#403): lectura pública directa — GET /api/sellos con filtros ?nodo= ?type= y paginación, GET /api/sellos/tipos para la cobertura contra docs/MATRIZ_SELLOS.md v0.2 (34 sellos).',
+      'Sellos inmutables 1:1 con cada transición, append-only con hash único idempotente (ADR-032). AR4 (#403): lectura pública directa — GET /api/sellos con filtros ?nodo= ?type= y paginación, GET /api/sellos/tipos para la cobertura contra docs/MATRIZ_SELLOS.md v0.2 (38 sellos).',
     estado: 'en_main',
     traza: 'ADR-032 / CORE-004 R4a (#213, EV-054) / AR4 #403 (épica #399)',
   },
