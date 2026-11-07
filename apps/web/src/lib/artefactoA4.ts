@@ -13,6 +13,8 @@
  *   GET  /api/ingestas?nodo=      (público) SOLO estado='publicado' (#200)
  *   GET  /api/nodos/:key/kpis     (público) valor null != 0 (R15)
  *   GET  /api/patrimonio/:activoId (público) ficha SIN sensible/sensible_nota (ADR-036)
+ *   GET  /api/sellos?nodo=&type=    (público) libro contable AR4 (#403): sellos YA emitidos
+ *   GET  /api/sellos/tipos          (público) conteo por type (cobertura vs MATRIZ_SELLOS v0.2)
  *
  * Reglas vivas: R5 (errores tipados, jamás []) · R15 (sin simulación: el
  * auditor NO muta — ninguna escritura se cablea; lo no publicado no se
@@ -27,10 +29,12 @@
  *     (ADR-031); el registro público solo crea 'ciudadano' y la promoción es
  *     operación de sistema. esAuditor es DECLARATIVO: toda la lectura A4 es
  *     pública (datos abiertos) — la sesión no agrega datos, solo techo.
- *  2. events_raw NO tiene GET público: el libro contable solo se observa por
- *     DERIVADOS (health modeSource='events_raw', historiales con moderador_hash,
- *     KPIs re-derivados). POST /api/events existe como ingesta pública
- *     (append-only, anti-PII) y JAMÁS se cablea acá: el auditor no muta.
+ *  2. AR4 (#403): events_raw YA tiene GET público — GET /api/sellos (libro
+ *     contable con ?nodo= ?type= y paginación limit/offset) y
+ *     GET /api/sellos/tipos (cobertura). Los derivados siguen existiendo
+ *     (health modeSource, historiales con moderador_hash, KPIs). POST
+ *     /api/events sigue siendo ingesta pública (append-only, anti-PII) y
+ *     JAMÁS se cablea acá: el auditor no muta.
  *  3. /api/health y /api/evidencias responden SIN envelope {success,data} —
  *     los parsers son directos (el resto de la API sí usa envelope).
  *  4. El modo del sistema (real|synthetic|degraded) se resuelve desde el
@@ -78,9 +82,9 @@ export const COMPONENTES_A4: readonly ComponenteA4[] = [
     id: 'libro_contable',
     titulo: 'Libro contable (events_raw)',
     resumen:
-      'Sellos inmutables 1:1 con cada transición, append-only con hash único idempotente (ADR-032). SIN GET público: se observa solo por derivados — health modeSource, historiales con moderador_hash, KPIs re-derivados.',
+      'Sellos inmutables 1:1 con cada transición, append-only con hash único idempotente (ADR-032). AR4 (#403): lectura pública directa — GET /api/sellos con filtros ?nodo= ?type= y paginación, GET /api/sellos/tipos para la cobertura contra docs/MATRIZ_SELLOS.md v0.2 (34 sellos).',
     estado: 'en_main',
-    traza: 'ADR-032 / CORE-004 R4a (#213, EV-054)',
+    traza: 'ADR-032 / CORE-004 R4a (#213, EV-054) / AR4 #403 (épica #399)',
   },
   {
     id: 'historiales_publicos',
@@ -461,10 +465,11 @@ export interface OpcionesClienteA4 {
   basePatrimonio?: string;
   baseHealth?: string;
   baseEvidencias?: string;
+  baseSellos?: string;
 }
 
 /**
- * Cliente A4: 8 métodos, TODOS de lectura pública. Sin token, sin
+ * Cliente A4: 10 métodos, TODOS de lectura pública. Sin token, sin
  * Authorization: ninguna superficie A4 exige sesión (datos abiertos) y el
  * auditor no muta — no existe método de escritura por diseño (spec §4).
  */
@@ -485,6 +490,10 @@ export interface ClienteA4 {
   kpis(nodoKey: string): Promise<KpiSnapshot[]>;
   // Ficha pública patrimonial SIN sensible/sensible_nota (ADR-036).
   fichaPatrimonio(activoId: string): Promise<FichaPatrimonio>;
+  // AR4 (#403): libro contable — sellos YA emitidos con filtros y paginación.
+  sellos(params?: { nodo?: string; type?: string; limit?: number; offset?: number }): Promise<{ sellos: SelloPublico[]; total: number }>;
+  // AR4 (#403): conteo por type — base de la cobertura contra la matriz.
+  sellosTipos(): Promise<SelloTipoCount[]>;
 }
 
 interface Envelope {
@@ -500,6 +509,7 @@ export function crearClienteA4(opts: OpcionesClienteA4): ClienteA4 {
   const basePatrimonio: string = opts.basePatrimonio ?? '/api/patrimonio';
   const baseHealth: string = opts.baseHealth ?? '/api/health';
   const baseEvidencias: string = opts.baseEvidencias ?? '/api/evidencias';
+  const baseSellos: string = opts.baseSellos ?? '/api/sellos';
 
   const llamar = async (
     ruta: string,
@@ -617,6 +627,49 @@ export function crearClienteA4(opts: OpcionesClienteA4): ClienteA4 {
     return parseFichaPatrimonio(data as Record<string, unknown>);
   };
 
+  // AR4 (#403): libro contable — lectura pública de los sellos YA emitidos.
+  // El total llega en el body y, como respaldo, en el header
+  // X-DELocalSoy-Total-Count (patrón #165): si el transporte no expone
+  // headers, total 0 declarado (honesto — se muestra lo listado).
+  const sellos = async (
+    params: { nodo?: string; type?: string; limit?: number; offset?: number } = {}
+  ): Promise<{ sellos: SelloPublico[]; total: number }> => {
+    const res = await llamar(
+      baseSellos +
+        query({
+          nodo: params.nodo,
+          type: params.type,
+          limit: params.limit !== undefined ? String(params.limit) : undefined,
+          offset: params.offset !== undefined ? String(params.offset) : undefined,
+        })
+    );
+    const cuerpo = (await leerJson(res)) as Envelope & { total?: unknown };
+    if (res.status !== 200) {
+      throw errorDe(res.status, texto(cuerpo.error));
+    }
+    if (cuerpo.data === undefined) {
+      throw new ErrorA4('no_disponible', 'respuesta malformada (HTTP 200 sin data)');
+    }
+    let total = 0;
+    if (typeof cuerpo.total === 'number') {
+      total = cuerpo.total;
+    } else {
+      const h = (res as unknown as { headers?: { get?: (n: string) => string | null } }).headers;
+      const crudo = h && typeof h.get === 'function' ? h.get('x-delocalsoy-total-count') : null;
+      if (crudo !== null && Number.isFinite(Number(crudo))) total = Number(crudo);
+    }
+    return { sellos: lista(cuerpo.data).map(parseSello), total };
+  };
+
+  // AR4 (#403): conteo de sellos por type (GET /api/sellos/tipos).
+  const sellosTipos = async (): Promise<SelloTipoCount[]> => {
+    const data = await lectura(baseSellos + '/tipos');
+    return lista(data).map((r) => ({
+      type: texto(r.type),
+      count: typeof r.count === 'number' ? r.count : 0,
+    }));
+  };
+
   return {
     salud,
     evidencias,
@@ -626,5 +679,125 @@ export function crearClienteA4(opts: OpcionesClienteA4): ClienteA4 {
     ingestasPublicadas,
     kpis,
     fichaPatrimonio,
+    sellos,
+    sellosTipos,
   };
+}
+
+
+/* ------------------------------------------------------------------ */
+/* AR4 (#403, épica #399): libro contable de sellos — tipos y cobertura */
+/* ------------------------------------------------------------------ */
+
+/** Sello público del libro contable: tal como vive en events_raw (sin PII). */
+export interface SelloPublico {
+  id: string;
+  type: string;
+  hash: string;
+  occurred_at: string;
+  payload: Record<string, unknown>;
+}
+
+/** Conteo por type (GET /api/sellos/tipos). */
+export interface SelloTipoCount {
+  type: string;
+  count: number;
+}
+
+/** Fila de docs/MATRIZ_SELLOS.md v0.2 — espejo EXACTO de la matriz (R15). */
+export interface FilaMatrizSello {
+  sello: string;
+  dominio: string;
+  origen: string;
+}
+
+// Matriz v0.2 (revisión M0 2026-11-06 + fila cluster.creado saldada por AR4
+// #403): 34 sellos documentados. Espejo de docs/MATRIZ_SELLOS.md — si la
+// matriz cambia en un PR, este espejo cambia en el MISMO PR (regla 5).
+export const MATRIZ_SELLOS_V0_2: readonly FilaMatrizSello[] = [
+  { sello: 'subnodo.creado', dominio: 'subnodos', origen: 'VIG-001 (#175), Fase C (#198)' },
+  { sello: 'activo.propuesto', dominio: 'activos', origen: 'CORE-004 R6 (#204, EV-035)' },
+  { sello: 'activo.ingestado', dominio: 'activos (seed VIG-002)', origen: '#179' },
+  { sello: 'patrimonio.ingestado', dominio: 'patrimonio (seed VIG-004)', origen: '#186' },
+  { sello: 'patrimonio.custodiado', dominio: 'patrimonio (PATCH custodia)', origen: '#186' },
+  { sello: 'patrimonio.observado', dominio: 'patrimonio_observaciones', origen: 'VIG-009 (#253 → #301, EV-072)' },
+  { sello: 'operativa.ingestado', dominio: 'activos_operativa (seed VIG-005)', origen: '#189' },
+  { sello: 'producto.propuesto', dominio: 'productos', origen: '#189' },
+  { sello: 'producto.estado_cambiado', dominio: 'productos', origen: '#189' },
+  { sello: 'oportunidad.propuesta', dominio: 'oportunidades (Bloque 9)', origen: '#160 (EV-039)' },
+  { sello: 'oportunidad.estado_cambiado', dominio: 'oportunidades', origen: '#160' },
+  { sello: 'ficha_valoracion.propuesta', dominio: 'fichas_valoracion', origen: '#196 (EV-038)' },
+  { sello: 'ficha_valoracion.estado_cambiado', dominio: 'fichas_valoracion', origen: '#196 (EV-038)' },
+  { sello: 'reporte.recibido', dominio: 'reportes', origen: 'CORE-005 R2 (#209, EV-052)' },
+  { sello: 'reporte.corroborado', dominio: 'reportes', origen: 'CORE-005 R4 (#219, EV-055)' },
+  { sello: 'reporte.estado_cambiado', dominio: 'reportes', origen: 'CORE-005 R3 (#211, EV-053)' },
+  { sello: 'fuente.registrada', dominio: 'fuentes (seed)', origen: '#200 (EV-049)' },
+  { sello: 'ingesta.creada', dominio: 'ingestas', origen: '#200' },
+  { sello: 'ingesta.estado_cambiado', dominio: 'ingestas', origen: '#200' },
+  { sello: 'comercio.ingestado', dominio: 'comercios (MK-1)', origen: '#248 → #300 (EV-070)' },
+  { sello: 'comercio.estado_cambiado', dominio: 'comercios', origen: '#248 → #300' },
+  { sello: 'comercio.titularidad_reclamada', dominio: 'comercios', origen: '#248 → #300' },
+  { sello: 'comercio.titularidad_verificada', dominio: 'comercios', origen: '#248 → #300' },
+  { sello: 'comercio.atributos_editados', dominio: 'comercios', origen: '#248 → #300' },
+  { sello: 'comercio.habilitacion_actualizada', dominio: 'comercios (MK-2)', origen: '#254 → #302 (EV-073)' },
+  { sello: 'comercio.titularidad_desistida', dominio: 'comercios (MK-2)', origen: '#254 → #302' },
+  { sello: 'capa.registrada', dominio: 'capas (seed de vocabulario)', origen: 'NCAP-R1 #369 (EV-079) · VIG-010 #383 (EV-083)' },
+  { sello: 'corredor.creado', dominio: 'corredores', origen: 'NCAP-R4 #365 (EV-077)' },
+  { sello: 'mediador.registrado', dominio: 'mediadores (AMC)', origen: 'VIG-011 #385 (EV-084)' },
+  { sello: 'pedido.presentado', dominio: 'pedidos', origen: 'VIG-012 #387 (EV-085)' },
+  { sello: 'pedido.respondido', dominio: 'pedidos', origen: 'VIG-012 #387 (EV-085)' },
+  { sello: 'cluster.creado', dominio: 'features (clusters AMC)', origen: 'VIG-011 #378 (EV-084) — fila saldada por AR4 #403' },
+  { sello: 'residencia.declarada', dominio: 'usuarios (AR1)', origen: 'ARTEFACTOS-ROLES #400 (épica #399)' },
+  { sello: 'visitante.registrado', dominio: 'usuarios (AR1)', origen: 'ARTEFACTOS-ROLES #400 (épica #399)' },
+];
+
+/** Parser local del sello (mismo patrón que los parsers A4). */
+function parseSello(crudo: Record<string, unknown>): SelloPublico {
+  const payload = crudo.payload;
+  return {
+    id: texto(crudo.id),
+    type: texto(crudo.type),
+    hash: texto(crudo.hash),
+    occurred_at: texto(crudo.occurred_at),
+    payload:
+      payload !== null && typeof payload === 'object' && !Array.isArray(payload)
+        ? (payload as Record<string, unknown>)
+        : {},
+  };
+}
+
+/**
+ * Cobertura de la matriz v0.2 contra los types vistos en el libro contable
+ * (GET /api/sellos/tipos). Hallazgo honesto (R15): los types SIN fila en la
+ * matriz (p. ej. system.* o los test.*) se exponen, jamás se esconden.
+ */
+export interface CoberturaSellos {
+  /** Sellos de la matriz con eventos ya emitidos. */
+  documentados: Array<FilaMatrizSello & { count: number }>;
+  /** Types vistos en events_raw SIN fila en la matriz — hallazgo honesto. */
+  sinFilaEnMatriz: SelloTipoCount[];
+  /** Sellos de la matriz sin eventos aún (count 0 o ausente). */
+  sinEventosAun: FilaMatrizSello[];
+}
+
+export function coberturaSellos(tipos: readonly SelloTipoCount[]): CoberturaSellos {
+  const counts = new Map(tipos.map((t) => [t.type, t.count]));
+  const conFila = new Set(MATRIZ_SELLOS_V0_2.map((f) => f.sello));
+  const documentados: CoberturaSellos['documentados'] = [];
+  const sinEventosAun: FilaMatrizSello[] = [];
+  const sinFilaEnMatriz: SelloTipoCount[] = [];
+  for (const fila of MATRIZ_SELLOS_V0_2) {
+    const count = counts.get(fila.sello);
+    if (count !== undefined && count > 0) {
+      documentados.push({ ...fila, count });
+    } else {
+      sinEventosAun.push(fila);
+    }
+  }
+  for (const t of tipos) {
+    if (!conFila.has(t.type)) {
+      sinFilaEnMatriz.push(t);
+    }
+  }
+  return { documentados, sinFilaEnMatriz, sinEventosAun };
 }
