@@ -196,7 +196,14 @@ export function ComerciosPanel({ dataSource }: { dataSource: DataSource }) {
         <button
           type="button"
           onClick={() => void verHistorial(id)}
-          style={{ marginLeft: '0.4rem', fontSize: '0.68rem', padding: '0.05rem 0.45rem' }}
+          style={{
+            marginLeft: '0.4rem',
+            fontSize: '0.68rem',
+            padding: '0.05rem 0.45rem',
+            // MK-3c (#426): WCAG 2.2 SC 2.5.8 — target size mínimo 24x24px
+            minHeight: '24px',
+            minWidth: '24px',
+          }}
         >
           {h === undefined ? 'Ver bitácora pública (F-3)' : 'Ocultar bitácora F-3'}
         </button>
