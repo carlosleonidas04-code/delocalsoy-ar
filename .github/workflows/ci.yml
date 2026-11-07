@@ -45,6 +45,14 @@ name: CI
 # categoría) se planta como fixture idempotente vía prisma — el entorno
 # sigue limpio (sin seed).
 
+# v19 (MARKET-CAP MK-3a, #428): auto-report tail 20000 → 60000 chars. En las
+# corridas fallidas del PR #428 el tail era consumido integro por el log del
+# contenedor de postgres que GitHub agrega al final del log del job (~25k
+# chars de initdb + mensajes del server): la salida real de vitest quedaba
+# fuera de la ventana y el auto-report no mostraba el fallo real (R4
+# ineficaz). 60000 < 65536 (limite de un comentario de issue). Sin cambios
+# de semantica de jobs (R4/R15): misma evidencia, ventana mas ancha.
+
 on:
   push:
     branches: [main]
@@ -254,13 +262,13 @@ jobs:
                   owner: context.repo.owner, repo: context.repo.repo, job_id: j.id
                 });
                 const t = typeof res.data === 'string' ? res.data : Buffer.from(res.data).toString('utf8');
-                logText += '===== job ' + j.name + ' (ultimas lineas) =====' + '\n' + t.slice(-20000) + '\n\n';
+                logText += '===== job ' + j.name + ' (ultimas lineas) =====' + '\n' + t.slice(-60000) + '\n\n';
               } catch (e) {
                 logText += 'log del job ' + j.name + ' no disponible: ' + e.message + '\n\n';
               }
             }
             if (!logText) logText = '(sin logs)';
-            const tail = logText.slice(-20000);
+            const tail = logText.slice(-60000);
             const body = '## \u{1F534} Auto-report (R4, workflow ' + context.workflow + ') — pasos en fallo: ' + failedInfo + '\n\nLog del job:\n\n```\n' + tail + '\n```\n\n*La salida real acredita (R4): nada se cierra sin ella.*';
             await github.rest.issues.createComment({
               owner: context.repo.owner, repo: context.repo.repo,
