@@ -17,7 +17,7 @@ import { prisma } from './index.js';
  * pasó a restricted en la custodia VIG-004).
  */
 
-export const RAG_SOURCE_TYPES = ['subnodo', 'activo', 'kpi'] as const;
+export const RAG_SOURCE_TYPES = ['subnodo', 'activo', 'kpi', 'comercio'] as const; // MK-3a (#426): F-9 — la ficha pública del mercado es prosa autorizada
 export type RagSourceType = (typeof RAG_SOURCE_TYPES)[number];
 
 export type RagFuente = { fuente: string; fecha?: string };
@@ -101,6 +101,14 @@ const KPI_TEXTO: Record<string, string> = {
   reportes_amc_por_dominio: 'Reportes ciudadanos del AMC por dominio',
   reportes_amc_por_distrito: 'Reportes ciudadanos del AMC por distrito',
   parajes_con_reporte: 'Parajes con al menos un reporte del AMC',
+  // MARKET-CAP MK-3a (#426): prosa de los KPIs del mercado — mismo criterio
+  // (lectura humana sin agregar interpretación, R15).
+  comercios_por_estado: 'Comercios del Mercado de Proximidad por estado',
+  comercios_por_rubro: 'Comercios por rubro del directorio',
+  comercios_por_subnodo: 'Comercios por subnodo territorial',
+  comercios_habilitacion_verificada_pct: 'Porcentaje de comercios con habilitación verificada',
+  titularidad_verificada_pct: 'Porcentaje de comercios con titularidad verificada',
+  ofertas_activas: 'Ofertas de productos activas del mercado',
 };
 
 function asReglas(v: unknown): ReglaRow[] {
@@ -234,6 +242,51 @@ export async function recomputeRagIndexForNode(nodoKey: string): Promise<RagReco
     });
   }
 
+  // 2b. Comercios publicados (MARKET-CAP MK-3a, F-9 — DH D3): ficha pública
+  // + atributos del dominio mercado. Guard idéntico al GET público de MK-1:
+  // estado 'aprobado' y visibilidad no restricted — lo que no es visible
+  // tampoco se indexa (ADR-036). NUNCA: contacto (no existe en v1 — relay
+  // por plataforma, MK-4), identificador_hash ni reclamado_por_hash (Ley
+  // 25.326, DH MK-2 §7.2), consentimiento ni restricted.
+  type ComercioFichaRow = {
+    activo_id: string;
+    rubro_id: string;
+    atributos: { venta_directa?: boolean; delivery?: boolean; pagos?: string[]; accesibilidad?: string };
+    habilitacion: { estado?: string; fuente_key?: string };
+    activo: { titulo: string; descripcion: string | null; subnodo_key: string | null };
+  };
+  const comercios = (await prisma.comercio_ficha.findMany({
+    where: { activo: { nodo_key: nodoKey, estado: 'aprobado', visibilidad: { not: 'restricted' } } },
+    include: { activo: true },
+  })) as unknown as ComercioFichaRow[];
+  for (const c of comercios) {
+    const partes: string[] = [
+      c.activo.titulo + ' — comercio del nodo ' + nodoKey +
+        ' (rubro ' + c.rubro_id + (c.activo.subnodo_key ? ', subnodo ' + c.activo.subnodo_key : '') + ').',
+    ];
+    partes.push('Habilitación: ' + (c.habilitacion?.estado ?? 'unknown') + ' (estado epistémico de 5).');
+    const pagos = Array.isArray(c.atributos?.pagos) && c.atributos.pagos.length ? c.atributos.pagos.join(', ') : 'sin dato';
+    partes.push(
+      'Atributos: venta directa ' + (c.atributos?.venta_directa ? 'sí' : 'no') +
+        '; delivery ' + (c.atributos?.delivery ? 'sí' : 'no') +
+        '; pagos ' + pagos +
+        '; accesibilidad ' + (c.atributos?.accesibilidad ?? 'unknown') + '.'
+    );
+    if (c.activo.descripcion) partes.push(c.activo.descripcion);
+    const fuentes: RagFuente[] = [{ fuente: 'Mercado de Proximidad — comercio_ficha (MK-1/MK-2)' }];
+    if (c.habilitacion?.estado === 'verificada' && c.habilitacion.fuente_key) {
+      fuentes.push({ fuente: c.habilitacion.fuente_key }); // trazabilidad SIIC (ADR-035)
+    }
+    fragmentos.push({
+      nodo_key: nodoKey,
+      source_type: 'comercio',
+      source_id: c.activo_id,
+      subnodo_key: c.activo.subnodo_key,
+      texto: partes.join(' '),
+      fuentes,
+    });
+  }
+
   // 3. KPIs agregados (VIG-003): snapshots sin PII del set honesto v1.
   const kpis = (await prisma.kpi_snapshots.findMany({ where: { nodo_key: nodoKey } })) as KpiRow[];
   for (const k of kpis) {
@@ -267,6 +320,11 @@ export async function recomputeRagIndexForNode(nodoKey: string): Promise<RagReco
     })).count +
     (await prisma.rag_index.deleteMany({
       where: { nodo_key: nodoKey, source_type: 'kpi', source_id: { notIn: validos('kpi') } },
+    })).count +
+    // MARKET-CAP MK-3a (#426): 4º delete lógico — un comercio que pasa a
+    // restricted o rechazado retira su fragmento (H6 del diseño).
+    (await prisma.rag_index.deleteMany({
+      where: { nodo_key: nodoKey, source_type: 'comercio', source_id: { notIn: validos('comercio') } },
     })).count;
 
   return { written: fragmentos.length, deleted };

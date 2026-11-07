@@ -195,6 +195,14 @@ router.patch('/productos/:productoId/estado', requireJwt, requireRole('moderador
       res.status(404).json({ success: false, error: 'producto no encontrado' });
       return;
     }
+    // H8 (MARKET-CAP MK-3a #426): el activo declara el territorio del sello —
+    // sin nodo_key el consumer vig003-kpi descarta la entrada y la aprobación
+    // de un producto no dispara el recompute del nodo.
+    const activoDelProducto = await prisma.activos.findUnique({ where: { id: producto.activo_id } });
+    if (activoDelProducto === null) {
+      res.status(404).json({ success: false, error: 'producto no encontrado' });
+      return;
+    }
     if (producto.estado === parsed.estado) {
       res.status(409).json({ success: false, error: "el producto ya está en estado '" + parsed.estado + "'" });
       return;
@@ -211,6 +219,10 @@ router.patch('/productos/:productoId/estado', requireJwt, requireRole('moderador
         producto_id: productoId,
         activo_id: producto.activo_id,
         slug: producto.slug,
+        // H8 (MK-3a #426): corrección aditiva del disparo — el sello declara
+        // el territorio (mismo patrón que producto.propuesto).
+        nodo_key: activoDelProducto.nodo_key,
+        subnodo_key: activoDelProducto.subnodo_key ?? null,
         estado: parsed.estado,
         motivo: parsed.motivo ?? null,
         moderador_hash: moderadorHash,
