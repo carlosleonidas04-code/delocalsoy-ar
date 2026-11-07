@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   COMPONENTES_A1,
   MATRIZ_PERMISOS_A1,
+  VISTAS_A1,
   capacidadesA1,
   permisoVisible,
   crearClienteA1,
@@ -590,3 +591,28 @@ describe('ART-R1 — red caída (R5: jamás [])', () => {
     await expect(cliente.ask('capital', { pregunta: 'algo' })).rejects.toMatchObject({ codigo: 'no_disponible' });
   });
 });
+
+describe('PROT-A1 R3 (#420, épica #418) — vistas del artefacto (mini-router)', () => {
+  it('las 9 vistas del prototipo v0.5 existen: la vista ES el estado', () => {
+    expect(VISTAS_A1.length).toBe(9);
+    expect(VISTAS_A1[0].id).toBe('inicio'); // vista por defecto del panel
+    const ids = VISTAS_A1.map((v) => v.id);
+    expect(new Set(ids).size).toBe(9);
+  });
+
+  it('toda vista tiene título y descripción honesta (nav accesible, WCAG)', () => {
+    for (const v of VISTAS_A1) {
+      expect(v.titulo.length).toBeGreaterThan(0);
+      expect(v.descripcion.length).toBeGreaterThan(10);
+    }
+  });
+
+  it('las vistas con escritura están marcadas: exigen sesión (guard honesto, no fricción)', () => {
+    expect(VISTAS_A1.filter((v) => v.escritura).map((v) => v.id)).toEqual([
+      'reportes',
+      'fichas',
+      'oportunidades',
+    ]);
+  });
+});
+
