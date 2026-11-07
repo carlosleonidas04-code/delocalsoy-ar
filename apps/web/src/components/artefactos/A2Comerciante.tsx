@@ -13,6 +13,17 @@
  * SÍ se editan (PATCH /:id), la descripción solo en el alta, el horario
  * declarado NO existe en el contrato MK-1 — sin campo no hay vista (R15).
  *
+ * MK-3c (#426, épica #422 — EV-096, adoptables C1–C4 del canvas
+ * delocalsoy-a2-comercio v0.2 ratificados por la DH 2026-11-07): frontend
+ * puro SIN cambio de API. C1 directorio WCAG 2.2 (facetas como fieldset con
+ * legend y counts reales, chips quitar-filtro >=24px SC 2.5.8 con foco a la
+ * región de estado, role=status SC 4.1.3). C2 las facetas viven en la URL
+ * (window.location.search + history.pushState + popstate — sin react-router:
+ * el botón atrás RESTAURA la búsqueda). C3 JSON-LD honesto en la ficha
+ * (jsonLdComercio: JAMÁS telephone/address/aggregateRating/review, geo solo
+ * con punto público ADR-036, sin openingHours ni url R15). C4 diccionario
+ * T_DIRECTORIO (preparación i18n — los textos nuevos viven ahí).
+ *
  * Reglas vivas: R5 (errores visibles, jamás []) · R15 (sin simulación: el alta
  * nace propuesto y la moderación ES la validación; el identificador del
  * reclamo viaja una sola vez y vuelve SOLO como hash — Ley 25.326) · ADR-027
@@ -29,7 +40,7 @@
  * Montaje único en ART-R5 (ArtefactosRoot): este archivo NO toca App.tsx ni
  * main.tsx (regla M0).
  */
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useSesion } from './SesionProvider';
 import { CLAVE_TOKEN_SESION } from '../../lib/sesion';
 import {
@@ -69,10 +80,14 @@ import {
   etiquetaRubro,
   etiquetaSelloHistorial,
   etiquetaTitularidad,
+  jsonLdComercio,
+  facetasDesdeQuery,
+  queryDesdeFacetas,
   notaComercios,
   type ComercioDetalle,
   type ComercioHistorialEntrada,
   type ComercioItem,
+  type FacetasDirectorio,
 } from '../../lib/comercios';
 
 const ETIQUETA_ESTADO: Record<string, string> = {
@@ -93,6 +108,41 @@ const ATRIBUTOS_BASE: AtributosComercio = {
 };
 
 const HABILITACION_BASE: HabilitacionComercio = { estado: 'sin_dato' };
+
+/**
+ * MK-3c C4 (#426): diccionario de textos del directorio — los strings
+ * agregados en MK-3c viven agrupados aquí (preparación i18n futura, sin
+ * dependencia nueva). R15: los textos existentes NO se reescriben en este
+ * sprint — el diccionario es aditivo.
+ */
+const T_DIRECTORIO = {
+  legend: 'facetas del directorio — búsqueda real contra la API (GET /api/comercios)',
+  notaCounts:
+    'counts por faceta derivados del directorio cargado (hasta 100, take MK-0 §2.5) — facetado de presentación; la búsqueda SIEMPRE va a la API',
+  quitarFiltro: 'quitar filtro',
+  jsonLdTitulo: 'Descubribilidad ética — JSON-LD (MK-3c C3, EV-096)',
+  jsonLdNota:
+    'schema.org/LocalBusiness — SOLO campos que esta ficha ya publica. JAMÁS telephone/address (la ficha no publica contacto directo — Ley 25.326; el canal es el relay MK-4), JAMÁS aggregateRating/review (sin estrellas v1: fabricar confianza estructurada es peor que no tenerla), geo solo si existe punto público (ADR-036), sin openingHours ni url (R15: sin dato ratificado no hay campo).',
+} as const;
+
+/**
+ * MK-3c C1 (#426): un comercio cumple UNA faceta — comparación por código,
+ * jamás por label. Función pura (testeable por patrón del repo).
+ */
+function cumpleFaceta(c: ComercioItem, clave: keyof FacetasDirectorio, valor: string): boolean {
+  switch (clave) {
+    case 'nodo':
+      return c.nodo_key === valor;
+    case 'rubro':
+      return c.rubro.id === valor;
+    case 'subnodo':
+      return c.subnodo_key === valor;
+    case 'habilitacion':
+      return c.habilitacion_estado === valor;
+    default:
+      return false;
+  }
+}
 
 /* ------------------------------------------------------------------ */
 /* Formulario de atributos (compartido por alta y edición)             */
@@ -277,10 +327,15 @@ export function A2Comerciante() {
   /* ---------- directorio público ---------- */
 
   const [comercios, setComercios] = useState<ComercioItem[] | null>(null);
+  // MK-3c C1 (#426): base sin filtros para los counts por faceta (facetado
+  // de presentación — la búsqueda SIEMPRE va a la API).
+  const [baseComercios, setBaseComercios] = useState<ComercioItem[] | null>(null);
 
   const cargarDirectorio = useCallback(() => {
     return conCarga('directorio', async () => {
-      setComercios(await cliente.directorio());
+      const rows = await cliente.directorio();
+      setComercios(rows);
+      setBaseComercios(rows);
     });
   }, [cliente, conCarga]);
 
@@ -292,31 +347,109 @@ export function A2Comerciante() {
   const [busquedaSubnodo, setBusquedaSubnodo] = useState('');
   const [busquedaHabilitacion, setBusquedaHabilitacion] = useState<EstadoHabilitacionComercio | ''>('');
   const [errorBusqueda, setErrorBusqueda] = useState<string | null>(null);
+  // MK-3c C1 (SC 4.1.3): región de estado del directorio — el foco de los
+  // chips quitar-filtro aterriza aquí tras cada cambio (WCAG 2.2).
+  const estadoRef = useRef<HTMLParagraphElement>(null);
 
-  const buscarDirectorio = useCallback(() => {
-    setErrorBusqueda(null);
-    const filtros: BusquedaComercio = {};
+  // MK-3c C2 (#426): las facetas viven en la URL — el botón atrás restaura
+  // la búsqueda. Sin react-router (no existe en el repo web): History API.
+  // MK-3c C1: facetas activas derivadas del estado (fuente única de verdad).
+  const facetasActivas = useMemo<FacetasDirectorio>(() => {
+    const f: FacetasDirectorio = {};
     if (busquedaNodo !== '') {
-      filtros.nodo = busquedaNodo;
+      f.nodo = busquedaNodo;
     }
     if (busquedaRubro.trim() !== '') {
-      filtros.rubro = busquedaRubro.trim();
+      f.rubro = busquedaRubro.trim();
     }
     if (busquedaSubnodo.trim() !== '') {
-      filtros.subnodo = busquedaSubnodo.trim();
+      f.subnodo = busquedaSubnodo.trim();
     }
     if (busquedaHabilitacion !== '') {
-      filtros.habilitacion = busquedaHabilitacion;
+      f.habilitacion = busquedaHabilitacion;
     }
-    const errValidacion = validarBusquedaComercio(filtros);
-    if (errValidacion !== null) {
-      setErrorBusqueda(errValidacion);
-      return;
+    return f;
+  }, [busquedaNodo, busquedaRubro, busquedaSubnodo, busquedaHabilitacion]);
+
+  const aplicarFacetas = useCallback(
+    (f: FacetasDirectorio, push: boolean) => {
+      setBusquedaNodo((f.nodo ?? '') as NodoKeyComercio | '');
+      setBusquedaRubro(f.rubro ?? '');
+      setBusquedaSubnodo(f.subnodo ?? '');
+      setBusquedaHabilitacion((f.habilitacion ?? '') as EstadoHabilitacionComercio | '');
+      setErrorBusqueda(null);
+      const filtros: BusquedaComercio = {};
+      if (f.nodo !== undefined && f.nodo !== '') {
+        filtros.nodo = f.nodo as NodoKeyComercio;
+      }
+      if (f.rubro !== undefined && f.rubro !== '') {
+        filtros.rubro = f.rubro;
+      }
+      if (f.subnodo !== undefined && f.subnodo !== '') {
+        filtros.subnodo = f.subnodo;
+      }
+      if (f.habilitacion !== undefined && f.habilitacion !== '') {
+        filtros.habilitacion = f.habilitacion as EstadoHabilitacionComercio;
+      }
+      const errValidacion = validarBusquedaComercio(filtros);
+      if (errValidacion !== null) {
+        setErrorBusqueda(errValidacion);
+        return;
+      }
+      if (push) {
+        window.history.pushState(null, '', window.location.pathname + queryDesdeFacetas(f));
+      }
+      return conCarga('directorio', async () => {
+        const rows = await cliente.directorio(filtros);
+        setComercios(rows);
+        if (Object.keys(filtros).length === 0) {
+          setBaseComercios(rows);
+        }
+      });
+    },
+    [cliente, conCarga]
+  );
+
+  // ref al último aplicarFacetas: el listener popstate vive una sola vez.
+  const aplicarFacetasRef = useRef<(f: FacetasDirectorio, push: boolean) => void>(() => {});
+  useEffect(() => {
+    aplicarFacetasRef.current = aplicarFacetas;
+  }, [aplicarFacetas]);
+
+  useEffect(() => {
+    // C2: restaurar facetas de la URL al montar (link compartible) y en cada
+    // popstate (botón atrás/adelante). SIN búsqueda automática sin facetas:
+    // la carga perezosa es diseño honesto (techo 10 req/min del visitante).
+    const facetas = facetasDesdeQuery(window.location.search);
+    if (Object.keys(facetas).length > 0) {
+      aplicarFacetasRef.current(facetas, false);
     }
-    return conCarga('directorio', async () => {
-      setComercios(await cliente.directorio(filtros));
-    });
-  }, [busquedaHabilitacion, busquedaNodo, busquedaRubro, busquedaSubnodo, cliente, conCarga]);
+    const enPopstate = () => {
+      aplicarFacetasRef.current(facetasDesdeQuery(window.location.search), false);
+    };
+    window.addEventListener('popstate', enPopstate);
+    return () => window.removeEventListener('popstate', enPopstate);
+  }, []);
+
+  // C1: counts por faceta sobre la base cargada, aplicando las DEMÁS facetas
+  // activas (facetado estándar). null = sin base cargada: no se inventa.
+  const cuentaFaceta = useCallback(
+    (clave: keyof FacetasDirectorio, valor: string): number | null => {
+      if (baseComercios === null) {
+        return null;
+      }
+      return baseComercios.filter((c) => {
+        for (const k of ['nodo', 'rubro', 'subnodo', 'habilitacion'] as const) {
+          const v = facetasActivas[k];
+          if (k !== clave && v !== undefined && !cumpleFaceta(c, k, v)) {
+            return false;
+          }
+        }
+        return cumpleFaceta(c, clave, valor);
+      }).length;
+    },
+    [baseComercios, facetasActivas]
+  );
 
   /* ---------- ficha de un comercio (por id, carga perezosa) ---------- */
 
@@ -652,58 +785,119 @@ export function A2Comerciante() {
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          void buscarDirectorio();
+          void aplicarFacetas(facetasActivas, true);
         }}
-        aria-label="Buscar mi comercio en el directorio"
       >
-        <label>
-          nodo{' '}
-          <select
-            value={busquedaNodo}
-            onChange={(e) => setBusquedaNodo(e.target.value as NodoKeyComercio | '')}
-          >
-            <option value="">todos</option>
-            {NODOS_COMERCIO.map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </label>{' '}
-        <label>
-          rubro (código){' '}
-          <input
-            value={busquedaRubro}
-            onChange={(e) => setBusquedaRubro(e.target.value)}
-            placeholder="food_drink"
-          />
-        </label>{' '}
-        <label>
-          subnodo (código){' '}
-          <input
-            value={busquedaSubnodo}
-            onChange={(e) => setBusquedaSubnodo(e.target.value)}
-            placeholder="sj_iglesia_..."
-          />
-        </label>{' '}
-        <label>
-          habilitación{' '}
-          <select
-            value={busquedaHabilitacion}
-            onChange={(e) => setBusquedaHabilitacion(e.target.value as EstadoHabilitacionComercio | '')}
-          >
-            <option value="">todas</option>
-            {ESTADOS_HABILITACION_COMERCIO.map((h) => (
-              <option key={h} value={h}>
-                {h}
-              </option>
-            ))}
-          </select>
-        </label>{' '}
-        <button type="submit" disabled={cargando === 'directorio'}>
-          {cargando === 'directorio' ? 'buscando…' : 'buscar en el directorio'}
-        </button>
+        {/* MK-3c C1 (WCAG 2.2): facetas agrupadas como fieldset con legend —
+            los inputs de texto (rubro/subnodo) viajan por submit; los selects
+            disparan faceta + URL (C2) al cambiar. */}
+        <fieldset>
+          <legend>{T_DIRECTORIO.legend}</legend>
+          <label>
+            nodo{' '}
+            <select
+              value={busquedaNodo}
+              onChange={(e) => {
+                const v = e.target.value as NodoKeyComercio | '';
+                const f: FacetasDirectorio = { ...facetasActivas };
+                if (v === '') {
+                  delete f.nodo;
+                } else {
+                  f.nodo = v;
+                }
+                void aplicarFacetas(f, true);
+              }}
+            >
+              <option value="">todos</option>
+              {NODOS_COMERCIO.map((n) => {
+                const count = cuentaFaceta('nodo', n);
+                return (
+                  <option key={n} value={n}>
+                    {n}
+                    {count !== null ? ' (' + count + ')' : ''}
+                  </option>
+                );
+              })}
+            </select>
+          </label>{' '}
+          <label>
+            rubro (código){' '}
+            <input
+              value={busquedaRubro}
+              onChange={(e) => setBusquedaRubro(e.target.value)}
+              placeholder="food_drink"
+            />
+          </label>{' '}
+          <label>
+            subnodo (código){' '}
+            <input
+              value={busquedaSubnodo}
+              onChange={(e) => setBusquedaSubnodo(e.target.value)}
+              placeholder="sj_iglesia_..."
+            />
+          </label>{' '}
+          <label>
+            habilitación{' '}
+            <select
+              value={busquedaHabilitacion}
+              onChange={(e) => {
+                const v = e.target.value as EstadoHabilitacionComercio | '';
+                const f: FacetasDirectorio = { ...facetasActivas };
+                if (v === '') {
+                  delete f.habilitacion;
+                } else {
+                  f.habilitacion = v;
+                }
+                void aplicarFacetas(f, true);
+              }}
+            >
+              <option value="">todas</option>
+              {ESTADOS_HABILITACION_COMERCIO.map((h) => {
+                const count = cuentaFaceta('habilitacion', h);
+                return (
+                  <option key={h} value={h}>
+                    {h}
+                    {count !== null ? ' (' + count + ')' : ''}
+                  </option>
+                );
+              })}
+            </select>
+          </label>{' '}
+          <button type="submit" disabled={cargando === 'directorio'}>
+            {cargando === 'directorio' ? 'buscando…' : 'buscar en el directorio'}
+          </button>
+        </fieldset>
       </form>
+      {/* MK-3c C1 (SC 2.5.8): chips quitar-filtro >=24px con foco a la región
+          de estado al quitar (SC 4.1.3) — el foco NO se pierde. */}
+      {Object.keys(facetasActivas).length > 0 && (
+        <p>
+          {(['nodo', 'rubro', 'subnodo', 'habilitacion'] as const)
+            .filter((k) => facetasActivas[k] !== undefined)
+            .map((k) => {
+              const v = facetasActivas[k];
+              if (v === undefined) {
+                return null;
+              }
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  style={{ minHeight: 24, minWidth: 24, marginRight: 6 }}
+                  aria-label={T_DIRECTORIO.quitarFiltro + ': ' + k + ' ' + v}
+                  onClick={() => {
+                    const resto: FacetasDirectorio = { ...facetasActivas };
+                    delete resto[k];
+                    void aplicarFacetas(resto, true);
+                    estadoRef.current?.focus();
+                  }}
+                >
+                  {k}: {v} ✕
+                </button>
+              );
+            })}
+        </p>
+      )}
       {errorBusqueda !== null && <p role="alert">{errorBusqueda}</p>}
       <p>
         <small>
@@ -712,7 +906,12 @@ export function A2Comerciante() {
           la superficie MK-1 v1 — sin campo no hay filtro (R15, no se filtra en el cliente: sería maqueta).
         </small>
       </p>
-      {comercios !== null && <p>{notaComercios(comercios.length)}</p>}
+      {/* MK-3c C1 (SC 4.1.3): región de estado del directorio — vive desde el
+          montaje para que los cambios se anuncien (WCAG 2.2). */}
+      <p ref={estadoRef} tabIndex={-1} role="status" aria-live="polite" style={{ outline: 'none' }}>
+        {comercios !== null ? notaComercios(comercios.length) : ' '}
+        {baseComercios !== null ? ' — ' + T_DIRECTORIO.notaCounts : ''}
+      </p>
       {comercios !== null && comercios.length > 0 && (
         <ul>
           {comercios.map((c) => (
@@ -756,6 +955,16 @@ export function A2Comerciante() {
             {' · operativa: '}
             {detalle.operativa === null ? 'sin ficha operativa (null ≠ 0, frontera Ley 2400-T de VIG-005)' : 'presente'}
           </p>
+          {/* MK-3c C3 (#426, EV-096): descubribilidad ética — JSON-LD honesto
+              de ESTA ficha: solo campos que la ficha ya publica. */}
+          <div>
+            <h4>{T_DIRECTORIO.jsonLdTitulo}</h4>
+            <p>
+              <small>{T_DIRECTORIO.jsonLdNota}</small>
+            </p>
+            <pre>{JSON.stringify(jsonLdComercio(detalle.ficha), null, 2)}</pre>
+            <script type="application/ld+json">{JSON.stringify(jsonLdComercio(detalle.ficha))}</script>
+          </div>
           <p>
             <button type="button" onClick={() => setReclamoId(detalle.ficha.id)}>
               reclamar titularidad de esta ficha
