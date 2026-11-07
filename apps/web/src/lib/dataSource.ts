@@ -729,8 +729,8 @@ export class SyntheticDataSource implements DataSource {
       throw new DataSourceHttpError({
         status: 422,
         endpoint: '/api/activos',
-        message: parsed.error.issues[0]?.message ?? 'Datos de activo inválidos (ActivoCreateSchema)',
-        details: parsed.error.issues,
+        message: parsed.error.errors[0]?.message ?? 'Datos de activo inválidos (ActivoCreateSchema)',
+        details: parsed.error.errors,
       });
     }
 
