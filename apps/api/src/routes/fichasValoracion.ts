@@ -97,7 +97,7 @@ router.post('/', requireJwt, async (req: Request, res: Response) => {
     parsed = FichaValoracionAltaSchema.parse(req.body);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ success: false, error: 'datos inválidos', details: error.errors });
+      res.status(400).json({ success: false, error: 'datos inválidos', details: error.issues });
       return;
     }
     throw error;
@@ -204,7 +204,7 @@ router.get('/', async (req: Request, res: Response) => {
     if (estadoCrudo !== undefined) {
       const parsedEstado = FichaEstadoPublicoFiltroSchema.safeParse(estadoCrudo);
       if (!parsedEstado.success) {
-        res.status(400).json({ success: false, error: 'estado inválido', details: parsedEstado.error.errors });
+        res.status(400).json({ success: false, error: 'estado inválido', details: parsedEstado.error.issues });
         return;
       }
       estado = parsedEstado.data;
@@ -214,7 +214,7 @@ router.get('/', async (req: Request, res: Response) => {
     if (nodoCrudo !== undefined) {
       const parsedNodo = SanJuanNodeSlugSchema.safeParse(nodoCrudo);
       if (!parsedNodo.success) {
-        res.status(400).json({ success: false, error: 'nodo inválido', details: parsedNodo.error.errors });
+        res.status(400).json({ success: false, error: 'nodo inválido', details: parsedNodo.error.issues });
         return;
       }
       nodo = parsedNodo.data;
@@ -223,7 +223,7 @@ router.get('/', async (req: Request, res: Response) => {
     if (bboxCrudo !== undefined) {
       const parsedBbox = BboxStringSchema.safeParse(bboxCrudo);
       if (!parsedBbox.success) {
-        res.status(400).json({ success: false, error: 'bbox inválido', details: parsedBbox.error.errors });
+        res.status(400).json({ success: false, error: 'bbox inválido', details: parsedBbox.error.issues });
         return;
       }
       const [minLng, minLat, maxLng, maxLat] = parsedBbox.data.split(',').map(Number);
@@ -309,7 +309,7 @@ router.patch('/:id/estado', requireJwt, requireRole('moderador', 'admin'), async
     parsed = FichaValoracionEstadoCambioSchema.parse(req.body);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ success: false, error: 'datos inválidos', details: error.errors });
+      res.status(400).json({ success: false, error: 'datos inválidos', details: error.issues });
       return;
     }
     throw error;

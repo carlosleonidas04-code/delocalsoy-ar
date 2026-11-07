@@ -45,7 +45,7 @@ router.put('/residencia', requireJwt, requireRole('ciudadano', 'moderador', 'adm
     parsed = ResidenciaAltaSchema.parse(req.body ?? {});
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ success: false, error: 'datos inválidos', details: error.errors });
+      res.status(400).json({ success: false, error: 'datos inválidos', details: error.issues });
       return;
     }
     throw error;

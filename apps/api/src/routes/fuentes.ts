@@ -153,7 +153,7 @@ router.post('/ingestas', requireJwt, requireRole('admin'), async (req: Request, 
     parsed = IngestaAltaSchema.parse(req.body);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ success: false, error: 'datos inválidos', details: error.errors });
+      res.status(400).json({ success: false, error: 'datos inválidos', details: error.issues });
       return;
     }
     throw error;
@@ -268,7 +268,7 @@ router.get('/ingestas', async (req: Request, res: Response) => {
     if (nodoCrudo !== undefined) {
       const parsedNodo = SanJuanNodeSlugSchema.safeParse(nodoCrudo);
       if (!parsedNodo.success) {
-        res.status(400).json({ success: false, error: 'nodo inválido', details: parsedNodo.error.errors });
+        res.status(400).json({ success: false, error: 'nodo inválido', details: parsedNodo.error.issues });
         return;
       }
       nodo = parsedNodo.data;
@@ -316,7 +316,7 @@ router.patch('/ingestas/:id/estado', requireJwt, requireRole('admin'), async (re
     parsed = IngestaEstadoCambioSchema.parse(req.body);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ success: false, error: 'datos inválidos', details: error.errors });
+      res.status(400).json({ success: false, error: 'datos inválidos', details: error.issues });
       return;
     }
     throw error;

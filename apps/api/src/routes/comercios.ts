@@ -170,7 +170,7 @@ router.post('/', requireJwt, async (req: Request, res: Response) => {
     parsed = ComercioAltaSchema.parse(req.body);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ success: false, error: 'datos inválidos', details: error.errors });
+      res.status(400).json({ success: false, error: 'datos inválidos', details: error.issues });
       return;
     }
     throw error;
@@ -331,7 +331,7 @@ router.get('/', async (req: Request, res: Response) => {
     if (habilitacionCruda !== undefined) {
       const parsedHab = ComercioHabilitacionEstadoSchema.safeParse(habilitacionCruda);
       if (!parsedHab.success) {
-        res.status(400).json({ success: false, error: 'habilitación inválida', details: parsedHab.error.errors });
+        res.status(400).json({ success: false, error: 'habilitación inválida', details: parsedHab.error.issues });
         return;
       }
       habilitacion = parsedHab.data;
@@ -351,7 +351,7 @@ router.get('/', async (req: Request, res: Response) => {
       // espacial ST_Intersects sobre el índice GiST de activos.
       const parsedBbox = BboxStringSchema.safeParse(bboxCrudo);
       if (!parsedBbox.success) {
-        res.status(400).json({ success: false, error: 'bbox inválido', details: parsedBbox.error.errors });
+        res.status(400).json({ success: false, error: 'bbox inválido', details: parsedBbox.error.issues });
         return;
       }
       const [minLng, minLat, maxLng, maxLat] = parsedBbox.data.split(',').map(Number);
@@ -482,7 +482,7 @@ router.patch('/:id/habilitacion', requireJwt, async (req: Request, res: Response
     parsed = ComercioHabilitacionCambioSchema.parse(req.body);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ success: false, error: 'datos inválidos', details: error.errors });
+      res.status(400).json({ success: false, error: 'datos inválidos', details: error.issues });
       return;
     }
     throw error;
@@ -629,7 +629,7 @@ router.patch('/:id/estado', requireJwt, requireRole('moderador', 'admin'), async
     parsed = ComercioEstadoCambioSchema.parse(req.body);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ success: false, error: 'datos inválidos', details: error.errors });
+      res.status(400).json({ success: false, error: 'datos inválidos', details: error.issues });
       return;
     }
     throw error;
@@ -772,7 +772,7 @@ router.post('/:id/titular', requireJwt, async (req: Request, res: Response) => {
       parsed = ComercioReclamoTitularSchema.parse(req.body);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        res.status(400).json({ success: false, error: 'datos inválidos', details: error.errors });
+        res.status(400).json({ success: false, error: 'datos inválidos', details: error.issues });
         return;
       }
       throw error;
@@ -825,7 +825,7 @@ router.patch('/:id', requireJwt, async (req: Request, res: Response) => {
 
   const parsedBody = z.object({ atributos: ComercioAtributosSchema }).safeParse(req.body);
   if (!parsedBody.success) {
-    res.status(400).json({ success: false, error: 'datos inválidos', details: parsedBody.error.errors });
+    res.status(400).json({ success: false, error: 'datos inválidos', details: parsedBody.error.issues });
     return;
   }
 

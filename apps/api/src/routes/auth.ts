@@ -103,7 +103,7 @@ router.post('/register', rateLimitAuth, async (req: Request, res: Response) => {
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ success: false, error: 'datos inválidos', details: error.errors });
+      res.status(400).json({ success: false, error: 'datos inválidos', details: error.issues });
       return;
     }
     // AUD-06 (#100): el detalle queda server-side; al cliente solo lo genérico.
@@ -177,7 +177,7 @@ router.post('/register-visitante', rateLimitAuth, async (req: Request, res: Resp
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ success: false, error: 'datos inválidos', details: error.errors });
+      res.status(400).json({ success: false, error: 'datos inválidos', details: error.issues });
       return;
     }
     // AUD-06 (#100): el detalle queda server-side; al cliente solo lo genérico.
@@ -222,7 +222,7 @@ router.post('/login', rateLimitAuth, async (req: Request, res: Response) => {
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ success: false, error: 'datos inválidos', details: error.errors });
+      res.status(400).json({ success: false, error: 'datos inválidos', details: error.issues });
       return;
     }
     console.error('[auth] login:', error instanceof Error ? error.message : String(error));
