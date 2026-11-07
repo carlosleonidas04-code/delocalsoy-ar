@@ -45,6 +45,7 @@ Propósito (mejora C5 de la hoja de mantenimiento): hacer explícito el contrato
 | `mediador.registrado` | mediadores (AMC) | VIG-011 #385 (EV-084) | main |
 | `pedido.presentado` | pedidos | VIG-012 #387 (EV-085) | main |
 | `pedido.respondido` | pedidos | VIG-012 #387 (EV-085) | main |
+| `cluster.creado` | features (clusters AMC) | VIG-011 #378 (EV-084) | main — fila tardía (deuda regla 5 saldada por ARTEFACTOS-ROLES AR4 #403) |
 | `residencia.declarada` | usuarios (AR1) | ARTEFACTOS-ROLES #400 (épica #399) | main |
 | `visitante.registrado` | usuarios (AR1) | ARTEFACTOS-ROLES #400 (épica #399) | main |
 
