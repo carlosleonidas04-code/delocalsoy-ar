@@ -427,8 +427,8 @@ export class ApiDataSource implements DataSource {
       throw new DataSourceHttpError({
         status: 422,
         endpoint: '/api/activos',
-        message: parsed.error.errors[0]?.message ?? 'Error de validación en ActivoCreateSchema',
-        details: parsed.error.errors,
+        message: parsed.error.issues[0]?.message ?? 'Error de validación en ActivoCreateSchema',
+        details: parsed.error.issues,
       });
     }
 

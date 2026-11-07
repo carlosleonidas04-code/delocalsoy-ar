@@ -123,7 +123,7 @@ router.patch('/:activoId', requireJwt, requireRole('moderador', 'admin'), async 
     parsed = PatrimonioCustodiaSchema.parse(req.body);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ success: false, error: 'datos inválidos', details: error.errors });
+      res.status(400).json({ success: false, error: 'datos inválidos', details: error.issues });
       return;
     }
     throw error;
@@ -241,7 +241,7 @@ router.post('/:activoId/observaciones', requireJwt, async (req: Request, res: Re
     parsed = PatrimonioObservacionAltaSchema.parse(req.body);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ success: false, error: 'datos inválidos', details: error.errors });
+      res.status(400).json({ success: false, error: 'datos inválidos', details: error.issues });
       return;
     }
     throw error;

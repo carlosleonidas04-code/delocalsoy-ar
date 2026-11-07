@@ -35,7 +35,7 @@ router.get('/', async (req, res) => {
         return res.status(400).json({
           success: false,
           error: 'bbox inválido',
-          details: parsedBbox.error.errors,
+          details: parsedBbox.error.issues,
         });
       }
       const [minLng, minLat, maxLng, maxLat] = parsedBbox.data.split(',').map(Number);
@@ -129,7 +129,7 @@ router.post('/', requireApiKey, async (req, res) => {
       return res.status(400).json({
         success: false,
         error: 'Datos inválidos',
-        details: error.errors,
+        details: error.issues,
       });
     }
 
@@ -170,7 +170,7 @@ router.put('/:id', requireApiKey, async (req, res) => {
       return res.status(400).json({
         success: false,
         error: 'Datos inválidos',
-        details: error.errors,
+        details: error.issues,
       });
     }
 

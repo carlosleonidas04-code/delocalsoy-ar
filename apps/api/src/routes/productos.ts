@@ -88,7 +88,7 @@ router.post('/activos/:id/productos', requireJwt, async (req: Request, res: Resp
     parsed = ProductoAltaSchema.parse(req.body);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ success: false, error: 'datos inválidos', details: error.errors });
+      res.status(400).json({ success: false, error: 'datos inválidos', details: error.issues });
       return;
     }
     throw error;
@@ -172,7 +172,7 @@ router.patch('/productos/:productoId/estado', requireJwt, requireRole('moderador
     parsed = ProductoEstadoCambioSchema.parse(req.body);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ success: false, error: 'datos inválidos', details: error.errors });
+      res.status(400).json({ success: false, error: 'datos inválidos', details: error.issues });
       return;
     }
     throw error;

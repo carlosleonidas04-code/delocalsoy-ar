@@ -43,7 +43,7 @@ router.get('/', async (req: Request, res: Response) => {
     q = SellosQuerySchema.parse(req.query);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ success: false, error: 'datos inválidos', details: error.errors });
+      res.status(400).json({ success: false, error: 'datos inválidos', details: error.issues });
       return;
     }
     throw error;
