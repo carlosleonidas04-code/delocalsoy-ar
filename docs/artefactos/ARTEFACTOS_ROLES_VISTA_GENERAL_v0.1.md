@@ -2,7 +2,7 @@
 # Los cuatro artefactos — Roles, accesos y permisos (v0.1)
 
 > **ESPECIFICACIÓN FUNCIONAL v0.1 — propuesta para ratificación de la Dirección Humana (R9).** GitHub acredita; este documento no implementa nada (R15). Estado por componente: 🟢 en main (acreditado por EV) · 🟡 en rama/PR sin merge (cola de merge, CI en pausa) · ◇ propuesto sin aterrizar.
-> **Base:** main @ `77500be` · 2026-10-29 — cola de merge: 31 PRs abiertos, CI en pausa (pre-activación #262).
+> **Base:** main @ `aa1d0ce` · 2026-11-07 — cola de merge vacía (cascada de 31 PRs mergeada 2026-11-01), CI sano. La v0.2 de esta serie está IMPLEMENTADA por la épica ARTEFACTOS-ROLES #399 (AR1–AR4, EV-089..EV-092): residencia del vecino como atributo (AR1), moderación GLOBAL (AR3 — NODE_SCOPE descartado, ADR-031) y libro contable del auditor en /api/sellos (AR4).
 
 ## 1. Principios
 
@@ -66,13 +66,15 @@ Convención: **leer** = GET público de lo publicado · **escribir** = POST con 
 3. [ARTEFACTO_A3_GESTOR_ADMIN_v0.1.md](ARTEFACTO_A3_GESTOR_ADMIN_v0.1.md) — Gestor y admin de nodo (moderación, custodia y curación, 100–500 req/min)
 4. [ARTEFACTO_A4_AUDITOR_DATOS_ABIERTOS_v0.1.md](ARTEFACTO_A4_AUDITOR_DATOS_ABIERTOS_v0.1.md) — Auditor y datos abiertos (libro contable, 500 req/min)
 
-## 7. Pendientes de ratificación DH
+## 7. Pendientes de ratificación DH — RESUELTOS (épica #399, 2026-11-07)
 
-- Diferenciación v1 del rol `vecino` vs `ciudadano` (hoy idénticos).
-- Granularidad de `gestor` por nodo (JWT alcance por nodo, `NODE_SCOPE_FORBIDDEN` del diseño lote-2) — aún sin aterrizar completo (PR #136 trabado).
-- Canal live-ws (#123): sin auth en main — gate de auth en PR #236 (abierto).
-- Cola de merge (31 PRs abiertos, CI en pausa; pre-activación #262): comercios MK-1 (#246–#250) y MK-2 (#251/#254), reportes R5/R6 (#219/#220), VIG-008/009 (#252/#253), fuentes VIG (#234) y live-ws auth (#236) aterrizan al volver el CI.
+- `vecino` NO es rol: residencia = atributo auto-declarado de la cuenta ciudadana (AR1 #400, decisión DH 2026-11-06).
+- `NODE_SCOPE` descartado: moderación GLOBAL sin cambios de permisos (AR3 #402, ADR-031).
+- live-ws: gate de auth en main (#236 — merged).
+- Cola de merge: vacía — la cascada de 31 PRs se mergeó 2026-11-01 y el CI volvió.
+
+Pendiente de esta serie v0.1 (◇ sin aterrizar): granularidad de `gestor` por nodo y rol `auditor` dedicado — propuestos, no implementados.
 
 ---
 
-> **Serie ARTEFACTOS-ROLES v0.1** — issue #266 · 2026-10-29 · base main @ `77500be`. Propuesta a ratificación DH (R9); sin merge sin CI verde (R15).
+> **Serie ARTEFACTOS-ROLES v0.1** — issue #266 · 2026-10-29 · base main @ `aa1d0ce` (refresh C5 #412, 2026-11-07). Ratificada e implementada por la épica #399 (AR1–AR4, EV-089..EV-092); sin merge sin CI verde (R15).
