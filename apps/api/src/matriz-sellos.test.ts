@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 // (El backtick de las filas del doc se construye con fromCharCode para no
 // necesitar literales de plantilla en este archivo.)
 //
-// 1. DOC — la tabla Matriz parsea a exactamente 39 filas + set mínimo de
+// 1. DOC — la tabla Matriz parsea a exactamente 40 filas + set mínimo de
 //    sellos canónicos (guard anti-regex-podrido: si la regex dejara de
 //    matchear, un conteo en 0 delata el podrimiento — nunca pasa en silencio).
 // 2. ESPEJO — MATRIZ_SELLOS_V0_2 (apps/web/src/lib/artefactoA4.ts) es 1:1
@@ -51,8 +51,8 @@ const SELLOS_CANONICOS = [
 ] as const;
 
 describe('C5 (#412) — diente 1: la tabla Matriz de docs/MATRIZ_SELLOS.md', () => {
-  it('parsea exactamente 39 filas', () => {
-    expect(filasDoc).toHaveLength(39);
+  it('parsea exactamente 40 filas', () => {
+    expect(filasDoc).toHaveLength(40);
   });
 
   it('contiene el set mínimo de sellos canónicos (guard anti-regex-podrido)', () => {
@@ -80,8 +80,8 @@ for (let m = RE_ESPEJO.exec(SEG_ESPEJO); m !== null; m = RE_ESPEJO.exec(SEG_ESPE
 }
 
 describe('C5 (#412) — diente 2: el espejo MATRIZ_SELLOS_V0_2 es 1:1 con el doc', () => {
-  it('tiene las mismas 39 filas en el mismo orden', () => {
-    expect(espejo).toHaveLength(39);
+  it('tiene las mismas 40 filas en el mismo orden', () => {
+    expect(espejo).toHaveLength(40);
     expect(espejo.map((f) => f.sello)).toEqual(filasDoc.map((f) => f.sello));
   });
 });

@@ -226,3 +226,16 @@ export const ComercioHistorialEntradaSchema = z.discriminatedUnion('type', [
 export const ComercioHistorialSchema = z.array(ComercioHistorialEntradaSchema);
 export type ComercioHistorialEntrada = z.infer<typeof ComercioHistorialEntradaSchema>;
 export type ComercioHistorial = z.infer<typeof ComercioHistorialSchema>;
+
+// ─── MK-4 (#427): relay por plataforma — canal único sin PII de contacto ───
+
+// Mensaje de relay (MK-4a, decisiones DH 2026-11-07): texto anti-PII de punta
+// a punta — la compuerta (ADR-020 cond. 1) corre en la ruta ANTES de persistir;
+// el contrato valida la forma. Sin asunto ni adjuntos v1 (minimización, Ley
+// 25.326). 202 Accepted = asíncrono honesto: el envío no promete lectura.
+// Compuerta de canal: cursa con titularidad reclamada O verificada (el canal
+// abre con el reclamo; la verificación acredita la edición, no el contacto).
+export const RelayMensajeSchema = z.object({
+  mensaje: z.string().trim().min(10, 'mensaje: al menos 10 caracteres').max(500, 'mensaje: a lo sumo 500 caracteres'),
+}).strict();
+export type RelayMensaje = z.infer<typeof RelayMensajeSchema>;

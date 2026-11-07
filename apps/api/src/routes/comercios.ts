@@ -15,6 +15,7 @@ import {
   ComercioHistorialSchema,
   ComercioReclamoTitularSchema,
   ComercioTitularidadDesistimientoSchema,
+  RelayMensajeSchema,
   TAXONOMIA_CANONICA_DELOCALSOY,
   TAXONOMIA_DIRECTORIO_CANONICA,
 } from '@delocalsoy/contracts';
@@ -860,6 +861,189 @@ router.patch('/:id', requireJwt, async (req: Request, res: Response) => {
   } catch (err) {
     console.error('[comercios] editar atributos:', err instanceof Error ? err.message : String(err));
     res.status(500).json({ success: false, error: 'fallo al editar la ficha' });
+  }
+});
+
+
+// ── MK-4a (#427, épica #422): relay por plataforma + bandeja del titular ──
+// Canal ÚNICO de contacto (decisión DH MK-0, Ley 25.326): jamás PII de
+// contacto; el mensaje ya es texto anti-PII de punta a punta. El sello
+// comercio.relay_recibido vive SOLO en el libro contable (decisión DH
+// 2026-11-07): NO entra a COMERCIO_SELLOS_HISTORIAL (F-3 queda en 7 sellos).
+
+// GET /api/comercios/relay/mios — bandeja UNIFICADA del titular (decisión DH:
+// ambas formas): todos los comercios donde el usuario tiene titularidad
+// reclamada O verificada, agrupados por comercio con sus mensajes. Leer lo
+// propio no es un permiso: es el canal del propio titular (404 sin eco para
+// restricted/fuera del ciclo público — la bandeja archivada no se publica).
+router.get('/relay/mios', requireJwt, async (req: Request, res: Response) => {
+  const usuario = res.locals.usuario as { id: string };
+  try {
+    const autor = seudonimo(usuario.id);
+    const fichas = await prisma.comercio_ficha.findMany({
+      where: { titularidad: { path: ['reclamado_por_hash'], equals: autor } },
+      select: { activo_id: true, titularidad: true },
+    });
+    const bandejas: Array<Record<string, unknown>> = [];
+    for (const ficha of fichas) {
+      const activo = await prisma.activos.findUnique({
+        where: { id: ficha.activo_id },
+        select: { id: true, titulo: true, estado: true, visibilidad: true, nodo_key: true, subnodo_key: true },
+      });
+      // 404 sin eco (ADR-036): restricted o fuera del ciclo público no tienen
+      // bandeja publicable — el titular ya no puede operar el canal público.
+      if (!activo || activo.visibilidad === 'restricted' || !['propuesto', 'aprobado'].includes(activo.estado)) continue;
+      const mensajes = await prisma.comercio_relay.findMany({
+        where: { comercio_id: activo.id },
+        orderBy: { created_at: 'asc' },
+        take: 100,
+        select: { id: true, mensaje: true, creado_por_hash: true, created_at: true },
+      });
+      const titularidad = (ficha.titularidad ?? {}) as { estado?: string };
+      bandejas.push({
+        comercio_id: activo.id,
+        titulo: activo.titulo,
+        nodo_key: activo.nodo_key,
+        subnodo_key: activo.subnodo_key ?? null,
+        titularidad_estado: titularidad.estado ?? null,
+        mensajes,
+        count: mensajes.length,
+      });
+    }
+    res.json({ success: true, data: bandejas, count: bandejas.length });
+  } catch (err) {
+    console.error('[comercios] bandeja unificada:', err instanceof Error ? err.message : String(err));
+    res.status(500).json({ success: false, error: 'fallo al leer la bandeja' });
+  }
+});
+
+// POST /api/comercios/:id/relay — mensaje del canal único (requireJwt):
+// 202 Accepted (asíncrono honesto: el envío no promete lectura). Compuerta de
+// canal (decisión DH 2026-11-07): cursa con titularidad reclamada O verificada
+// — sin titular reclamado el relay NO cursa (409): no existe canal alternativo
+// con PII de reemplazo. 404 sin eco (ADR-036). Anti-PII ANTES de persistir
+// (ADR-020 cond. 1). Idempotencia por hash → 200. Sello + rollback (R4/R15).
+router.post('/:id/relay', requireJwt, async (req: Request, res: Response) => {
+  const id = req.params.id;
+  const usuario = res.locals.usuario as { id: string };
+
+  let parsed: z.infer<typeof RelayMensajeSchema>;
+  try {
+    parsed = RelayMensajeSchema.parse(req.body);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ success: false, error: 'datos inválidos', details: error.issues });
+      return;
+    }
+    throw error;
+  }
+
+  // Anti-PII (ADR-020 cond. 1): sin eco del valor rechazado.
+  const pii = detectaPII(parsed.mensaje);
+  if (pii) {
+    res.status(400).json({
+      error: 'payload rechazado: contiene datos personales identificables (' + pii + ') — ADR-020 cond. 1, Ley 25.326',
+    });
+    return;
+  }
+
+  try {
+    const activo = await prisma.activos.findUnique({ where: { id }, include: { comercio_ficha: true } });
+    if (
+      !activo ||
+      !activo.comercio_ficha ||
+      activo.visibilidad === 'restricted' ||
+      !['propuesto', 'aprobado'].includes(activo.estado)
+    ) {
+      res.status(404).json({ success: false, error: 'comercio no encontrado' });
+      return;
+    }
+    const titularidad = ((activo.comercio_ficha as ComercioFichaRow).titularidad ?? {}) as { estado?: string };
+    if (titularidad.estado !== 'reclamada' && titularidad.estado !== 'verificada') {
+      res.status(409).json({
+        success: false,
+        error: 'el comercio no tiene titular reclamado: no existe canal alternativo con PII de reemplazo',
+      });
+      return;
+    }
+
+    const autor = seudonimo(usuario.id);
+    const hashRelay = createHash('sha256')
+      .update('relay|' + usuario.id + '|' + id + '|' + parsed.mensaje)
+      .digest('hex');
+
+    try {
+      const relay = await prisma.comercio_relay.create({
+        data: { comercio_id: id, mensaje: parsed.mensaje, creado_por_hash: autor, hash: hashRelay },
+      });
+      try {
+        // Sello del sistema sin PII (R4/R15): el texto vive en comercio_relay;
+        // el sello lleva ids y códigos. Solo libro contable (decisión DH).
+        await sellarEvento('comercio.relay_recibido', {
+          comercio_id: id,
+          nodo_key: activo.nodo_key,
+          subnodo_key: activo.subnodo_key ?? null,
+          relay_id: relay.id,
+          creado_por_hash: autor,
+        });
+      } catch (err) {
+        // Rollback (R4/R15): sin sello no hay relay acreditado.
+        await prisma.comercio_relay.delete({ where: { id: relay.id } }).catch(() => undefined);
+        console.error('[comercios] sellar relay:', err instanceof Error ? err.message : String(err));
+        res.status(500).json({ success: false, error: 'fallo al sellar el relay' });
+        return;
+      }
+      res.status(202).json({ success: true, data: { relay_id: relay.id, estado: 'aceptado' } });
+      return;
+    } catch (err) {
+      // P2002 en comercio_relay.hash = reintento idempotente: 200, nunca duplicado.
+      if (err && typeof err === 'object' && (err as { code?: string }).code === 'P2002') {
+        res.status(200).json({ success: true, idempotente: true, data: { estado: 'aceptado' } });
+        return;
+      }
+      throw err;
+    }
+  } catch (err) {
+    console.error('[comercios] relay:', err instanceof Error ? err.message : String(err));
+    res.status(500).json({ success: false, error: 'fallo al enviar el relay' });
+  }
+});
+
+// GET /api/comercios/:id/relay — bandeja del titular POR comercio: SOLO quien
+// reclamó (reclamado_por_hash == seudonimo(usuario.id)) con titularidad
+// reclamada O verificada. 403 sin eco del motivo (Ley 25.326: no se revela si
+// existe titular ni quién). Vacío honesto (null ≠ 0, R15). take 100 = recorte
+// honesto declarado (MK-0 §2.5).
+router.get('/:id/relay', requireJwt, async (req: Request, res: Response) => {
+  const id = req.params.id;
+  const usuario = res.locals.usuario as { id: string };
+  try {
+    const activo = await prisma.activos.findUnique({ where: { id }, include: { comercio_ficha: true } });
+    if (!activo || !activo.comercio_ficha) {
+      res.status(404).json({ success: false, error: 'comercio no encontrado' });
+      return;
+    }
+    const titularidad = ((activo.comercio_ficha as ComercioFichaRow).titularidad ?? {}) as {
+      estado?: string;
+      reclamado_por_hash?: string;
+    };
+    const esTitular =
+      (titularidad.estado === 'reclamada' || titularidad.estado === 'verificada') &&
+      titularidad.reclamado_por_hash === seudonimo(usuario.id);
+    if (!esTitular) {
+      res.status(403).json({ success: false, error: 'solo el titular puede leer la bandeja' });
+      return;
+    }
+    const mensajes = await prisma.comercio_relay.findMany({
+      where: { comercio_id: id },
+      orderBy: { created_at: 'asc' },
+      take: 100,
+      select: { id: true, mensaje: true, creado_por_hash: true, created_at: true },
+    });
+    res.json({ success: true, data: mensajes, count: mensajes.length });
+  } catch (err) {
+    console.error('[comercios] bandeja:', err instanceof Error ? err.message : String(err));
+    res.status(500).json({ success: false, error: 'fallo al leer la bandeja' });
   }
 });
 

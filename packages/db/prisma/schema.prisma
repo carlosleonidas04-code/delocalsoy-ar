@@ -279,6 +279,7 @@ model activos {
   operativa      activos_operativa?
   observaciones  patrimonio_observaciones[]
   comercio_ficha  comercio_ficha?
+  comercio_relay  comercio_relay[]
 
   /// Geometría puntal WGS84: columna + trigger + índice GiST en la migración
   /// versionada 20261008200000_r5b_activos (NULL-safe desde VIG-002: sin
@@ -812,4 +813,26 @@ model pedidos {
 
   @@index([nodo_key, estado])
   @@map("pedidos")
+}
+
+// ─── MARKET-CAP MK-4a (#427, épica #422): relay del Mercado de Proximidad ───
+
+/// Mensajes del relay (MK-4a): canal ÚNICO de contacto — jamás PII de
+/// contacto (Ley 25.326): el mensaje pasa la compuerta anti-PII (ADR-020
+/// cond. 1) en la ruta ANTES de persistir; el remitente vive SOLO como
+/// pseudónimo sha256(usuario_id) truncado (ADR-027). Idempotencia por hash
+/// (usuario + comercio + mensaje) — el reintento no duplica. La bandeja es
+/// lectura del titular (reclamada O verificada — decisión DH 2026-11-07).
+model comercio_relay {
+  id              String   @id @default(cuid())
+  comercio_id     String   @map("comercio_id")
+  mensaje         String   @map("mensaje") // texto anti-PII (compuerta en la ruta)
+  creado_por_hash String   @map("creado_por_hash") // pseudónimo — sin PII
+  hash            String   @unique @map("hash") // idempotencia del relay
+  created_at      DateTime @default(now()) @map("created_at")
+
+  activo activos @relation(fields: [comercio_id], references: [id], onDelete: Cascade)
+
+  @@index([comercio_id, created_at])
+  @@map("comercio_relay")
 }
