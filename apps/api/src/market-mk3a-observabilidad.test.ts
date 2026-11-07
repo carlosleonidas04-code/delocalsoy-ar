@@ -39,7 +39,11 @@ let server: any;
 let base = '';
 
 beforeAll(async () => {
-  execSync('pnpm --filter @delocalsoy/db db:seed', { cwd: repoRoot, stdio: 'pipe' });
+  // Este suite NO corre db:seed: siembra su propio dominio mercado vía
+  // prisma y todas sus aserciones son dinámicas contra el dominio vivo —
+  // y cada seed concurrente extra del job agranda la ventana de la carrera
+  // TOCTOU del seed (P2002 en id observado en CI run 42389665300: dos
+  // db:seed en paralelo). Las demás suites ya garantizan el vocabulario.
   server = createApp().listen(0, '127.0.0.1');
   await new Promise((resolve) => server.once('listening', resolve));
   base = 'http://127.0.0.1:' + server.address().port;
