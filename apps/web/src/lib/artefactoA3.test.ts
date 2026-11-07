@@ -15,6 +15,10 @@ import {
   OPORTUNIDAD_TRANSICIONES_A3,
   INGESTA_TRANSICIONES_A3,
   ESTADOS_PRODUCTO_MODERABLES,
+  COMERCIO_TRANSICIONES_A3,
+  SELLOS_ESPERADOS_A3,
+  ESTADOS_PENDIENTES_A3,
+  validarTransicionComercio,
   ErrorA3,
   type NuevaIngesta,
 } from './artefactoA3';
@@ -119,6 +123,20 @@ const OPORTUNIDAD = {
   updated_at: '2026-10-30T12:00:00.000Z',
 };
 
+const ACTIVO = {
+  id: 'a9',
+  tipo: 'inmueble',
+  titulo: 'Galpón comunitario',
+  descripcion: 'sede del taller de costura',
+  estado: 'propuesto',
+  nodo_key: 'capital',
+  subnodo_key: 'sj_capital_centro',
+  lat: -31.54,
+  lng: -68.52,
+  is_synthetic: false,
+  created_at: '2026-11-07T00:00:00.000Z',
+};
+
 const FICHA_PATRIMONIO = {
   activo_id: 'seed-patrimonio-capilla-achango',
   titulo: 'Capilla de Achango',
@@ -176,18 +194,22 @@ const NUEVA_INGESTA: NuevaIngesta = {
 /* ---------------------------------------------------------------- */
 
 describe('ART-R2 — matriz de componentes A3 (serie docs v0.1)', () => {
-  it('8 componentes con estado honesto contrastado', () => {
-    expect(COMPONENTES_A3.length).toBe(8);
+  it('9 componentes con estado honesto contrastado (AR3: +cola, comercios en main)', () => {
+    expect(COMPONENTES_A3.length).toBe(9);
     const comercios = COMPONENTES_A3.find((c) => c.id === 'moderacion_comercios');
-    expect(comercios?.estado).toBe('en_rama'); // MK-1/MK-2 en cola: no se cablea (R15)
+    expect(comercios?.estado).toBe('en_main'); // MK-1/MK-2 ya viven en main (AR3 corrige el estado stale)
+    const cola = COMPONENTES_A3.find((c) => c.id === 'cola_pendientes');
+    expect(cola?.estado).toBe('en_main'); // AR3 (#402): la bandeja que une los PATCH existentes
     const alcance = COMPONENTES_A3.find((c) => c.id === 'alcance_por_nodo');
     expect(alcance?.estado).toBe('propuesto'); // ◇ diseño lote-2 / #136
     const enMain = COMPONENTES_A3.filter((c) => c.estado === 'en_main').length;
-    expect(enMain).toBe(6);
+    expect(enMain).toBe(8);
   });
 
   it('la matriz declarada cubre los 8 componentes × 5 columnas', () => {
-    expect(Object.keys(MATRIZ_PERMISOS_A3).length).toBe(8);
+    expect(Object.keys(MATRIZ_PERMISOS_A3).length).toBe(9);
+    expect(MATRIZ_PERMISOS_A3.cola_pendientes.moderador).toBe('moderar');
+    expect(MATRIZ_PERMISOS_A3.cola_pendientes.visitante).toBe('leer');
     expect(MATRIZ_PERMISOS_A3.fuentes_ingestas.admin).toBe('administrar');
     expect(MATRIZ_PERMISOS_A3.fuentes_ingestas.moderador).toBe('leer');
     expect(MATRIZ_PERMISOS_A3.bandeja_reportes.moderador).toBe('moderar');
@@ -620,5 +642,94 @@ describe('ART-R2 — red caída (R5: jamás [])', () => {
     await expect(cliente.fuentes()).rejects.toMatchObject({ codigo: 'no_disponible' });
     await expect(cliente.crearIngesta(NUEVA_INGESTA)).rejects.toMatchObject({ codigo: 'no_disponible' });
     await expect(cliente.kpis('capital')).rejects.toMatchObject({ codigo: 'no_disponible' });
+  });
+});
+
+describe('ARTEFACTOS-ROLES AR3 — cola unificada de pendientes (#402)', () => {
+  it('sellos esperados por dominio (fuente canónica docs/MATRIZ_SELLOS.md v0.2)', () => {
+    expect(SELLOS_ESPERADOS_A3.reportes).toBe('reporte.estado_cambiado');
+    expect(SELLOS_ESPERADOS_A3.activos).toBe('activo.estado_cambiado');
+    expect(SELLOS_ESPERADOS_A3.productos).toBe('producto.estado_cambiado');
+    expect(SELLOS_ESPERADOS_A3.fichas).toBe('ficha_valoracion.estado_cambiado');
+    expect(SELLOS_ESPERADOS_A3.oportunidades).toBe('oportunidad.estado_cambiado');
+    expect(SELLOS_ESPERADOS_A3.comercios).toBe('comercio.estado_cambiado');
+    expect(SELLOS_ESPERADOS_A3.patrimonio).toBe('patrimonio.custodiado');
+    expect(SELLOS_ESPERADOS_A3.ingestas).toBe('ingesta.estado_cambiado');
+  });
+
+  it('estados pendientes listables: solo lo que la API expone (R15)', () => {
+    expect(ESTADOS_PENDIENTES_A3.reportes).toEqual(['received', 'evaluating']);
+    expect(ESTADOS_PENDIENTES_A3.fichas).toEqual(['testimonio']);
+    expect(ESTADOS_PENDIENTES_A3.oportunidades).toEqual(['detected', 'under_review']);
+    expect(ESTADOS_PENDIENTES_A3.activos).toEqual(['propuesto']);
+  });
+
+  it('matriz comercios: espejo EXACTO del contrato MK-1 (#243)', () => {
+    expect(COMERCIO_TRANSICIONES_A3.propuesto).toEqual(['aprobado', 'rechazado']);
+    expect(COMERCIO_TRANSICIONES_A3.aprobado).toEqual(['rechazado', 'archivado']);
+    expect(COMERCIO_TRANSICIONES_A3.rechazado).toEqual(['propuesto']);
+    expect(validarTransicionComercio('propuesto', 'aprobado')).toBeNull();
+    expect(validarTransicionComercio('propuesto', 'archivado')).not.toBeNull();
+    expect(validarTransicionComercio('archivado', 'propuesto')).toBeNull();
+  });
+
+  it('activosPropuestos: query exacto ?estado=propuesto&nodo= SIN Authorization', async () => {
+    const t = crearTransporte();
+    const cliente = crearClienteA3({ transporte: t.transporte, token: () => null });
+    t.programar([{ status: 200, cuerpo: { success: true, data: [ACTIVO], count: 1 } }]);
+    const activos = await cliente.activosPropuestos({ nodo: 'capital' });
+    expect(activos[0].estado).toBe('propuesto');
+    expect(t.llamadas[0].ruta).toBe('/api/activos?estado=propuesto&nodo=capital');
+    expect((t.llamadas[0].init?.headers as Record<string, unknown>)?.Authorization).toBeUndefined();
+  });
+
+  it('moderarActivo: PATCH con Bearer y body exacto (la clave motivo solo si existe)', async () => {
+    const t = crearTransporte();
+    const cliente = crearClienteA3({ transporte: t.transporte, token: () => 'jwt-mod' });
+    t.programar([{ status: 200, cuerpo: { success: true, data: { ...ACTIVO, estado: 'aprobado' } } }]);
+    const a = await cliente.moderarActivo('a9', 'aprobado', 'relevamiento comunitario verificado');
+    expect(a.estado).toBe('aprobado');
+    expect(t.llamadas[0].ruta).toBe('/api/activos/a9/estado');
+    expect(t.llamadas[0].init?.method).toBe('PATCH');
+    expect((t.llamadas[0].init?.headers as Record<string, unknown>)?.Authorization).toBe('Bearer jwt-mod');
+    expect(JSON.parse(t.llamadas[0].init?.body as string)).toEqual({
+      estado: 'aprobado',
+      motivo: 'relevamiento comunitario verificado',
+    });
+    t.programar([{ status: 200, cuerpo: { success: true, data: { ...ACTIVO, estado: 'rechazado' } } }]);
+    await cliente.moderarActivo('a9', 'rechazado');
+    expect(JSON.parse(t.llamadas[1].init?.body as string)).toEqual({ estado: 'rechazado' });
+  });
+
+  it('moderarActivo: 403 real para rol insuficiente (permiso tipado)', async () => {
+    const t = crearTransporte();
+    const cliente = crearClienteA3({ transporte: t.transporte, token: () => 'jwt-ciudadano' });
+    t.programar([{ status: 403, cuerpo: { success: false, error: 'rol insuficiente' } }]);
+    await expect(cliente.moderarActivo('a9', 'aprobado')).rejects.toMatchObject({ codigo: 'permiso' });
+  });
+
+  it('moderarComercio: PATCH por id con justificación ADR-038 (propuestos NO listables)', async () => {
+    const t = crearTransporte();
+    const cliente = crearClienteA3({ transporte: t.transporte, token: () => 'jwt-mod' });
+    t.programar([{ status: 200, cuerpo: { success: true, data: { id: 'c1', estado: 'aprobado' } } }]);
+    const c = await cliente.moderarComercio('c1', 'aprobado', 'titularidad verificada contra el padrón');
+    expect(c.estado).toBe('aprobado');
+    expect(t.llamadas[0].ruta).toBe('/api/comercios/c1/estado');
+    expect(JSON.parse(t.llamadas[0].init?.body as string)).toEqual({
+      estado: 'aprobado',
+      justificacion: 'titularidad verificada contra el padrón',
+    });
+    t.programar([{ status: 409, cuerpo: { success: false, error: "el comercio ya está en estado 'aprobado'" } }]);
+    await expect(cliente.moderarComercio('c1', 'aprobado', 'justificación suficiente')).rejects.toMatchObject({ codigo: 'ya_estado' });
+    t.programar([{ status: 400, cuerpo: { success: false, error: 'transición inválida (matriz COMERCIO_TRANSICIONES, #243)' } }]);
+    await expect(cliente.moderarComercio('c1', 'archivado', 'justificación suficiente')).rejects.toMatchObject({ codigo: 'transicion' });
+  });
+
+  it('sin token: moderarActivo y moderarComercio fallan ANTES de gastar la llamada', async () => {
+    const t = crearTransporte();
+    const cliente = crearClienteA3({ transporte: t.transporte, token: () => null });
+    await expect(cliente.moderarActivo('a9', 'aprobado')).rejects.toMatchObject({ codigo: 'credenciales' });
+    await expect(cliente.moderarComercio('c1', 'aprobado', 'justificación suficiente')).rejects.toMatchObject({ codigo: 'credenciales' });
+    expect(t.llamadas.length).toBe(0);
   });
 });
