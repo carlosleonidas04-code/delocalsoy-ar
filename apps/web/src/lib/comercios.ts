@@ -392,3 +392,95 @@ export function normalizarComercioHistorial(payload: unknown): ComercioHistorial
   }
   return entradas;
 }
+
+// ─── MARKET-CAP MK-3c (#426, épica #422): descubribilidad ética + accesibilidad. ───
+// Adoptables C1–C4 del canvas delocalsoy-a2-comercio v0.2 ratificados por la
+// DH 2026-11-07. Frontend puro SIN cambio de API (R9 no aplicable, OpenAPI
+// v7.42.0 intacto) y SIN sello nuevo (la matriz de sellos no se toca).
+
+/**
+ * C3 — mapeo honesto rubro canon → subtipo schema.org/LocalBusiness. Solo
+ * subtipos reales con contraparte razonable; sin contraparte (o legado cat-*)
+ * → LocalBusiness genérico, JAMÁS inventado: la discrepancia entre marcado y
+ * contenido visible es violación de política de los buscadores.
+ */
+export const SCHEMA_ORG_RUBRO: Record<string, string> = {
+  food_drink: 'FoodEstablishment',
+  retail: 'Store',
+  professional_services: 'ProfessionalService',
+  home_technical: 'HomeAndConstructionBusiness',
+  health_wellness: 'HealthAndBeautyBusiness',
+  culture_leisure: 'EntertainmentBusiness',
+  education_training: 'LocalBusiness',
+  local_production: 'LocalBusiness',
+  social_economy: 'LocalBusiness',
+  spaces_rentals: 'LocalBusiness',
+  institutions_organizations: 'LocalBusiness',
+};
+
+/**
+ * C3 — JSON-LD honesto de la ficha pública (MK-3c, EV-096): SOLO campos que
+ * la ficha ya publica. Reglas duras (ratificadas C3): JAMÁS telephone/address
+ * (la ficha no publica contacto directo — Ley 25.326; el canal es el relay,
+ * MK-4), JAMÁS aggregateRating/review (sin estrellas v1, decisión DH —
+ * fabricar confianza estructurada es peor que no tenerla), geo SOLO si existe
+ * punto público (ADR-036), openingHoursSpecification se omite (el contrato
+ * MK-1 no tiene horario — sin dato no hay campo, R15) y url se omite (la
+ * ficha no tiene URL canónica ratificada — no se inventa dominio, R15).
+ */
+export function jsonLdComercio(comercio: ComercioItem): Record<string, unknown> {
+  const nodo: Record<string, unknown> = {
+    '@context': 'https://schema.org',
+    '@type': SCHEMA_ORG_RUBRO[comercio.rubro.id] ?? 'LocalBusiness',
+    name: comercio.titulo,
+  };
+  if (comercio.lat !== null && comercio.lng !== null) {
+    nodo.geo = {
+      '@type': 'GeoCoordinates',
+      latitude: comercio.lat,
+      longitude: comercio.lng,
+    };
+  }
+  return nodo;
+}
+
+/** Facetas del directorio que viven en la URL (C2 — botón atrás restaura). */
+export interface FacetasDirectorio {
+  nodo?: string;
+  rubro?: string;
+  subnodo?: string;
+  habilitacion?: string;
+}
+
+/**
+ * C2 — parsea las facetas del query string ('?nodo=capital&rubro=food_drink')
+ * SIN dependencias: valores vacíos o desconocidos se omiten (la validación
+ * real vive en validarBusquedaComercio — la URL es estado, no compuerta).
+ */
+export function facetasDesdeQuery(qs: string): FacetasDirectorio {
+  const facetas: FacetasDirectorio = {};
+  const params = new URLSearchParams(qs);
+  for (const clave of ['nodo', 'rubro', 'subnodo', 'habilitacion'] as const) {
+    const valor = params.get(clave);
+    if (valor !== null && valor !== '') {
+      facetas[clave] = valor;
+    }
+  }
+  return facetas;
+}
+
+/**
+ * C2 — serializa las facetas a query string ('' cuando no hay facetas
+ * activas). Redondo con facetasDesdeQuery.
+ */
+export function queryDesdeFacetas(f: FacetasDirectorio): string {
+  const params = new URLSearchParams();
+  for (const clave of ['nodo', 'rubro', 'subnodo', 'habilitacion'] as const) {
+    const valor = f[clave];
+    if (valor !== undefined && valor !== '') {
+      params.set(clave, valor);
+    }
+  }
+  const qs = params.toString();
+  return qs === '' ? '' : '?' + qs;
+}
