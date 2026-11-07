@@ -799,6 +799,17 @@ export const KpiKeySchema = z.enum([
   "reportes_amc_por_dominio",
   "reportes_amc_por_distrito",
   "parajes_con_reporte",
+  // MARKET-CAP MK-3a (#426, épica #422 — plan v2 slice a ratificado por la
+  // DH 2026-11-07; D2 ratificada 2026-10-30): set v2 del mercado — KPIs del
+  // Mercado de Proximidad. Mismo canon de honestidad: agregados sin PII
+  // (Ley 25.326), restricted excluido (ADR-036), pct null honesto con 0
+  // comercios (R15).
+  "comercios_por_estado",
+  "comercios_por_rubro",
+  "comercios_por_subnodo",
+  "comercios_habilitacion_verificada_pct",
+  "titularidad_verificada_pct",
+  "ofertas_activas",
 ]);
 
 // Set VIG-013 (NODO-VIG-3 #382, épica #377): los 6 KPIs del dashboard público
@@ -964,7 +975,7 @@ export const HabilitacionSchema = z.object({
 // (nodo_key, source_type, source_id) — patrón kpi_snapshots): SOLO contenido
 // autorizado. Nunca ingiere: restricted (ADR-036), el campo `sensible` de
 // custodia (VIG-004), consentimiento, PII ni huérfanas (Ley 25.326, R15).
-export const RagSourceTypeSchema = z.enum(["subnodo", "activo", "kpi"]);
+export const RagSourceTypeSchema = z.enum(["subnodo", "activo", "kpi", "comercio"]); // MK-3a (#426): F-9 — la ficha pública del mercado es prosa autorizada
 
 // Dominio interpretativo de la respuesta (plantillas autorizadas v1 sin LLM —
 // decisión DH ratificada 2026-10-14: nada generado, sin plantilla → null

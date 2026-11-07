@@ -36,6 +36,17 @@ export const KPI_KEYS = [
   'reportes_amc_por_dominio',
   'reportes_amc_por_distrito',
   'parajes_con_reporte',
+  // MARKET-CAP MK-3a (#426, épica #422 — plan v2 slice a, D2 ratificada
+  // 2026-10-30): set v2 del mercado — 6 KPIs del Mercado de Proximidad.
+  // Mismas reglas: agregados sin PII (Ley 25.326), restricted excluido
+  // (ADR-036), pct null honesto con 0 comercios (R15), re-derivado del
+  // dominio — nunca incrementos.
+  'comercios_por_estado',
+  'comercios_por_rubro',
+  'comercios_por_subnodo',
+  'comercios_habilitacion_verificada_pct',
+  'titularidad_verificada_pct',
+  'ofertas_activas',
 ] as const;
 
 export type KpiKey = (typeof KPI_KEYS)[number];
@@ -247,6 +258,47 @@ export async function recomputeKpisForNode(nodoKey: string): Promise<KpiSnapshot
   }
   const parajesTotal = subnodos.filter((s) => s.type === 'paraje').length;
 
+  // ─── MARKET-CAP MK-3a (#426): set v2 del mercado (D2 ratificada) ───
+  // Frontera del dominio: la ficha MK-1 (comercio_ficha). restricted
+  // excluido de TODO cálculo (ADR-036) — mismo WHERE que los 15 vivos.
+  type FichaMercado = {
+    activo_id: string;
+    rubro_id: string;
+    habilitacion: { estado?: string } | null;
+    titularidad: { estado?: string } | null;
+    activo: { estado: string; subnodo_key: string | null };
+  };
+  const fichasMercado = (await prisma.comercio_ficha.findMany({
+    where: { activo: { nodo_key: nodoKey, visibilidad: { not: 'restricted' } } },
+    include: { activo: { select: { estado: true, subnodo_key: true } } },
+  })) as unknown as FichaMercado[];
+
+  const comerciosPorEstado: Record<string, number> = {};
+  const comerciosPorRubro: Record<string, number> = {};
+  const comerciosPorSubnodo: Record<string, number> = {};
+  let habilitadasVerificadas = 0;
+  let titularidadesVerificadas = 0;
+  for (const f of fichasMercado) {
+    comerciosPorEstado[f.activo.estado] = (comerciosPorEstado[f.activo.estado] ?? 0) + 1;
+    // Rubro desconocido degrada a 'unknown' honesto (R15) — nunca etiqueta inventada.
+    const rubro = f.rubro_id && f.rubro_id.length > 0 ? f.rubro_id : 'unknown';
+    comerciosPorRubro[rubro] = (comerciosPorRubro[rubro] ?? 0) + 1;
+    // null → '_sin_subnodo' (patrón _sin_distrito).
+    const subnodo = f.activo.subnodo_key ?? '_sin_subnodo';
+    comerciosPorSubnodo[subnodo] = (comerciosPorSubnodo[subnodo] ?? 0) + 1;
+    if ((f.habilitacion ?? {}).estado === 'verificada') habilitadasVerificadas += 1; // ADR-035
+    if ((f.titularidad ?? {}).estado === 'verificada') titularidadesVerificadas += 1;
+  }
+  const comerciosTotal = fichasMercado.length;
+
+  // Ofertas activas: productos aprobados de comercios del nodo. La vigencia
+  // (MK-3b: precio_centavos + vigencia desde/hasta) extiende este predicado
+  // cuando exista — sin vigencia declarada = siempre activa.
+  const idsComercio = fichasMercado.map((f) => f.activo_id);
+  const ofertasActivas = idsComercio.length
+    ? await prisma.productos.count({ where: { estado: 'aprobado', activo_id: { in: idsComercio } } })
+    : 0;
+
   const snapshots: KpiSnapshot[] = [
     { nodo_key: nodoKey, kpi_key: 'subnodos_total', valor: subnodos.length, detalles: {} },
     { nodo_key: nodoKey, kpi_key: 'subnodos_por_distrito', valor: suma(porDistrito), detalles: porDistrito },
@@ -312,6 +364,24 @@ export async function recomputeKpisForNode(nodoKey: string): Promise<KpiSnapshot
       valor: parajesConReporte.size,
       detalles: { parajes_total: parajesTotal, parajes_con_reporte: parajesConReporte.size },
     },
+    // ─── MARKET-CAP MK-3a (#426): set v2 del mercado (D2 ratificada) ───
+    { nodo_key: nodoKey, kpi_key: 'comercios_por_estado', valor: suma(comerciosPorEstado), detalles: comerciosPorEstado },
+    { nodo_key: nodoKey, kpi_key: 'comercios_por_rubro', valor: suma(comerciosPorRubro), detalles: comerciosPorRubro },
+    { nodo_key: nodoKey, kpi_key: 'comercios_por_subnodo', valor: suma(comerciosPorSubnodo), detalles: comerciosPorSubnodo },
+    {
+      nodo_key: nodoKey,
+      kpi_key: 'comercios_habilitacion_verificada_pct',
+      // null honesto si 0 comercios (R15, D2): sin dominio no hay pct.
+      valor: comerciosTotal === 0 ? null : Math.round((habilitadasVerificadas / comerciosTotal) * 100),
+      detalles: { verificadas: habilitadasVerificadas, total: comerciosTotal },
+    },
+    {
+      nodo_key: nodoKey,
+      kpi_key: 'titularidad_verificada_pct',
+      valor: comerciosTotal === 0 ? null : Math.round((titularidadesVerificadas / comerciosTotal) * 100),
+      detalles: { verificadas: titularidadesVerificadas, total: comerciosTotal },
+    },
+    { nodo_key: nodoKey, kpi_key: 'ofertas_activas', valor: ofertasActivas, detalles: {} },
   ];
 
   for (const s of snapshots) {

@@ -8,7 +8,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 // consumidor RE-DERIVA el índice rag_index del nodo desde el dominio
 // publicado (upsert idempotente por nodo_key+source_type+source_id +
 // delete lógico). Las aserciones se derivan del dominio vivo, no de
-// constantes. El índice solo contiene prosa autorizada: subnodo|activo|kpi.
+// constantes. El índice solo contiene prosa autorizada: subnodo|activo|kpi|comercio (MK-3a F-9).
 process.env.DATABASE_URL =
   process.env.TEST_DATABASE_URL ?? 'postgresql://delocalsoy:delocalsoy@localhost:5432/delocalsoy?schema=public';
 process.env.REDIS_URL = process.env.TEST_REDIS_URL ?? 'redis://localhost:6379';
@@ -86,7 +86,7 @@ describe.skipIf(!dbUp || !redisUp)('VIG-006 (#188) — consumidor de indexación
       select: { source_type: true, texto: true },
     });
     for (const fila of filas) {
-      expect(['subnodo', 'activo', 'kpi']).toContain(fila.source_type);
+      expect(['subnodo', 'activo', 'kpi', 'comercio']).toContain(fila.source_type); // MK-3a (#426): F-9
       expect(String(fila.texto)).not.toContain(event.type);
     }
 
