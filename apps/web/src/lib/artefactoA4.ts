@@ -82,7 +82,7 @@ export const COMPONENTES_A4: readonly ComponenteA4[] = [
     id: 'libro_contable',
     titulo: 'Libro contable (events_raw)',
     resumen:
-      'Sellos inmutables 1:1 con cada transición, append-only con hash único idempotente (ADR-032). AR4 (#403): lectura pública directa — GET /api/sellos con filtros ?nodo= ?type= y paginación, GET /api/sellos/tipos para la cobertura contra docs/MATRIZ_SELLOS.md v0.2 (39 sellos).',
+      'Sellos inmutables 1:1 con cada transición, append-only con hash único idempotente (ADR-032). AR4 (#403): lectura pública directa — GET /api/sellos con filtros ?nodo= ?type= y paginación, GET /api/sellos/tipos para la cobertura contra docs/MATRIZ_SELLOS.md v0.2 (40 sellos).',
     estado: 'en_main',
     traza: 'ADR-032 / CORE-004 R4a (#213, EV-054) / AR4 #403 (épica #399)',
   },
@@ -713,7 +713,7 @@ export interface FilaMatrizSello {
 
 // Matriz v0.2 (revisión M0 2026-11-06 + cluster.creado saldada por AR4 #403
 // + 4 filas de deuda saldadas por C5 #412 + producto.atributos_editados
-// MK-3b #426): 39 sellos documentados. Espejo de
+// MK-3b #426 + comercio.relay_recibido MK-4a #427): 40 sellos documentados. Espejo de
 // docs/MATRIZ_SELLOS.md — si la matriz cambia en un PR, este espejo cambia en
 // el MISMO PR (regla 5).
 export const MATRIZ_SELLOS_V0_2: readonly FilaMatrizSello[] = [
@@ -756,6 +756,7 @@ export const MATRIZ_SELLOS_V0_2: readonly FilaMatrizSello[] = [
   { sello: 'cluster.creado', dominio: 'features (clusters AMC)', origen: 'VIG-011 #378 (EV-084) — fila saldada por AR4 #403' },
   { sello: 'residencia.declarada', dominio: 'usuarios (AR1)', origen: 'ARTEFACTOS-ROLES #400 (épica #399)' },
   { sello: 'visitante.registrado', dominio: 'usuarios (AR1)', origen: 'ARTEFACTOS-ROLES #400 (épica #399)' },
+  { sello: 'comercio.relay_recibido', dominio: 'comercios (MK-4 relay)', origen: '#427 (EV-098)' },
 ];
 
 /** Parser local del sello (mismo patrón que los parsers A4). */
