@@ -21,6 +21,10 @@
  *                                 SIIC (ADR-035) e historial F-3 del Mercado de Proximidad
  *                                 (MK-1/MK-2 en main: sin superficie no se simulaba; con
  *                                 superficie se cablea, R15 en ambos sentidos)
+ *                                 ARTEFACTOS-ROLES AR2 (#401, épica #399): búsqueda por
+ *                                 facetas reales del directorio y camino buscar → ver →
+ *                                 reclamar/editar con un click; frontera honesta de la
+ *                                 edición (horario declarado NO existe en MK-1 v0.2, R15)
  *     <A3GestorAdmin />            ART-R2 (#271): moderación con justificación (ADR-038)
  *     <A4AuditorDatosAbiertos />   ART-R3 (#272): auditoría y datos abiertos (lectura pura)
  *

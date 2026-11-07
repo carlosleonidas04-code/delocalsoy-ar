@@ -4,6 +4,14 @@
  * y el cliente puro lib/artefactoA2.ts contra las superficies reales del
  * Mercado de Proximidad (MK-1/MK-2 ya en main).
  *
+ * ARTEFACTOS-ROLES AR2 (#401, épica #399 — 2026-11-07): la vista comerciante
+ * del sprint: búsqueda por facetas reales del directorio (?nodo ?rubro
+ * ?habilitacion — el rubro por CÓDIGO, nunca por nombre), camino completo
+ * buscar → ver ficha → reclamar / editar / cambiar habilitación con un click,
+ * y frontera honesta de la edición v0.2 verificada en vivo: los atributos
+ * SÍ se editan (PATCH /:id), la descripción solo en el alta, el horario
+ * declarado NO existe en el contrato MK-1 — sin campo no hay vista (R15).
+ *
  * Reglas vivas: R5 (errores visibles, jamás []) · R15 (sin simulación: el alta
  * nace propuesto y la moderación ES la validación; el identificador del
  * reclamo viaja una sola vez y vuelve SOLO como hash — Ley 25.326) · ADR-027
@@ -33,6 +41,8 @@ import {
   validarHabilitacionComercio,
   validarJustificacion,
   validarReclamoTitularidad,
+  validarBusquedaComercio,
+  type BusquedaComercio,
   NODOS_COMERCIO,
   TIPOS_COMERCIO,
   METODOS_TITULARIDAD,
@@ -272,6 +282,35 @@ export function A2Comerciante() {
       setComercios(await cliente.directorio());
     });
   }, [cliente, conCarga]);
+
+  /* ---------- búsqueda del directorio (AR2 #401: buscar → ver → reclamar) ---------- */
+
+  const [busquedaNodo, setBusquedaNodo] = useState<NodoKeyComercio | ''>('');
+  const [busquedaRubro, setBusquedaRubro] = useState('');
+  const [busquedaHabilitacion, setBusquedaHabilitacion] = useState<EstadoHabilitacionComercio | ''>('');
+  const [errorBusqueda, setErrorBusqueda] = useState<string | null>(null);
+
+  const buscarDirectorio = useCallback(() => {
+    setErrorBusqueda(null);
+    const filtros: BusquedaComercio = {};
+    if (busquedaNodo !== '') {
+      filtros.nodo = busquedaNodo;
+    }
+    if (busquedaRubro.trim() !== '') {
+      filtros.rubro = busquedaRubro.trim();
+    }
+    if (busquedaHabilitacion !== '') {
+      filtros.habilitacion = busquedaHabilitacion;
+    }
+    const errValidacion = validarBusquedaComercio(filtros);
+    if (errValidacion !== null) {
+      setErrorBusqueda(errValidacion);
+      return;
+    }
+    return conCarga('directorio', async () => {
+      setComercios(await cliente.directorio(filtros));
+    });
+  }, [busquedaHabilitacion, busquedaNodo, busquedaRubro, cliente, conCarga]);
 
   /* ---------- ficha de un comercio (por id, carga perezosa) ---------- */
 
@@ -604,6 +643,61 @@ export function A2Comerciante() {
         </button>{' '}
         <small>carga perezosa: 1 req — el visitante tiene techo 10 req/min</small>
       </p>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void buscarDirectorio();
+        }}
+        aria-label="Buscar mi comercio en el directorio"
+      >
+        <label>
+          nodo{' '}
+          <select
+            value={busquedaNodo}
+            onChange={(e) => setBusquedaNodo(e.target.value as NodoKeyComercio | '')}
+          >
+            <option value="">todos</option>
+            {NODOS_COMERCIO.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </label>{' '}
+        <label>
+          rubro (código){' '}
+          <input
+            value={busquedaRubro}
+            onChange={(e) => setBusquedaRubro(e.target.value)}
+            placeholder="food_drink"
+          />
+        </label>{' '}
+        <label>
+          habilitación{' '}
+          <select
+            value={busquedaHabilitacion}
+            onChange={(e) => setBusquedaHabilitacion(e.target.value as EstadoHabilitacionComercio | '')}
+          >
+            <option value="">todas</option>
+            {ESTADOS_HABILITACION_COMERCIO.map((h) => (
+              <option key={h} value={h}>
+                {h}
+              </option>
+            ))}
+          </select>
+        </label>{' '}
+        <button type="submit" disabled={cargando === 'directorio'}>
+          {cargando === 'directorio' ? 'buscando…' : 'buscar en el directorio'}
+        </button>
+      </form>
+      {errorBusqueda !== null && <p role="alert">{errorBusqueda}</p>}
+      <p>
+        <small>
+          búsqueda = facetas reales de GET /api/comercios (?nodo ?rubro ?habilitacion), el rubro viaja
+          por CÓDIGO, nunca por nombre; la búsqueda por título NO existe en la superficie MK-1 v1 —
+          sin campo no hay filtro (R15, no se filtra en el cliente: sería maqueta).
+        </small>
+      </p>
       {comercios !== null && <p>{notaComercios(comercios.length)}</p>}
       {comercios !== null && comercios.length > 0 && (
         <ul>
@@ -647,6 +741,17 @@ export function A2Comerciante() {
             {detalle.productos.length > 0 && ' — ' + detalle.productos.map((p) => p.nombre ?? p.id).join(', ')}
             {' · operativa: '}
             {detalle.operativa === null ? 'sin ficha operativa (null ≠ 0, frontera Ley 2400-T de VIG-005)' : 'presente'}
+          </p>
+          <p>
+            <button type="button" onClick={() => setReclamoId(detalle.ficha.id)}>
+              reclamar titularidad de esta ficha
+            </button>{' '}
+            <button type="button" onClick={() => setEditarId(detalle.ficha.id)}>
+              editar atributos de esta ficha
+            </button>{' '}
+            <button type="button" onClick={() => setHabId(detalle.ficha.id)}>
+              cambiar habilitación de esta ficha
+            </button>
           </p>
         </div>
       )}
@@ -749,6 +854,14 @@ export function A2Comerciante() {
 
       <h3>Reclamar titularidad (CUIT o expediente SIIC)</h3>
       {!caps.puedeEscribir && <p role="note">el reclamo exige sesión iniciada — es un acto con consentimiento.</p>}
+      <p>
+        <small>
+          transparencia del reclamo (AR2): el estado es público en la ficha (sin_reclamo → reclamada →
+          verificada), cada paso queda en el historial F-3 (sellos comercio.titularidad_*) y la
+          moderación justifica en público (ADR-038) — después de reclamar, volvé a «ver ficha» para
+          seguir el estado.
+        </small>
+      </p>
       {caps.puedeEscribir && (
         <form onSubmit={enviarReclamo}>
           <label>
@@ -855,6 +968,14 @@ export function A2Comerciante() {
               simula el permiso.
             </small>
           </p>
+          <p>
+            <small>
+              frontera honesta de la edición v0.2 (AR2, verificada en vivo contra PATCH /api/comercios/:id):
+              las categorías operativas (venta directa, delivery, pagos, accesibilidad, feria) SÍ se editan;
+              la descripción NO se edita — vive en el alta y cambiarla exige extensión de contrato sellada;
+              el horario declarado NO existe en el contrato MK-1 — sin campo no hay vista (R15).
+            </small>
+          </p>
         </form>
       )}
 
@@ -901,6 +1022,14 @@ export function A2Comerciante() {
           alto nivel; el detalle por campo no se duplica
         </li>
         <li>cambio de estado del comercio (aprobado, rechazado) — es moderación del A3, no del titular</li>
+        <li>
+          horario declarado — NO existe en el contrato MK-1 v0.2: sin campo no hay vista (R15); extensión
+          de contrato con sello propio si la DH la pide
+        </li>
+        <li>
+          edición de la descripción — solo en el alta v0.2 (AR2 verificado en vivo): cambiar el texto del
+          activo exige extensión sellada de PATCH /api/comercios/:id
+        </li>
       </ul>
     </section>
   );
