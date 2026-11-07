@@ -36,7 +36,7 @@ let base = '';
 
 beforeAll(async () => {
   execSync('pnpm --filter @delocalsoy/db db:seed', { cwd: repoRoot, stdio: 'pipe' });
-  // El paso 9 del guion: el recompute deja iglesia con sus 9 snapshots y
+  // El paso 9 del guion: el recompute deja iglesia con sus 21 snapshots y
   // su índice RAG — el recorrido lee el estado materializado real.
   await recomputeKpisForNode('iglesia');
   await recomputeRagIndexForNode('iglesia');
@@ -113,7 +113,7 @@ describe.skipIf(!dbUp)('Demo final del showcase VIG-007 (#193, épica #167)', ()
 
     expect(iglesia.subnodos).toBe(subnodos);
     expect(iglesia.subnodos).toBeGreaterThanOrEqual(52); // semilla VIG-001
-    expect(iglesia.kpis).toBe(15); // set honesto v1 (VIG-003) + v2 (VIG-013) tras el recompute
+    expect(iglesia.kpis).toBe(21); // set honesto v1 (VIG-003) + v2 (VIG-013) + v2 mercado (MK-3a) tras el recompute
     expect(iglesia.kpis).toBe(iglesia.kpis_detalle.length);
     expect(iglesia.activos_aprobados).toBe(idsNoRestricted.length);
     expect(iglesia.activos_aprobados).toBeGreaterThanOrEqual(6);
@@ -194,7 +194,7 @@ describe.skipIf(!dbUp)('Demo final del showcase VIG-007 (#193, épica #167)', ()
     const showcase = await getJson('/api/showcase');
     const iglesia: any = showcase.body.data.nodos.find((n: any) => n.key === 'iglesia');
     const kpis = await porKey('/api/nodos/iglesia/kpis');
-    expect(kpis.size).toBe(15); // set v1 (VIG-003) + v2 (VIG-013)
+    expect(kpis.size).toBe(21); // set v1 (VIG-003) + v2 (VIG-013) + v2 mercado (MK-3a)
     expect(kpis.get('subnodos_total')?.valor).toBe(iglesia.subnodos);
     expect(kpis.get('subnodos_total')?.valor).toBeGreaterThanOrEqual(52);
     expect(kpis.get('cobertura_geometrica')?.valor).toBeNull(); // R15 honesto

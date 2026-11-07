@@ -82,7 +82,7 @@ describe.skipIf(!dbUp)('RAG territorial ético VIG-006 (#188, épica #167)', () 
     for (const f of res.body.data.dato ?? []) {
       expect('sensible' in f).toBe(false);
       expect(Array.isArray(f.fuentes)).toBe(true);
-      expect(['subnodo', 'activo', 'kpi']).toContain(f.source_type);
+      expect(['subnodo', 'activo', 'kpi', 'comercio']).toContain(f.source_type); // MK-3a (#426): F-9 — el mercado es prosa autorizada
     }
   });
 
