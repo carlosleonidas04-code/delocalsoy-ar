@@ -24,6 +24,7 @@ Propósito (mejora C5 de la hoja de mantenimiento): hacer explícito el contrato
 | `operativa.ingestado` | activos_operativa (seed VIG-005) | #189 | main |
 | `producto.propuesto` | productos | #189 | main |
 | `producto.estado_cambiado` | productos | #189 | main |
+| `producto.atributos_editados` | productos (MK-3b, PATCH de oferta) | #426 (EV-095) | en cola |
 | `oportunidad.propuesta` | oportunidades (Bloque 9) | #160 (EV-039) | main |
 | `oportunidad.estado_cambiado` | oportunidades | #160 | main |
 | `oportunidad.conexion_creada` | oportunidades (vínculos actores) | NCAP-R6-ext (#165) | main — fila tardía (deuda regla 5 saldada por C5 #412) |

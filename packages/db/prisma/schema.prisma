@@ -478,6 +478,9 @@ model productos {
   temporada_meses Json     @map("temporada_meses") // [1..12] — [] = sin_dato (R15)
   estado          String   @default("propuesto") @map("estado") // ProductoEstadoSchema
   procedencia     Json?    @map("procedencia") // ActivoProcedenciaSchema (ADR-035)
+  precio_centavos Int?      // MK-3b (#426): precio en centavos AR ENTEROS — jamás float (D2); null = sin_dato (R15)
+  vigencia_desde  DateTime? // MK-3b (#426): ventana de vigencia declarada (RFC-027)
+  vigencia_hasta  DateTime? // MK-3b (#426): ventana de vigencia declarada (RFC-027)
   created_by_hash String   @map("created_by_hash") // pseudónimo — sin PII
   created_at      DateTime @default(now()) @map("created_at")
   updated_at      DateTime @updatedAt @map("updated_at")
