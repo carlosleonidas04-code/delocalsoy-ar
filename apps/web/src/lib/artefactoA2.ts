@@ -558,6 +558,7 @@ export function validarReclamoTitularidad(
 /** Filtros de búsqueda del directorio público (subconjunto de ComerciosQuery). */
 export interface BusquedaComercio {
   nodo?: string;
+  subnodo?: string;
   rubro?: string;
   habilitacion?: string;
 }
@@ -575,6 +576,11 @@ export function validarBusquedaComercio(b: BusquedaComercio): string | null {
   }
   if (b.rubro !== undefined && b.rubro !== '' && !REGEX_RUBRO.test(b.rubro)) {
     return 'rubro: código del canon (food_drink) o legado (cat-*) — nunca el nombre';
+  }
+  // MK-3b (#426): faceta subnodo junto a las existentes (decisión DH
+  // 2026-11-07) — clave del vocabulario territorial (sj_iglesia_*).
+  if (b.subnodo !== undefined && b.subnodo !== '' && !REGEX_CODIGO.test(b.subnodo)) {
+    return 'subnodo: clave del vocabulario (minúsculas, dígitos o _)';
   }
   if (
     b.habilitacion !== undefined &&

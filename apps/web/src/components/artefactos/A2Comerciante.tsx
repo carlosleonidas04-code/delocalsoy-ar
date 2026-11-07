@@ -6,7 +6,8 @@
  *
  * ARTEFACTOS-ROLES AR2 (#401, épica #399 — 2026-11-07): la vista comerciante
  * del sprint: búsqueda por facetas reales del directorio (?nodo ?rubro
- * ?habilitacion — el rubro por CÓDIGO, nunca por nombre), camino completo
+ * ?subnodo ?habilitacion — rubro y subnodo por CÓDIGO, nunca por nombre;
+ * faceta subnodo MK-3b #426), camino completo
  * buscar → ver ficha → reclamar / editar / cambiar habilitación con un click,
  * y frontera honesta de la edición v0.2 verificada en vivo: los atributos
  * SÍ se editan (PATCH /:id), la descripción solo en el alta, el horario
@@ -287,6 +288,8 @@ export function A2Comerciante() {
 
   const [busquedaNodo, setBusquedaNodo] = useState<NodoKeyComercio | ''>('');
   const [busquedaRubro, setBusquedaRubro] = useState('');
+  // MK-3b (#426): faceta subnodo junto a las existentes (decisión DH 2026-11-07)
+  const [busquedaSubnodo, setBusquedaSubnodo] = useState('');
   const [busquedaHabilitacion, setBusquedaHabilitacion] = useState<EstadoHabilitacionComercio | ''>('');
   const [errorBusqueda, setErrorBusqueda] = useState<string | null>(null);
 
@@ -299,6 +302,9 @@ export function A2Comerciante() {
     if (busquedaRubro.trim() !== '') {
       filtros.rubro = busquedaRubro.trim();
     }
+    if (busquedaSubnodo.trim() !== '') {
+      filtros.subnodo = busquedaSubnodo.trim();
+    }
     if (busquedaHabilitacion !== '') {
       filtros.habilitacion = busquedaHabilitacion;
     }
@@ -310,7 +316,7 @@ export function A2Comerciante() {
     return conCarga('directorio', async () => {
       setComercios(await cliente.directorio(filtros));
     });
-  }, [busquedaHabilitacion, busquedaNodo, busquedaRubro, cliente, conCarga]);
+  }, [busquedaHabilitacion, busquedaNodo, busquedaRubro, busquedaSubnodo, cliente, conCarga]);
 
   /* ---------- ficha de un comercio (por id, carga perezosa) ---------- */
 
@@ -673,6 +679,14 @@ export function A2Comerciante() {
           />
         </label>{' '}
         <label>
+          subnodo (código){' '}
+          <input
+            value={busquedaSubnodo}
+            onChange={(e) => setBusquedaSubnodo(e.target.value)}
+            placeholder="sj_iglesia_..."
+          />
+        </label>{' '}
+        <label>
           habilitación{' '}
           <select
             value={busquedaHabilitacion}
@@ -693,9 +707,9 @@ export function A2Comerciante() {
       {errorBusqueda !== null && <p role="alert">{errorBusqueda}</p>}
       <p>
         <small>
-          búsqueda = facetas reales de GET /api/comercios (?nodo ?rubro ?habilitacion), el rubro viaja
-          por CÓDIGO, nunca por nombre; la búsqueda por título NO existe en la superficie MK-1 v1 —
-          sin campo no hay filtro (R15, no se filtra en el cliente: sería maqueta).
+          búsqueda = facetas reales de GET /api/comercios (?nodo ?subnodo ?rubro ?habilitacion), el
+          rubro y el subnodo viajan por CÓDIGO, nunca por nombre; la búsqueda por título NO existe en
+          la superficie MK-1 v1 — sin campo no hay filtro (R15, no se filtra en el cliente: sería maqueta).
         </small>
       </p>
       {comercios !== null && <p>{notaComercios(comercios.length)}</p>}
