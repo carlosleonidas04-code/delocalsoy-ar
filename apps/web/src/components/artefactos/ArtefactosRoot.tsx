@@ -33,6 +33,10 @@
  *                                 matriz de transiciones y sello esperado
  *                                 visibles ANTES de confirmar
  *     <A4AuditorDatosAbiertos />   ART-R3 (#272): auditoría y datos abiertos (lectura pura)
+ *                                 ARTEFACTOS-ROLES AR4 (#403, épica #399): libro
+ *                                 contable de sellos — GET /api/sellos y
+ *                                 /api/sellos/tipos con cobertura contra la
+ *                                 matriz v0.2 (34 sellos), sin escritura
  *
  * Reglas vivas: R15 (el alta pública solo crea 'ciudadano' — ADR-031; la
  * promoción a moderador/admin es operación de sistema, nunca simulada) ·

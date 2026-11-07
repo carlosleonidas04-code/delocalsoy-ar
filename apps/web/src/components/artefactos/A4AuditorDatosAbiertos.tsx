@@ -5,7 +5,8 @@
  *
  * Reglas vivas: R5 (errores visibles, jamás []) · R15 (sin simulación: el
  * auditor NO muta — este panel no tiene NI UNA escritura; el libro contable
- * no tiene GET público y se observa solo por derivados; lo no publicado no
+ * YA tiene GET público (ARTEFACTOS-ROLES AR4, #403: GET /api/sellos y
+ * /api/sellos/tipos — lectura, jamás escritura); lo no publicado no
  * se inventa) · ADR-035 (datos abiertos = accesible + procedente + auditable)
  * · ADR-036 (el auditor tampoco ve sensible) · Ley 25.326/ADR-027 (solo
  * hashes y pseudónimos) · techo por rol real (carga perezosa por sección:
@@ -28,6 +29,7 @@ import {
   crearClienteA4,
   canonizar,
   huellaSha256,
+  coberturaSellos,
   ErrorA4,
   type CapacidadesA4,
   type ClienteA4,
@@ -38,6 +40,8 @@ import {
   type Ingesta,
   type KpiSnapshot,
   type ReportePublico,
+  type SelloPublico,
+  type CoberturaSellos,
   type TransicionReporte,
 } from '../../lib/artefactoA4';
 
@@ -122,14 +126,12 @@ function A4AuditorDatosAbiertos() {
       <KpisPublicos cliente={cliente} />
       <FichaPatrimonial cliente={cliente} />
       <VerificacionHuella cliente={cliente} />
+      <LibroContable cliente={cliente} />
+      <CoberturaMatriz cliente={cliente} />
 
       <section aria-label="Sin cablear aún">
         <h3>Sin cablear aún (honesto, R15)</h3>
         <ul>
-          <li>
-            libro contable directo: events_raw NO tiene GET público — solo se observa por
-            derivados (health modeSource, historiales, KPIs). No se simula un listado.
-          </li>
           <li>historial de comercios (MK-2, F-3): PR #254 en cola de merge — sin cablear.</li>
           <li>
             tamiz de 13 dimensiones (P-10) + historial de acreditación (P-09): ◇ por diseñar
@@ -597,6 +599,183 @@ function VerificacionHuella({ cliente }: PropsSeccion) {
           snapshot del {salud.timestamp} (modo {salud.mode}, dataSource {salud.dataSource}) ·
           huella <code>{huella}</code>
         </p>
+      )}
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Sección: libro contable de sellos (ARTEFACTOS-ROLES AR4, #403)        */
+/* ------------------------------------------------------------------ */
+
+function LibroContable({ cliente }: PropsSeccion) {
+  const [nodo, setNodo] = useState('');
+  const [type, setType] = useState('');
+  const [sellos, setSellos] = useState<SelloPublico[] | null>(null);
+  const [total, setTotal] = useState<number | null>(null);
+  const [cargando, setCargando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const cargar = async () => {
+    setCargando(true);
+    setError(null);
+    try {
+      const r = await cliente.sellos({
+        nodo: nodo === '' ? undefined : nodo,
+        type: type.trim() === '' ? undefined : type.trim(),
+        limit: 50,
+        offset: 0,
+      });
+      setSellos(r.sellos);
+      setTotal(r.total);
+    } catch (e) {
+      setSellos(null);
+      setTotal(null);
+      setError(mensajeError(e));
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  return (
+    <section aria-label="Libro contable de sellos (AR4)">
+      <h3>Libro contable — sellos de events_raw (AR4, #403)</h3>
+      <p>
+        Lectura pública de la fuente append-only (ADR-032). Sin PII: la compuerta anti-PII vive
+        en la ingesta (Ley 25.326).
+      </p>
+      <p>
+        <select value={nodo} onChange={(e) => setNodo(e.target.value)} aria-label="Filtrar por nodo">
+          <option value="">todos los nodos</option>
+          {NODOS.map((n) => (
+            <option key={n} value={n}>
+              {n}
+            </option>
+          ))}
+        </select>{' '}
+        <input
+          value={type}
+          onChange={(e) => setType(e.target.value)}
+          placeholder="type exacto (p. ej. reporte.recibido)"
+          aria-label="Filtrar por type exacto"
+          size={32}
+        />{' '}
+        <button type="button" onClick={() => void cargar()} disabled={cargando}>
+          {cargando ? 'cargando…' : 'cargar sellos (limit 50)'}
+        </button>
+      </p>
+      {error !== null && <p role="alert">{error}</p>}
+      {sellos !== null && (
+        <p>
+          {sellos.length} sello(s) en esta página · total con estos filtros:{' '}
+          <strong>{total}</strong>
+        </p>
+      )}
+      {sellos !== null &&
+        (sellos.length === 0 ? (
+          <p>sin sellos con estos filtros (honesto, R15).</p>
+        ) : (
+          <ul>
+            {sellos.map((s) => (
+              <li key={s.id}>
+                <code>{s.type}</code> · {s.occurred_at} · hash <code>{s.hash.slice(0, 16)}…</code>
+                <details>
+                  <summary>payload</summary>
+                  <pre>{JSON.stringify(s.payload, null, 2)}</pre>
+                </details>
+              </li>
+            ))}
+          </ul>
+        ))}
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Sección: cobertura contra la matriz de sellos (AR4, #403)             */
+/* ------------------------------------------------------------------ */
+
+function CoberturaMatriz({ cliente }: PropsSeccion) {
+  const [cobertura, setCobertura] = useState<CoberturaSellos | null>(null);
+  const [cargando, setCargando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const cargar = async () => {
+    setCargando(true);
+    setError(null);
+    try {
+      const tipos = await cliente.sellosTipos();
+      setCobertura(coberturaSellos(tipos));
+    } catch (e) {
+      setCobertura(null);
+      setError(mensajeError(e));
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  return (
+    <section aria-label="Cobertura de la matriz de sellos (AR4)">
+      <h3>Cobertura contra docs/MATRIZ_SELLOS.md v0.2 (AR4, #403)</h3>
+      <p>
+        <button type="button" onClick={() => void cargar()} disabled={cargando}>
+          {cargando ? 'cargando…' : 'calcular cobertura (GET /api/sellos/tipos)'}
+        </button>
+      </p>
+      {error !== null && <p role="alert">{error}</p>}
+      {cobertura !== null && (
+        <>
+          <p>
+            documentados con eventos: <strong>{cobertura.documentados.length}</strong> de{' '}
+            {cobertura.documentados.length + cobertura.sinEventosAun.length} · sin eventos aún:{' '}
+            <strong>{cobertura.sinEventosAun.length}</strong> · types sin fila en la matriz
+            (hallazgo honesto, R15): <strong>{cobertura.sinFilaEnMatriz.length}</strong>
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>sello</th>
+                <th>dominio</th>
+                <th>origen</th>
+                <th>eventos</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cobertura.documentados.map((d) => (
+                <tr key={d.sello}>
+                  <td>
+                    <code>{d.sello}</code>
+                  </td>
+                  <td>{d.dominio}</td>
+                  <td>{d.origen}</td>
+                  <td>{d.count}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {cobertura.sinFilaEnMatriz.length > 0 && (
+            <div>
+              <h4>Sin fila en la matriz (honesto, R15)</h4>
+              <ul>
+                {cobertura.sinFilaEnMatriz.map((t) => (
+                  <li key={t.type}>
+                    <code>{t.type}</code> — {t.count} evento(s)
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <details>
+            <summary>sin eventos aún ({cobertura.sinEventosAun.length})</summary>
+            <ul>
+              {cobertura.sinEventosAun.map((f) => (
+                <li key={f.sello}>
+                  <code>{f.sello}</code> — {f.dominio}
+                </li>
+              ))}
+            </ul>
+          </details>
+        </>
       )}
     </section>
   );

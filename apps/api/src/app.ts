@@ -20,6 +20,7 @@ import patrimonioRouter from './routes/patrimonio.js';
 import pedidosRouter from './routes/pedidos.js';
 import productosRouter from './routes/productos.js';
 import reportesRouter from './routes/reportes.js';
+import sellosRouter from './routes/sellos.js';
 import showcaseRouter from './routes/showcase.js';
 import territoriosRouter from './routes/territorios.js';
 
@@ -188,6 +189,16 @@ export function createApp(): Express {
   // Dominio: eventos crudos (fuente de verdad, append-only, idempotentes) — unificado bajo /api (riesgo #53)
   // H-01 (auditoría T2, corregido en R3a): la ingesta pública rechaza system.*.
   app.use('/api/events', eventsRouter);
+
+  // Dominio: libro contable de sellos (ARTEFACTOS-ROLES AR4, #403 — épica
+  // #399): GET /api/sellos — lectura pública anónima de events_raw (fuente
+  // de verdad append-only, ADR-032) con filtros ?nodo= (payload->nodo_key)
+  // y ?type= exacto, paginación limit/offset con total en el header
+  // X-DELocalSoy-Total-Count (patrón #165); GET /api/sellos/tipos — conteo
+  // por type para la cobertura contra docs/MATRIZ_SELLOS.md. Sin PII por
+  // construcción (la compuerta anti-PII vive en la ingesta POST /api/events
+  // — Ley 25.326/ADR-027); sin escritura: el auditor no muta.
+  app.use('/api/sellos', sellosRouter);
 
   // Riesgo #57 (ADR-028): la ruta legada /health fue retirada — sin consumidores
   // legítimos tras #53/#61. Único health: /api/health (honesto, R5).

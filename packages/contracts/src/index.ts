@@ -1705,3 +1705,43 @@ export const PedidoRespuestaSchema = z.object({
   nota: z.string().trim().max(500).optional(),
 });
 
+// ─── ARTEFACTOS-ROLES AR4 (#403, épica #399): libro contable de sellos ───
+
+// AR4 — lectura pública del libro contable (events_raw, ADR-032): el
+// auditor consulta los sellos YA emitidos. Sin PII por construcción:
+// la compuerta anti-PII vive en la ingesta (POST /api/events, ADR-020
+// cond. 1, Ley 25.326) y el guard system.* (H-01) — esta lectura solo
+// expone lo que ya pasó esa compuerta. El auditor NO muta: aquí no hay
+// schema de escritura por diseño (spec A4 §4).
+export const SellosQuerySchema = z.object({
+  // Filtra por payload->nodo_key (el nodo vive en el payload del sello —
+  // events_raw no tiene columna nodo, patrón reportes.ts).
+  nodo: SanJuanNodeSlugSchema.optional(),
+  type: z
+    .string()
+    .trim()
+    .min(3, "type: al menos 3 caracteres")
+    .max(120, "type: a lo sumo 120 caracteres")
+    .optional(),
+  // coerce: los query params llegan como strings.
+  limit: z.coerce
+    .number()
+    .int()
+    .min(1, "limit mínimo 1")
+    .max(200, "limit máximo 200")
+    .default(50),
+  offset: z.coerce.number().int().min(0, "offset mínimo 0").default(0),
+});
+
+// Sello público del libro contable: tal como vive en events_raw —
+// append-only, inmutable, id/hash/payload sin PII (Ley 25.326/ADR-027).
+export const SelloPublicoSchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  hash: z.string(),
+  occurred_at: z.string().datetime(),
+  payload: z.record(z.string(), z.unknown()),
+});
+
+export type SellosQuery = z.infer<typeof SellosQuerySchema>;
+export type SelloPublico = z.infer<typeof SelloPublicoSchema>;
