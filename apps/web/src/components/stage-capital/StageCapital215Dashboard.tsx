@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   COMERCIOS_CAPITAL_215,
   ESPACIOS_PUBLICOS_CAPITAL,
+  SUBNODOS_CAPITAL_STAGE,
   ComercioBarrial
 } from './stageCapital215Data';
 import { Store, Trees, MapPin, Search } from 'lucide-react';
@@ -11,13 +12,9 @@ export const StageCapital215Dashboard: React.FC = () => {
   const [busqueda, setBusqueda] = useState<string>('');
   const [comercioSeleccionado, setComercioSeleccionado] = useState<ComercioBarrial | null>(null);
 
-  const subnodos = [
-    { id: 'todos', label: 'Todos los Subnodos' },
-    { id: 'capital-centro-historico', label: 'Centro Histórico' },
-    { id: 'capital-desamparados', label: 'Desamparados' },
-    { id: 'capital-concepcion', label: 'Concepción' },
-    { id: 'capital-trinidad', label: 'Trinidad' }
-  ];
+  // MONTAR-2 (#445): filtro armonizado al vocabulario ratificado del nodo
+  // Capital (#154, PEC 2025) — el stage ya no declara subnodos propios.
+  const subnodos = SUBNODOS_CAPITAL_STAGE;
 
   const comerciosFiltrados = COMERCIOS_CAPITAL_215.filter((c) => {
     const matchSubnodo = subnodoFiltro === 'todos' || c.subnodoId === subnodoFiltro;
@@ -40,7 +37,7 @@ export const StageCapital215Dashboard: React.FC = () => {
           <span>·</span>
           <span>SAN JUAN CAPITAL</span>
           <span>·</span>
-          <span className="text-emerald-700 font-semibold">4 SUBNODOS CANÓNICOS</span>
+          <span className="text-emerald-700 font-semibold">2 SUBNODOS RATIFICADOS (PEC 2025 · #154)</span>
         </div>
 
         <div className="max-w-3xl">

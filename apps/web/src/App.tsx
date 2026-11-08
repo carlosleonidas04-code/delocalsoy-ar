@@ -20,6 +20,7 @@ import { TerritorialPlatformHub } from './components/TerritorialPlatformHub';
 import { TopBarHeader } from './components/TopBarHeader';
 import { TraceabilityAndEvidenciasPanel } from './components/TraceabilityAndEvidenciasPanel';
 import { WorkspacePanel } from './components/WorkspacePanel';
+import { MontajePlataforma } from './components/MontajePlataforma';
 import { useFederatedMutationHandlers } from './hooks/useFederatedMutationHandlers';
 import {
   DataSourceHttpError,
@@ -1159,13 +1160,14 @@ export function App() {
           <VialidadMovilidadPanel dataSource={defaultDataSource} />
         )}
 
-        {/* 6g. STAGE Capital #215 (MONTAR-1 #442): comercios de proximidad × espacios
-            públicos del stage de diseño — material ILUSTRATIVO de stage, no acreditado
-            (R15): los subnodos por los que filtra el stage (Concepción, Trinidad)
-            divergen del vocabulario ratificado del nodo Capital (#154:
-            sj_capital_centro + sj_capital_desamparados, PEC 2025) y los estados
-            «validado» del fixture NO son acreditación GitHub — la lectura REAL vive
-            en ComerciosPanel (6d) y NodoCapitalDashboard (6e) por contrato DataSource
+        {/* 6g. STAGE Capital #215 (MONTAR-1 #442, armonizado MONTAR-2 #445): comercios de
+            proximidad × espacios públicos del stage de diseño — material ILUSTRATIVO de
+            stage, no acreditado (R15). Desde MONTAR-2 el stage filtra SOLO por los
+            subnodos ratificados del nodo Capital (#154, PEC 2025: sj_capital_centro +
+            sj_capital_desamparados) y los fixtures anclados a subnodos no ratificados
+            (Concepción, Trinidad) salieron del dataset ilustrativo. Los estados
+            «validado» del fixture NO son acreditación GitHub — la lectura REAL vive en
+            ComerciosPanel (6d) y NodoCapitalDashboard (6e) por contrato DataSource
             (ADR-029). */}
         {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') && (
           <section className="card" data-state="ok" id="stage-capital-215">
@@ -1174,12 +1176,13 @@ export function App() {
           </section>
         )}
 
-        {/* 6h. STAGE Valle de Iglesia (MONTAR-1 #442): dashboard del stage + navegador
-            de transición federada [STAGE · DEMO R15] — la jerarquía territorial REAL
-            del nodo (52 subnodos VIG-001) y la movilidad real (VialidadMovilidadPanel,
-            6f) viven por contrato DataSource (ADR-029); el monitor de cuencas del stage
-            es fixture ilustrativo sin procedencia ADR-035 y la «transición federada»
-            es demo local de UX, no un cambio real de sesión. */}
+        {/* 6h. STAGE Valle de Iglesia (MONTAR-1 #442, armonizado MONTAR-2 #445): dashboard
+            del stage + navegador de transición federada [STAGE · DEMO R15] — la jerarquía
+            territorial REAL del nodo (52 subnodos VIG-001) y la movilidad real
+            (VialidadMovilidadPanel, 6f) viven por contrato DataSource (ADR-029); desde
+            MONTAR-2 cada distrito del stage expone su clave sj_iglesia_* del seed VIG-001.
+            El monitor de cuencas sigue siendo fixture ilustrativo sin procedencia ADR-035
+            y la «transición federada» es demo local de UX, no un cambio real de sesión. */}
         {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') && (
           <section className="card" data-state="ok" id="stage-valle-de-iglesia">
             <h2>Stage Valle de Iglesia [STAGE · ILUSTRATIVO, R15]</h2>
@@ -1243,6 +1246,11 @@ export function App() {
 
         {/* 9. Artefactos A1–A4 (épica #268): sesión + paneles por rol — montaje único vía ArtefactosRoot (ART-R5 #274, regla M0) */}
         <ArtefactosRoot />
+        {/* 10. Vista consolidadora del montaje (MONTAR-2 #445): el apilado completo del
+            artefacto de la plataforma — superficie real, nodos federados con su montaje
+            ratificado, artefactos A1–A4, stages armonizados y acreditación de compilación,
+            cada bloque con estado epistémico y fuente (R15). Regla M0: 1 import + 1 mount. */}
+        <MontajePlataforma />
         <footer>
           <p>
             DELocalSoy.AR · Horizontes 1, 2, 3 y 4 Consolidados · Monorepo Track A v7.2 (Vite + React + Express + PostGIS ST_Intersects + Ed25519 + Offline-First + HITUB)

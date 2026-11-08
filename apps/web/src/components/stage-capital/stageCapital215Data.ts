@@ -2,8 +2,8 @@
  * apps/web/src/components/stage-capital/stageCapital215Data.ts
  * -----------------------------------------------------------------------------
  * DELocalSoy.AR — Dataset Canónico Stage Capital #215
- * Comercios de Proximidad × Espacios Públicos en los 4 Subnodos de Capital
- * SRID=4326 · ADR-034 / NCAP-R2
+ * Comercios de Proximidad × Espacios Públicos en los 2 subnodos ratificados
+ * del nodo Capital (PEC 2025 · #154) · SRID=4326 · ADR-034 / NCAP-R2
  * -----------------------------------------------------------------------------
  * Corrección Epistémica: Las plazas del microcentro cuentan solo con respaldo de
  * fuentes secundarias, por lo que su estado honesto obligatorio es PENDIENTE (◐).
@@ -13,12 +13,18 @@
  * distancias y coordenadas de este archivo son ILUSTRATIVOS para el
  * prototipo del nodo Capital. La fuente de dato real es la API; nada
  * de este dataset se persiste ni se publica.
+ *
+ * ─── MONTAR-2 (#445, 2026-11-08): armonización al vocabulario ratificado ───
+ * El stage filtra SOLO por los subnodos ratificados del nodo Capital (#154,
+ * PEC 2025): sj_capital_centro + sj_capital_desamparados. Los fixtures anclados
+ * a subnodos fuera del vocabulario ratificado (Concepción, Trinidad) salieron
+ * del dataset ilustrativo. El stage sigue siendo [STAGE · ILUSTRATIVO R15].
  */
 
 export interface ComercioBarrial {
   id: string;
   nombre: string;
-  subnodoId: 'capital-centro-historico' | 'capital-desamparados' | 'capital-concepcion' | 'capital-trinidad';
+  subnodoId: 'sj_capital_centro' | 'sj_capital_desamparados';
   subnodoNombre: string;
   categoria: string;
   direccion: string;
@@ -33,7 +39,7 @@ export interface ComercioBarrial {
 export interface EspacioPublicoCapital {
   id: string;
   nombre: string;
-  subnodoId: 'capital-centro-historico' | 'capital-desamparados' | 'capital-concepcion' | 'capital-trinidad';
+  subnodoId: 'sj_capital_centro' | 'sj_capital_desamparados';
   tipo: 'Plaza Central' | 'Parque Urbano' | 'Paseo Peatonal' | 'Espacio Cívico';
   lat: number;
   lng: number;
@@ -44,11 +50,21 @@ export interface EspacioPublicoCapital {
   notaEpistemica?: string;
 }
 
+/**
+ * MONTAR-2 (#445): filtro del stage armonizado al vocabulario ratificado del
+ * nodo Capital (#154, PEC 2025) — el stage ya no declara subnodos propios.
+ */
+export const SUBNODOS_CAPITAL_STAGE = [
+  { id: 'todos', label: 'Todos los Subnodos' },
+  { id: 'sj_capital_centro', label: 'Centro' },
+  { id: 'sj_capital_desamparados', label: 'Desamparados' }
+] as const;
+
 export const ESPACIOS_PUBLICOS_CAPITAL: EspacioPublicoCapital[] = [
   {
     id: 'esp-plaza-25-de-mayo',
     nombre: 'Plaza 25 de Mayo (Centro Cívico)',
-    subnodoId: 'capital-centro-historico',
+    subnodoId: 'sj_capital_centro',
     tipo: 'Plaza Central',
     lat: -31.5375,
     lng: -68.5252,
@@ -61,7 +77,7 @@ export const ESPACIOS_PUBLICOS_CAPITAL: EspacioPublicoCapital[] = [
   {
     id: 'esp-peatonal-tucuman',
     nombre: 'Paseo Peatonal Tucumán & Rivadavia',
-    subnodoId: 'capital-centro-historico',
+    subnodoId: 'sj_capital_centro',
     tipo: 'Paseo Peatonal',
     lat: -31.5360,
     lng: -68.5240,
@@ -74,7 +90,7 @@ export const ESPACIOS_PUBLICOS_CAPITAL: EspacioPublicoCapital[] = [
   {
     id: 'esp-parque-de-mayo',
     nombre: 'Parque de Mayo (Eje Universitario)',
-    subnodoId: 'capital-desamparados',
+    subnodoId: 'sj_capital_desamparados',
     tipo: 'Parque Urbano',
     lat: -31.5284,
     lng: -68.5489,
@@ -83,32 +99,6 @@ export const ESPACIOS_PUBLICOS_CAPITAL: EspacioPublicoCapital[] = [
     comerciosArticuladosCount: 32,
     estadoHonesto: 'validado',
     notaEpistemica: 'Relevo catastral oficial y auditoría presencial T1 verificada.'
-  },
-  {
-    id: 'esp-plaza-concepcion',
-    nombre: 'Plaza de Concepción (Pueblo Viejo)',
-    subnodoId: 'capital-concepcion',
-    tipo: 'Plaza Central',
-    lat: -31.5168,
-    lng: -68.5310,
-    superficieM2: 11000,
-    equipamiento: ['Santuario Nuestra Señora de la Inmaculada Concepción', 'Juegos Infantiles Inclusivos', 'Monumento a los Fundadores'],
-    comerciosArticuladosCount: 18,
-    estadoHonesto: 'comunitario',
-    notaEpistemica: 'Aporte territorial de asamblea barrial de Concepción.'
-  },
-  {
-    id: 'esp-paseo-ferroviario-trinidad',
-    nombre: 'Paseo Ferroviario Sur & Plaza Trinidad',
-    subnodoId: 'capital-trinidad',
-    tipo: 'Espacio Cívico',
-    lat: -31.5560,
-    lng: -68.5280,
-    superficieM2: 18500,
-    equipamiento: ['Antigua Vía Ferrocaril San Martín', 'Paseo Saludable', 'Iluminación Solar LED', 'Cancha Barrial'],
-    comerciosArticuladosCount: 22,
-    estadoHonesto: 'validado',
-    notaEpistemica: 'Plan de recuperación urbana municipal auditado.'
   }
 ];
 
@@ -116,8 +106,8 @@ export const COMERCIOS_CAPITAL_215: ComercioBarrial[] = [
   {
     id: 'com-01',
     nombre: 'Despensa & Semitería San Martín',
-    subnodoId: 'capital-centro-historico',
-    subnodoNombre: 'Centro Histórico',
+    subnodoId: 'sj_capital_centro',
+    subnodoNombre: 'Centro',
     categoria: 'Panadería & Semitas Sanjuaninas',
     direccion: 'Calle Laprida 142 Este',
     lat: -31.5368,
@@ -130,8 +120,8 @@ export const COMERCIOS_CAPITAL_215: ComercioBarrial[] = [
   {
     id: 'com-02',
     nombre: 'Café & Libros del Eje Cívico',
-    subnodoId: 'capital-centro-historico',
-    subnodoNombre: 'Centro Histórico',
+    subnodoId: 'sj_capital_centro',
+    subnodoNombre: 'Centro',
     categoria: 'Café & Librería Barrial',
     direccion: 'Calle Rivadavia 285 Este',
     lat: -31.5372,
@@ -144,7 +134,7 @@ export const COMERCIOS_CAPITAL_215: ComercioBarrial[] = [
   {
     id: 'com-03',
     nombre: 'Rotisería Las Heras (Empanadas Sanjuaninas)',
-    subnodoId: 'capital-desamparados',
+    subnodoId: 'sj_capital_desamparados',
     subnodoNombre: 'Desamparados',
     categoria: 'Gastronomía Popular',
     direccion: 'Avenida Libertador Gral. San Martín 1420 Oeste',
@@ -156,37 +146,9 @@ export const COMERCIOS_CAPITAL_215: ComercioBarrial[] = [
     estadoHonesto: 'validado'
   },
   {
-    id: 'com-04',
-    nombre: 'Almacén de Barrio El Parral',
-    subnodoId: 'capital-concepcion',
-    subnodoNombre: 'Concepción',
-    categoria: 'Almacén de Proximidad',
-    direccion: 'Calle Tucumán 1280 Norte',
-    lat: -31.5175,
-    lng: -68.5305,
-    espacioPublicoCercano: 'Plaza de Concepción',
-    distanciaMetrosAEspacio: 80,
-    especialidad: 'Aceitunas changlot en salmuera y aceite de oliva virgen extra de Pocito',
-    estadoHonesto: 'comunitario'
-  },
-  {
-    id: 'com-05',
-    nombre: 'Taller de Oficios & Herrería Trinidad',
-    subnodoId: 'capital-trinidad',
-    subnodoNombre: 'Trinidad',
-    categoria: 'Oficios & Herrería Artesanal',
-    direccion: 'Calle General Acha 1940 Sur',
-    lat: -31.5570,
-    lng: -68.5275,
-    espacioPublicoCercano: 'Paseo Ferroviario Sur & Plaza Trinidad',
-    distanciaMetrosAEspacio: 150,
-    especialidad: 'Parrillas sanjuaninas forjadas a medida y reparación de herramientas rurales',
-    estadoHonesto: 'validado'
-  },
-  {
     id: 'com-06',
     nombre: 'Cooperativa Universitaria de Frutas & Verduras',
-    subnodoId: 'capital-desamparados',
+    subnodoId: 'sj_capital_desamparados',
     subnodoNombre: 'Desamparados',
     categoria: 'Verdulería Comunitaria Agroecológica',
     direccion: 'Calle Urquiza 380 Norte',
