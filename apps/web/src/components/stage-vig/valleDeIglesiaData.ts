@@ -14,10 +14,16 @@
  * tiene lat/lng NULL (R15); la fuente de dato real es la API.
  * Angualasto es RESERVADO_SENSIBLE: solo acredita su punto aproximado
  * y público, nunca geometría de custodia.
+ *
+ * ─── MONTAR-2 (#445, 2026-11-08): armonización al vocabulario ratificado ───
+ * Cada distrito expone su clave sj_iglesia_* del seed ratificado VIG-001
+ * (#171) vía subnodoKey en DistritoVIG. El stage sigue [STAGE · ILUSTRATIVO R15].
  */
 
 export interface DistritoVIG {
   id: string;
+  /** MONTAR-2 (#445): clave sj_iglesia_* del seed ratificado VIG-001 (#171). */
+  subnodoKey: string;
   nombre: string;
   tipoEntidad: 'Distrito Departamental' | 'Distrito Patrimonial Protegido' | 'Localidad Termal';
   altitudMsnm: number;
@@ -34,6 +40,7 @@ export interface DistritoVIG {
 export const DISTRITOS_RATIFICADOS_IGLESIA: DistritoVIG[] = [
   {
     id: 'vig-distrito-rodeo',
+    subnodoKey: 'sj_iglesia_rodeo',
     nombre: 'Rodeo (Cabecera Departamental)',
     tipoEntidad: 'Distrito Departamental',
     altitudMsnm: 1610,
@@ -48,6 +55,7 @@ export const DISTRITOS_RATIFICADOS_IGLESIA: DistritoVIG[] = [
   },
   {
     id: 'vig-distrito-villa-iglesia',
+    subnodoKey: 'sj_iglesia_villa_iglesia',
     nombre: 'Villa Iglesia (Cabecera Histórica)',
     tipoEntidad: 'Distrito Departamental',
     altitudMsnm: 1780,
@@ -62,6 +70,7 @@ export const DISTRITOS_RATIFICADOS_IGLESIA: DistritoVIG[] = [
   },
   {
     id: 'vig-distrito-angualasto',
+    subnodoKey: 'sj_iglesia_angualasto',
     nombre: 'Angualasto (Distrito Patrimonial Protegido)',
     tipoEntidad: 'Distrito Patrimonial Protegido',
     altitudMsnm: 1680,
@@ -76,6 +85,7 @@ export const DISTRITOS_RATIFICADOS_IGLESIA: DistritoVIG[] = [
   },
   {
     id: 'vig-distrito-las-flores',
+    subnodoKey: 'sj_iglesia_las_flores',
     nombre: 'Las Flores',
     tipoEntidad: 'Distrito Departamental',
     altitudMsnm: 1750,
@@ -89,6 +99,7 @@ export const DISTRITOS_RATIFICADOS_IGLESIA: DistritoVIG[] = [
   },
   {
     id: 'vig-distrito-tudcum',
+    subnodoKey: 'sj_iglesia_tudcum',
     nombre: 'Tudcum',
     tipoEntidad: 'Distrito Departamental',
     altitudMsnm: 1700,
@@ -102,6 +113,7 @@ export const DISTRITOS_RATIFICADOS_IGLESIA: DistritoVIG[] = [
   },
   {
     id: 'vig-distrito-bella-vista',
+    subnodoKey: 'sj_iglesia_bella_vista',
     nombre: 'Bella Vista',
     tipoEntidad: 'Distrito Departamental',
     altitudMsnm: 1910,
@@ -115,6 +127,7 @@ export const DISTRITOS_RATIFICADOS_IGLESIA: DistritoVIG[] = [
   },
   {
     id: 'vig-localidad-pismanta',
+    subnodoKey: 'sj_iglesia_p_pismanta',
     nombre: 'Pismanta (Localidad Termal)',
     tipoEntidad: 'Localidad Termal',
     altitudMsnm: 1820,

@@ -51,7 +51,7 @@ export const NodoValleDeIglesiaDashboard: React.FC<Props> = () => {
             </div>
             <div className="px-3 py-1.5 rounded-lg bg-stone-800 border border-stone-700 text-xs font-mono text-stone-300 flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span>Vocabulario VIG-R1 Ratificado</span>
+              <span>Vocabulario VIG-R1 · claves sj_iglesia_* (VIG-001)</span>
             </div>
           </div>
         </div>
@@ -131,6 +131,7 @@ export const NodoValleDeIglesiaDashboard: React.FC<Props> = () => {
                     {selectedDistrito.tipoEntidad}
                   </span>
                   <span className="text-xs text-stone-500 font-mono">{selectedDistrito.altitudMsnm} msnm</span>
+                  <span className="text-[10px] font-mono text-stone-400">{selectedDistrito.subnodoKey}</span>
                 </div>
                 <h3 className="text-xl font-bold text-stone-900">{selectedDistrito.nombre}</h3>
                 <p className="text-xs text-stone-600 mt-1">{selectedDistrito.vocacionPrincipal}</p>
