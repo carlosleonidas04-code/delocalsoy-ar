@@ -9,6 +9,9 @@ import { GmpQuotaBanner } from './components/GmpQuotaBanner';
 import { HeroBannerSection } from './components/HeroBannerSection';
 import { NodoCapitalDashboard } from './components/NodoCapitalDashboard';
 import { VialidadMovilidadPanel } from './components/VialidadMovilidadPanel';
+import { StageCapital215Dashboard } from './components/stage-capital/StageCapital215Dashboard';
+import { NodeTransitionNavigator } from './components/stage-vig/NodeTransitionNavigator';
+import { NodoValleDeIglesiaDashboard } from './components/stage-vig/NodoValleDeIglesiaDashboard';
 import { ShowcaseRecorridoPanel } from './components/ShowcaseRecorridoPanel';
 import { ServicioInformativoPanel } from './components/ServicioInformativoPanel';
 import { SyntheticModeWarningBanner } from './components/SyntheticModeWarningBanner';
@@ -332,6 +335,10 @@ export function App() {
   const [focusedTerritorioId, setFocusedTerritorioId] = useState<string | null>(null);
   const [focusedGeometry, setFocusedGeometry] = useState<SpatialGeometryRecord | null>(null);
   const [gmpQuotaExceeded, setGmpQuotaExceeded] = useState(false);
+
+  // MONTAR-1 (#442): nodo actual del stage de transición federada [STAGE · DEMO R15]
+  // — estado local del demo de UX, NO la sesión real (la sesión vive en ArtefactosRoot).
+  const [stageNodoId, setStageNodoId] = useState<string>('');
 
   // Estado del Modelo Territorial Federado (Horizontes 1, 2 y 3)
   const [selectedNodeKey, setSelectedNodeKey] = useState<string>('capital');
@@ -1150,6 +1157,38 @@ export function App() {
             etiquetada (R15) */}
         {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') && (
           <VialidadMovilidadPanel dataSource={defaultDataSource} />
+        )}
+
+        {/* 6g. STAGE Capital #215 (MONTAR-1 #442): comercios de proximidad × espacios
+            públicos del stage de diseño — material ILUSTRATIVO de stage, no acreditado
+            (R15): los subnodos por los que filtra el stage (Concepción, Trinidad)
+            divergen del vocabulario ratificado del nodo Capital (#154:
+            sj_capital_centro + sj_capital_desamparados, PEC 2025) y los estados
+            «validado» del fixture NO son acreditación GitHub — la lectura REAL vive
+            en ComerciosPanel (6d) y NodoCapitalDashboard (6e) por contrato DataSource
+            (ADR-029). */}
+        {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') && (
+          <section className="card" data-state="ok" id="stage-capital-215">
+            <h2>Stage Capital #215 — comercios × espacios públicos [STAGE · ILUSTRATIVO, R15]</h2>
+            <StageCapital215Dashboard />
+          </section>
+        )}
+
+        {/* 6h. STAGE Valle de Iglesia (MONTAR-1 #442): dashboard del stage + navegador
+            de transición federada [STAGE · DEMO R15] — la jerarquía territorial REAL
+            del nodo (52 subnodos VIG-001) y la movilidad real (VialidadMovilidadPanel,
+            6f) viven por contrato DataSource (ADR-029); el monitor de cuencas del stage
+            es fixture ilustrativo sin procedencia ADR-035 y la «transición federada»
+            es demo local de UX, no un cambio real de sesión. */}
+        {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') && (
+          <section className="card" data-state="ok" id="stage-valle-de-iglesia">
+            <h2>Stage Valle de Iglesia [STAGE · ILUSTRATIVO, R15]</h2>
+            <NodeTransitionNavigator
+              nodoActualId={stageNodoId}
+              onCambiarNodo={setStageNodoId}
+            />
+            <NodoValleDeIglesiaDashboard />
+          </section>
         )}
 
         {/* 7. Estado de Integración API y Registro Maestro de Nodos Territoriales — extraída 1:1 a MasterRegistrySection (FE-DEUDA-02 #293, corte 21) */}
