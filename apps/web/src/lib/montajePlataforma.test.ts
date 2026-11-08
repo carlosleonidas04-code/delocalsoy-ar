@@ -87,7 +87,7 @@ describe('MONTAR-2 (#445): catálogo del montaje de la plataforma', () => {
     expect(fullstack?.estado).toBe('pending');
   });
 
-  it('solo cita claves sj_* del vocabulario ratificado', () => {
+  it('solo cita claves o familias sj_* del vocabulario ratificado', () => {
     expect([...SUBNODOS_CAPITAL_RATIFICADOS]).toEqual([
       'sj_capital_centro',
       'sj_capital_desamparados',
@@ -96,14 +96,22 @@ describe('MONTAR-2 (#445): catálogo del montaje de la plataforma', () => {
     for (const k of SUBNODOS_IGLESIA_DISTRITOS_RATIFICADOS) {
       expect(k.startsWith('sj_iglesia_')).toBe(true);
     }
-    const tokens = new Set<string>();
+    // token sj_* → cita de FAMILIA (sj_iglesia_*) o clave CONCRETA (sj_iglesia_rodeo).
+    const tokens = new Map<string, boolean>();
     for (const b of MONTAJE_PLATAFORMA) {
       const texto = b.titulo + ' ' + b.detalle + ' ' + b.fuente;
-      for (const m of texto.matchAll(/sj_[a-z0-9_]+[a-z0-9]/g)) tokens.add(m[0]);
+      for (const m of texto.matchAll(/sj_[a-z0-9_]+[a-z0-9]/g)) {
+        tokens.set(m[0], texto.slice((m.index ?? 0) + m[0].length).startsWith('_*'));
+      }
     }
     expect(tokens.size).toBeGreaterThan(0);
-    for (const t of tokens) {
-      expect(VOCABULARIO_RATIFICADO.has(t)).toBe(true);
+    for (const [token, familia] of tokens) {
+      if (familia) {
+        // R15: la familia citada (p. ej. sj_iglesia_*) debe corresponder a claves ratificadas reales.
+        expect([...VOCABULARIO_RATIFICADO].some((k) => k.startsWith(token + '_'))).toBe(true);
+      } else {
+        expect(VOCABULARIO_RATIFICADO.has(token)).toBe(true);
+      }
     }
   });
 
