@@ -72,6 +72,46 @@ Variables de entorno (nombres, nunca valores en el repo): `DATABASE_URL`, `TERRI
 
 **PROT-A2 R3 (#425, épica #418):** el prototipo A2 del Comerciante es artefacto real: mini-router interno de 7 vistas (inicio, componentes, directorio, alta, titularidad, edicion, habilitacion — la vista ES el estado, Opción A de #419 ratificada, pliegue al M0 sin react-router), nav con aria-current y botones >=24px (WCAG 2.2 SC 2.5.8), región role=status con foco al navegar (SC 4.1.3) y detalle de ficha con volver (JSON-LD honesto e historial F-3 re-renderizados en el detalle). Frontend puro, sin cambio de API (R15); la bandeja del relay MK-4a queda como slice siguiente con issue propio.
 
+## Puesta en marcha full-stack (Codespaces — MONTAR-1 #442)
+
+La plataforma completa (web + api + worker + PostGIS + Redis) corre en local
+dentro de un Codespaces contra los servicios reales de datos. Todo modo real es
+EXPLÍCITO (R15): sin `VITE_REAL_API=1` el dev server web sigue montando el
+staging sintético declarado; con el flag, el staging NO se monta y `/api/*`
+se proxya hacia la API Express real (`API_URL`, por defecto 127.0.0.1:3001).
+
+```bash
+# 1) Servicios de datos (PostGIS 16 + Redis 7 — docker-compose existente)
+docker compose up -d
+
+# 2) Variables de entorno — PORT=3001 (el web ya ocupa el 3000);
+#    JWT_SECRET es fail-closed (R8): sin él, identidad responde 503.
+cp .env.example .env
+openssl rand -hex 32    # pegar la salida en JWT_SECRET
+#    En Codespaces: descomentar HOST=0.0.0.0 y ALLOWED_HOSTS=true
+#    (explícito, ADR-028) y fijar VITE_REAL_API=1 para la API real.
+
+# 3) Dependencias
+corepack enable && pnpm install
+
+# 4) Esquema y seed — exportar las vars del .env para api y worker
+set -a; source .env; set +a
+pnpm --filter @delocalsoy/db db:generate
+pnpm --filter @delocalsoy/db db:deploy
+pnpm --filter @delocalsoy/db db:seed
+
+# 5) Tres terminales
+pnpm --filter @delocalsoy/api dev      # T1 — API Express en :3001
+pnpm --filter @delocalsoy/worker dev   # T2 — 3 consumer groups (core004, vig003, vig006)
+pnpm --filter @delocalsoy/web dev      # T3 — Vite en :3000, proxy /api -> :3001
+```
+
+Verificación honesta (R5): abrir el puerto 3000 como público en Codespaces;
+`curl http://127.0.0.1:3001/api/health` debe reportar modo real, la barra R5
+de la UI muestra «API real» y, sin `JWT_SECRET`, identidad responde 503
+(fail-closed, R8). R15: sin `VITE_REAL_API` el staging sintético queda por
+defecto y la UI lo declara en la barra de origen operativo.
+
 Ver `docs/EVIDENCIA.md` para la matriz de evidencia y `docs/api/openapi.json` para el contrato vivo. Gobernanza: `docs/GOBERNANZA.md` y `docs/HITUB.md`. Backups de la DB: `scripts/backup-postgres.sh` y `scripts/restore-postgres.sh` — politica en `docs/BACKUPS.md` (D3, #286).
 
 
