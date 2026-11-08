@@ -112,6 +112,30 @@ de la UI muestra «API real» y, sin `JWT_SECRET`, identidad responde 503
 (fail-closed, R8). R15: sin `VITE_REAL_API` el staging sintético queda por
 defecto y la UI lo declara en la barra de origen operativo.
 
+## Acreditación del montaje compilado (MONTAR-2 #445)
+
+La vista consolidadora del montaje — nueva sección 10 de la web (`MontajePlataforma`): el apilado completo del artefacto en 5 capas (superficie real de la plataforma, nodos federados con su montaje ratificado, artefactos A1–A4, stages armonizados, acreditación de compilación), 35 bloques cada uno con estado epistémico y fuente anclada (R15). Los stages 6g/6h quedan armonizados al vocabulario ratificado (Capital: `sj_capital_centro` + `sj_capital_desamparados` — PEC 2025 #154; Valle de Iglesia: cada distrito expone su clave `sj_iglesia_*` del seed VIG-001), sin dejar de ser [STAGE · ILUSTRATIVO R15].
+
+Checklist de acreditación full-stack — lo corre la DH en su Codespaces y pega la salida en #445 (ancla la EV-102, patrón C5; el bloque nace `pending` en el catálogo, R15):
+
+```bash
+docker compose up -d
+cp .env.example .env
+openssl rand -hex 32    # pegar la salida en JWT_SECRET (fail-closed R8)
+# En Codespaces: HOST=0.0.0.0, ALLOWED_HOSTS=true, VITE_REAL_API=1
+set -a; source .env; set +a
+pnpm install
+pnpm --filter @delocalsoy/db db:generate
+pnpm --filter @delocalsoy/db db:deploy
+pnpm --filter @delocalsoy/db db:seed   # 18 SQL en 1 lote (advisory lock)
+# T1 api :3001 · T2 worker (3 consumer groups) · T3 web VITE_REAL_API=1 :3000
+curl -s http://127.0.0.1:3001/api/health
+curl -s http://127.0.0.1:3001/api/nodos/iglesia/subnodos
+curl -s http://127.0.0.1:3001/api/sellos/tipos
+```
+
+Criterio de éxito (EV-102): `/api/health` en modo real, subnodos del seed VIG-001 con lat/lng null (R15), `/api/sellos/tipos` contra la matriz de 40 filas y la barra R5 de la UI en «API real».
+
 Ver `docs/EVIDENCIA.md` para la matriz de evidencia y `docs/api/openapi.json` para el contrato vivo. Gobernanza: `docs/GOBERNANZA.md` y `docs/HITUB.md`. Backups de la DB: `scripts/backup-postgres.sh` y `scripts/restore-postgres.sh` — politica en `docs/BACKUPS.md` (D3, #286).
 
 
