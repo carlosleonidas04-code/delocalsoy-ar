@@ -24,6 +24,13 @@
  * con punto público ADR-036, sin openingHours ni url R15). C4 diccionario
  * T_DIRECTORIO (preparación i18n — los textos nuevos viven ahí).
  *
+ * PROT-A2 R3 (#425, épica #418 — 2026-11-08): el prototipo A2 es artefacto
+ * real — mini-router interno de 7 vistas (Opción A de #419 ratificada: la
+ * vista ES el estado, pliegue al M0 sin react-router), detalle de ficha con
+ * botón volver y WCAG 2.2 (nav con aria-current, botones >=24px SC 2.5.8,
+ * región role=status con foco al navegar — patrón MK-3c). Frontend puro:
+ * sin cambio de API.
+ *
  * Reglas vivas: R5 (errores visibles, jamás []) · R15 (sin simulación: el alta
  * nace propuesto y la moderación ES la validación; el identificador del
  * reclamo viaja una sola vez y vuelve SOLO como hash — Ley 25.326) · ADR-027
@@ -45,6 +52,7 @@ import { useSesion } from './SesionProvider';
 import { CLAVE_TOKEN_SESION } from '../../lib/sesion';
 import {
   COMPONENTES_A2,
+  VISTAS_A2,
   capacidadesA2,
   permisoVisibleA2,
   crearClienteA2,
@@ -73,6 +81,7 @@ import {
   type NodoKeyComercio,
   type TipoComercio,
   type TipoHabilitacionComercio,
+  type VistaA2,
 } from '../../lib/artefactoA2';
 import {
   etiquetaDualComercio,
@@ -288,6 +297,9 @@ function FormularioHabilitacion({
 /* Panel                                                               */
 /* ------------------------------------------------------------------ */
 
+/** PROT-A2 R3 (#425): detalle abierto del mini-router — solo ficha de comercio en v1. */
+type DetalleA2 = { tipo: 'ficha'; id: string };
+
 export function A2Comerciante() {
   const { estado, modo, refrescar } = useSesion();
   const caps: CapacidadesA2 = useMemo(() => capacidadesA2(estado), [estado]);
@@ -306,6 +318,24 @@ export function A2Comerciante() {
       void refrescar();
     }
   }, [modo]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* ---------- PROT-A2 R3 (#425): mini-router — la vista ES el estado ---------- */
+
+  const [vista, setVista] = useState<VistaA2>('inicio');
+  const [detalleAbierto, setDetalleAbierto] = useState<DetalleA2 | null>(null);
+  const regionRef = useRef<HTMLDivElement>(null);
+  const notaVistaRef = useRef<HTMLParagraphElement>(null);
+
+  const irA = useCallback((v: VistaA2) => {
+    setVista(v);
+    setDetalleAbierto(null);
+    regionRef.current?.focus();
+  }, []);
+
+  const volverDeDetalle = useCallback(() => {
+    setDetalleAbierto(null);
+    regionRef.current?.focus();
+  }, []);
 
   /* ---------- carga perezosa: cada sección declara SU estado ---------- */
 
@@ -474,6 +504,9 @@ export function A2Comerciante() {
         else setErrorFicha('ficha: ' + mensajeDe(f.reason, 'no se pudo cargar'));
         if (h.status === 'fulfilled') setHistorial(h.value);
         else setErrorFicha('historial: ' + mensajeDe(h.reason, 'no se pudo cargar'));
+        // PROT-A2 R3 (#425): la ficha vive en el detalle del mini-router.
+        setDetalleAbierto({ tipo: 'ficha', id });
+        regionRef.current?.focus();
       });
     },
     [cliente, conCarga, fichaId]
@@ -759,6 +792,48 @@ export function A2Comerciante() {
         </p>
       </header>
 
+      {/* PROT-A2 R3 (#425, épica #418): mini-router interno — la vista ES el
+          estado (Opción A de #419 ratificada: pliegue al M0, sin react-router). */}
+      <nav aria-label="Vistas del artefacto A2">
+        {VISTAS_A2.map((v) => (
+          <button
+            key={v.id}
+            type="button"
+            onClick={() => irA(v.id)}
+            aria-current={vista === v.id ? 'page' : undefined}
+            style={{ minWidth: '24px', minHeight: '24px' }}
+          >
+            {v.titulo}
+          </button>
+        ))}
+      </nav>
+      <p ref={notaVistaRef} tabIndex={-1} role="status" aria-live="polite" style={{ outline: 'none' }}>
+        vista: {VISTAS_A2.find((v) => v.id === vista)?.titulo ?? vista}
+        {detalleAbierto !== null ? ' · detalle abierto' : ''}
+      </p>
+      <div ref={regionRef} tabIndex={-1} style={{ outline: 'none' }}>
+        {detalleAbierto === null ? (
+        <>
+          {vista === 'inicio' && (
+            <div>
+              <h3>Inicio</h3>
+              <p>
+                artefacto del comerciante y titular verificado — techo honesto {caps.techoReqsMin} req/min ·{' '}
+                {caps.esDemo ? 'modo SINTÉTICO: demo declarada (R15)' : 'API real'} · {VISTAS_A2.length} vistas · detalle de ficha con volver
+              </p>
+              <ul>
+                {VISTAS_A2.map((v) => (
+                  <li key={v.id}>
+                    <strong>{v.titulo}</strong> — {v.descripcion}
+                    {v.escritura ? ' (exige sesión iniciada)' : ''}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {vista === 'componentes' && (
+          <>
       <h3>Componentes y estado honesto</h3>
       <ul>
         {COMPONENTES_A2.map((c) => {
@@ -774,6 +849,10 @@ export function A2Comerciante() {
         })}
       </ul>
 
+          </>
+          )}
+          {vista === 'directorio' && (
+          <>
       <h3>Directorio público (solo aprobado y público, ADR-036)</h3>
       {error !== null && <p role="alert">{error}</p>}
       <p>
@@ -936,68 +1015,10 @@ export function A2Comerciante() {
           {cargando === 'ficha' ? 'cargando…' : 'ver ficha e historial (2 req)'}
         </button>
       </p>
-      {errorFicha !== null && <p role="alert">{errorFicha}</p>}
-      {detalle !== null && (
-        <div>
-          <h4>{detalle.ficha.titulo}</h4>
-          <p>
-            {etiquetaDualComercio(detalle.ficha)} · rubro: {etiquetaRubro(detalle.ficha)} · nodo {detalle.ficha.nodo_key}
-            {detalle.ficha.subnodo_key !== null ? ' / ' + detalle.ficha.subnodo_key : ''} ·{' '}
-            {etiquetaHabilitacion(detalle.ficha.habilitacion_estado)} ·{' '}
-            {etiquetaTitularidad(detalle.ficha.titularidad_estado)}
-            {detalle.ficha.lat !== null && detalle.ficha.lng !== null
-              ? ' · lat ' + detalle.ficha.lat + ' lng ' + detalle.ficha.lng
-              : ' · sin punto (R15: punto propio solo con fuente)'}
-          </p>
-          <p>
-            productos aprobados: {detalle.count_productos}
-            {detalle.productos.length > 0 && ' — ' + detalle.productos.map((p) => p.nombre ?? p.id).join(', ')}
-            {' · operativa: '}
-            {detalle.operativa === null ? 'sin ficha operativa (null ≠ 0, frontera Ley 2400-T de VIG-005)' : 'presente'}
-          </p>
-          {/* MK-3c C3 (#426, EV-096): descubribilidad ética — JSON-LD honesto
-              de ESTA ficha: solo campos que la ficha ya publica. */}
-          <div>
-            <h4>{T_DIRECTORIO.jsonLdTitulo}</h4>
-            <p>
-              <small>{T_DIRECTORIO.jsonLdNota}</small>
-            </p>
-            <pre>{JSON.stringify(jsonLdComercio(detalle.ficha), null, 2)}</pre>
-            <script type="application/ld+json">{JSON.stringify(jsonLdComercio(detalle.ficha))}</script>
-          </div>
-          <p>
-            <button type="button" onClick={() => setReclamoId(detalle.ficha.id)}>
-              reclamar titularidad de esta ficha
-            </button>{' '}
-            <button type="button" onClick={() => setEditarId(detalle.ficha.id)}>
-              editar atributos de esta ficha
-            </button>{' '}
-            <button type="button" onClick={() => setHabId(detalle.ficha.id)}>
-              cambiar habilitación de esta ficha
-            </button>
-          </p>
-        </div>
-      )}
-      {historial !== null && (
-        <div>
-          <h4>Historial de confianza (F-3, sellos comercio.*)</h4>
-          {historial.length === 0 ? (
-            <p>sin sellos aún — el historial es append-only: nace con el primer sello (R15)</p>
-          ) : (
-            <ul>
-              {historial.map((h, i) => (
-                <li key={i}>
-                  {etiquetaSelloHistorial(h.type)} · {h.occurred_at}
-                  {'justificacion' in h && h.justificacion !== '' ? ' — «' + h.justificacion + '»' : ''}
-                </li>
-              ))}
-            </ul>
+          </>
           )}
-          <p>
-            <small>identificador_hash jamás viaja en la salida pública (Ley 25.326, DH §7.2).</small>
-          </p>
-        </div>
-      )}
+          {vista === 'alta' && (
+          <>
 
       <h3>Proponer un comercio (testimonio — nace propuesto)</h3>
       {!caps.puedeEscribir && (
@@ -1075,6 +1096,10 @@ export function A2Comerciante() {
         </form>
       )}
 
+          </>
+          )}
+          {vista === 'titularidad' && (
+          <>
       <h3>Reclamar titularidad (CUIT o expediente SIIC)</h3>
       {!caps.puedeEscribir && <p role="note">el reclamo exige sesión iniciada — es un acto con consentimiento.</p>}
       <p>
@@ -1168,6 +1193,10 @@ export function A2Comerciante() {
         </form>
       )}
 
+          </>
+          )}
+          {vista === 'edicion' && (
+          <>
       <h3>Editar atributos (solo el titular verificado)</h3>
       {!caps.puedeEscribir && <p role="note">la edición exige sesión iniciada — y ser el titular verificado.</p>}
       {caps.puedeEscribir && (
@@ -1202,6 +1231,10 @@ export function A2Comerciante() {
         </form>
       )}
 
+          </>
+          )}
+          {vista === 'habilitacion' && (
+          <>
       <h3>Habilitación comercial (Ley 104-A / SIIC, ADR-035)</h3>
       {!caps.puedeEscribir && !caps.puedeModerar && (
         <p role="note">el cambio exige sesión: titular verificado con evidencia primaria, o moderación.</p>
@@ -1236,10 +1269,93 @@ export function A2Comerciante() {
         </form>
       )}
 
+          </>
+          )}
+        </>
+        ) : (
+        <>
+          <p>
+            <button type="button" onClick={volverDeDetalle} style={{ minWidth: '24px', minHeight: '24px' }}>
+              ← volver
+            </button>
+          </p>
+          <h3>Ficha del comercio{detalleAbierto !== null ? ' · ' + detalleAbierto.id : ''}</h3>
+      {errorFicha !== null && <p role="alert">{errorFicha}</p>}
+      {detalle !== null && (
+        <div>
+          <h4>{detalle.ficha.titulo}</h4>
+          <p>
+            {etiquetaDualComercio(detalle.ficha)} · rubro: {etiquetaRubro(detalle.ficha)} · nodo {detalle.ficha.nodo_key}
+            {detalle.ficha.subnodo_key !== null ? ' / ' + detalle.ficha.subnodo_key : ''} ·{' '}
+            {etiquetaHabilitacion(detalle.ficha.habilitacion_estado)} ·{' '}
+            {etiquetaTitularidad(detalle.ficha.titularidad_estado)}
+            {detalle.ficha.lat !== null && detalle.ficha.lng !== null
+              ? ' · lat ' + detalle.ficha.lat + ' lng ' + detalle.ficha.lng
+              : ' · sin punto (R15: punto propio solo con fuente)'}
+          </p>
+          <p>
+            productos aprobados: {detalle.count_productos}
+            {detalle.productos.length > 0 && ' — ' + detalle.productos.map((p) => p.nombre ?? p.id).join(', ')}
+            {' · operativa: '}
+            {detalle.operativa === null ? 'sin ficha operativa (null ≠ 0, frontera Ley 2400-T de VIG-005)' : 'presente'}
+          </p>
+          {/* MK-3c C3 (#426, EV-096): descubribilidad ética — JSON-LD honesto
+              de ESTA ficha: solo campos que la ficha ya publica. */}
+          <div>
+            <h4>{T_DIRECTORIO.jsonLdTitulo}</h4>
+            <p>
+              <small>{T_DIRECTORIO.jsonLdNota}</small>
+            </p>
+            <pre>{JSON.stringify(jsonLdComercio(detalle.ficha), null, 2)}</pre>
+            <script type="application/ld+json">{JSON.stringify(jsonLdComercio(detalle.ficha))}</script>
+          </div>
+          <p>
+            <button type="button" onClick={() => { setReclamoId(detalle.ficha.id); irA('titularidad'); }}>
+              reclamar titularidad de esta ficha
+            </button>{' '}
+            <button type="button" onClick={() => { setEditarId(detalle.ficha.id); irA('edicion'); }}>
+              editar atributos de esta ficha
+            </button>{' '}
+            <button type="button" onClick={() => { setHabId(detalle.ficha.id); irA('habilitacion'); }}>
+              cambiar habilitación de esta ficha
+            </button>
+          </p>
+        </div>
+      )}
+      {historial !== null && (
+        <div>
+          <h4>Historial de confianza (F-3, sellos comercio.*)</h4>
+          {historial.length === 0 ? (
+            <p>sin sellos aún — el historial es append-only: nace con el primer sello (R15)</p>
+          ) : (
+            <ul>
+              {historial.map((h, i) => (
+                <li key={i}>
+                  {etiquetaSelloHistorial(h.type)} · {h.occurred_at}
+                  {'justificacion' in h && h.justificacion !== '' ? ' — «' + h.justificacion + '»' : ''}
+                </li>
+              ))}
+            </ul>
+          )}
+          <p>
+            <small>identificador_hash jamás viaja en la salida pública (Ley 25.326, DH §7.2).</small>
+          </p>
+        </div>
+      )}
+          {detalle === null && (
+            <p>
+              {errorFicha === null
+                ? 'cargando ficha e historial… (2 req)'
+                : 'la ficha no quedó cargada — corregí el id o volvé al directorio (R15: nada se simula).'}
+            </p>
+          )}
+        </>
+        )}
+      </div>
       <h3>Sin cablear aún (honesto, R15)</h3>
       <ul>
         <li>marketplace — deliberadamente Fase 2 (roadmap §5.6): sin pagos, sin promesas (MK-5 con ADR propio)</li>
-        <li>PII de contacto — sin datos en v1 (decisión DH: relay por plataforma, MK-4 evaluará bandejas)</li>
+        <li>bandeja del relay MK-4a — la API ya la expone (POST/GET /api/comercios/:id/relay, EV-098); la vista del titular en este panel es el slice siguiente con issue propio — sin PII de contacto jamás (Ley 25.326)</li>
         <li>
           consentimiento granular por campo — vive en activos.consentimiento (VIG-002), el panel declara el
           alto nivel; el detalle por campo no se duplica

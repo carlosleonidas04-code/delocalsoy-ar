@@ -225,6 +225,40 @@ export const MATRIZ_PERMISOS_A2: Record<ComponenteA2Id, ColumnasPermisoA2> = {
 /** Rol observable: la API devuelve RolSchema {ciudadano, moderador, admin}. */
 export type RolObservable = RolPlataforma | 'admin';
 
+/* ------------------------------------------------------------------ */
+/* PROT-A2 R3 (#425, épica #418): vistas del artefacto. La vista ES el */
+/* estado: mini-router interno del panel (Opción A de #419 ratificada — */
+/* pliegue al M0, sin react-router ni URL global de la app contenedora). */
+/* ------------------------------------------------------------------ */
+
+export type VistaA2 =
+  | 'inicio'
+  | 'componentes'
+  | 'directorio'
+  | 'alta'
+  | 'titularidad'
+  | 'edicion'
+  | 'habilitacion';
+
+export interface VistaDefA2 {
+  id: VistaA2;
+  titulo: string;
+  descripcion: string;
+  /** La vista incluye escritura (alta/reclamo/edición/habilitación): exige sesión iniciada (guard honesto, no fricción). */
+  escritura: boolean;
+}
+
+/** Las 7 vistas del Comerciante y titular verificado (mini-router interno, #425). */
+export const VISTAS_A2: readonly VistaDefA2[] = [
+  { id: 'inicio', titulo: 'Inicio', descripcion: 'qué puedo hacer acá y con qué techo honesto', escritura: false },
+  { id: 'componentes', titulo: 'Componentes y estado', descripcion: 'los componentes de la spec con estado honesto y permisos reales', escritura: false },
+  { id: 'directorio', titulo: 'Directorio y ficha', descripcion: 'búsqueda por facetas reales (?nodo ?rubro ?subnodo ?habilitacion) y ficha pública con JSON-LD honesto', escritura: false },
+  { id: 'alta', titulo: 'Proponer comercio', descripcion: 'testimonio ciudadano que nace propuesto — la moderación ES la validación', escritura: true },
+  { id: 'titularidad', titulo: 'Titularidad', descripcion: 'reclamar con identificador hasheado, desistir mi reclamo y verificación de moderación', escritura: true },
+  { id: 'edicion', titulo: 'Editar atributos', descripcion: 'solo el titular verificado — la API es la compuerta (403 real)', escritura: true },
+  { id: 'habilitacion', titulo: 'Habilitación comercial', descripcion: 'Ley 104-A / SIIC con evidencia primaria (ADR-035) y justificación pública (ADR-038)', escritura: true },
+];
+
 export interface CapacidadesA2 {
   esVisitante: boolean;
   /** Modo synthetic: demo SINTÉTICO declarada — la escritura no se acredita (R15). */

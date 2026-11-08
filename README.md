@@ -70,6 +70,8 @@ Variables de entorno (nombres, nunca valores en el repo): `DATABASE_URL`, `TERRI
 
 **PROT-A1 R3 (#420, épica #418):** el prototipo A1 del Ciudadano Residente es artefacto real: `A1VecinoCiudadano` navega por 9 vistas (mini-router interno sin react-router — Opción A de #419 ratificada, pliegue al M0: la vista ES el estado), con vistas de detalle (historial de reporte, ficha, oportunidad) y botón volver, y WCAG 2.2 (nav con `aria-current`, botones >=24px SC 2.5.8, indicador `role=status`, foco a la región al navegar — patrón MK-3c). Frontend puro: sin cambio de API (`docs/api/openapi.json` v7.43.0 intacta). Registro en `docs/EVIDENCIA.md` (EV-099).
 
+**PROT-A2 R3 (#425, épica #418):** el prototipo A2 del Comerciante es artefacto real: mini-router interno de 7 vistas (inicio, componentes, directorio, alta, titularidad, edicion, habilitacion — la vista ES el estado, Opción A de #419 ratificada, pliegue al M0 sin react-router), nav con aria-current y botones >=24px (WCAG 2.2 SC 2.5.8), región role=status con foco al navegar (SC 4.1.3) y detalle de ficha con volver (JSON-LD honesto e historial F-3 re-renderizados en el detalle). Frontend puro, sin cambio de API (R15); la bandeja del relay MK-4a queda como slice siguiente con issue propio.
+
 Ver `docs/EVIDENCIA.md` para la matriz de evidencia y `docs/api/openapi.json` para el contrato vivo. Gobernanza: `docs/GOBERNANZA.md` y `docs/HITUB.md`. Backups de la DB: `scripts/backup-postgres.sh` y `scripts/restore-postgres.sh` — politica en `docs/BACKUPS.md` (D3, #286).
 
 

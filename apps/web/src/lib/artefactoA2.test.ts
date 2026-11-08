@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   COMPONENTES_A2,
   MATRIZ_PERMISOS_A2,
+  VISTAS_A2,
   capacidadesA2,
   permisoVisibleA2,
   crearClienteA2,
@@ -604,5 +605,25 @@ describe('ART-R4 — red caída (R5: jamás [])', () => {
     await expect(
       cliente.cambiarHabilitacion('c1', { estado: 'sin_dato' }, 'cambio en red caída')
     ).rejects.toMatchObject({ codigo: 'no_disponible' });
+  });
+});
+
+describe('PROT-A2 R3 (#425, épica #418) — vistas del artefacto (mini-router)', () => {
+  it('las 7 vistas: ids únicos e inicio primero', () => {
+    expect(VISTAS_A2).toHaveLength(7);
+    expect(new Set(VISTAS_A2.map((v) => v.id)).size).toBe(7);
+    expect(VISTAS_A2[0].id).toBe('inicio');
+  });
+
+  it('título y descripción honesta en cada vista', () => {
+    for (const v of VISTAS_A2) {
+      expect(v.titulo.trim().length).toBeGreaterThan(2);
+      expect(v.descripcion.trim().length).toBeGreaterThan(10);
+    }
+  });
+
+  it('escritura marcada = alta | titularidad | edicion | habilitacion (guards honestos)', () => {
+    const conEscritura = VISTAS_A2.filter((v) => v.escritura).map((v) => v.id);
+    expect(conEscritura).toEqual(['alta', 'titularidad', 'edicion', 'habilitacion']);
   });
 });
