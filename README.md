@@ -136,6 +136,8 @@ curl -s http://127.0.0.1:3001/api/sellos/tipos
 
 Criterio de éxito (EV-102): `/api/health` en modo real, subnodos del seed VIG-001 con lat/lng null (R15), `/api/sellos/tipos` contra la matriz de 40 filas y la barra R5 de la UI en «API real».
 
+Alternativa sin Codespaces (desviación documentada, R15): si el Codespace no está disponible, la DH dispara el workflow manual **«Acreditación full-stack (MONTAR-2 #445)»** (`.github/workflows/acreditar-fullstack.yml` — pestaña *Actions* → *Run workflow*). Ejecuta este mismo checklist en un runner de GitHub contra PostGIS/Redis reales, sella los criterios duros (`mode=real` con `dataSource=postgres` y `redis=ok`, subnodos VIG-001, `/api/sellos/tipos`, proxy web→api) y publica la salida completa en #445 con la URL del run; EV-102 se ancla a esa corrida. La verificación visual (barra R5 «API real» + sección 10 con los 35 bloques) queda como paso final de la DH en el browser cuando su entorno esté disponible.
+
 Ver `docs/EVIDENCIA.md` para la matriz de evidencia y `docs/api/openapi.json` para el contrato vivo. Gobernanza: `docs/GOBERNANZA.md` y `docs/HITUB.md`. Backups de la DB: `scripts/backup-postgres.sh` y `scripts/restore-postgres.sh` — politica en `docs/BACKUPS.md` (D3, #286).
 
 
