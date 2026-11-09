@@ -1,0 +1,185 @@
+name: Acreditación full-stack (MONTAR-2 #445)
+
+# MONTAR-2 (#445): alternativa sin Codespaces — checklist de acreditación del
+# montaje compilado como workflow de DISPARO MANUAL (la DH lo dispara desde
+# Actions). Ejecuta el MISMO checklist del README § «Acreditación del montaje
+# compilado»: docker compose (PostGIS 16 + Redis 7) → .env fail-closed R8 →
+# migrate + seed (18 SQL) → api :3001 + worker (3 consumer groups) + web
+# VITE_REAL_API=1 :3000 → curls del checklist. R15 (desviación documentada en
+# el README): corre en un runner de GitHub contra servicios reales de datos;
+# publica la salida completa en #445 y EV-102 se ancla al run. La verificación
+# visual (barra R5 «API real» + sección 10) queda como paso final de la DH en
+# el browser cuando su entorno esté disponible.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: acreditacion-fullstack
+  cancel-in-progress: true
+
+jobs:
+  acreditar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: pnpm (packageManager del repo)
+        uses: pnpm/action-setup@v4
+
+      - name: Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Infra — PostGIS 16 + Redis 7 (docker compose)
+        run: docker compose up -d
+
+      - name: Esperar healthchecks de db y redis
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 30); do
+            DB=$(docker inspect --format '{{.State.Health.Status}}' delocalsoy-db)
+            RD=$(docker inspect --format '{{.State.Health.Status}}' delocalsoy-redis)
+            [ "$DB" = healthy ] && [ "$RD" = healthy ] && break
+            sleep 5
+          done
+          docker inspect --format '{{.Name}}: {{.State.Health.Status}}' delocalsoy-db delocalsoy-redis | tee infra.txt
+          test "$(docker inspect --format '{{.State.Health.Status}}' delocalsoy-db)" = healthy
+          test "$(docker inspect --format '{{.State.Health.Status}}' delocalsoy-redis)" = healthy
+
+      - name: .env — JWT_SECRET fail-closed (R8) + API real (VITE_REAL_API=1)
+        run: |
+          set -euo pipefail
+          cp .env.example .env
+          sed -i "s|^JWT_SECRET=.*|JWT_SECRET=$(openssl rand -hex 32)|" .env
+          sed -i 's|^VITE_REAL_API=0|VITE_REAL_API=1|' .env
+          echo 'JWT_SECRET: <redactado> — presente y >= 16 chars:'
+          grep -c '^JWT_SECRET=.{16,}' .env
+          grep '^VITE_REAL_API=1' .env
+
+      - name: pnpm install
+        run: pnpm install --frozen-lockfile
+
+      - name: db:generate + db:deploy + db:seed (18 SQL, 1 lote, advisory lock)
+        run: |
+          set -euo pipefail
+          set -a; source .env; set +a
+          pnpm --filter @delocalsoy/db db:generate
+          pnpm --filter @delocalsoy/db db:deploy
+          pnpm --filter @delocalsoy/db db:seed 2>&1 | tee seed.log
+          test -s seed.log
+
+      - name: T1 — API Express en :3001
+        run: |
+          set -euo pipefail
+          set -a; source .env; set +a
+          nohup pnpm --filter @delocalsoy/api dev > api.log 2>&1 &
+          for i in $(seq 1 90); do curl -sf http://127.0.0.1:3001/api/health > /dev/null && break; sleep 2; done
+          curl -sf http://127.0.0.1:3001/api/health > health.json || { echo 'API no responde:'; tail -n 60 api.log; exit 1; }
+          cat health.json
+
+      - name: T2 — worker (3 consumer groups)
+        run: |
+          set -euo pipefail
+          set -a; source .env; set +a
+          nohup pnpm --filter @delocalsoy/worker dev > worker.log 2>&1 &
+          sleep 20
+          pgrep -f 'src/index.ts' > /dev/null || { echo 'worker no está vivo:'; tail -n 60 worker.log; exit 1; }
+          tail -n 40 worker.log
+
+      - name: T3 — web VITE_REAL_API=1 en :3000
+        run: |
+          set -euo pipefail
+          nohup pnpm --filter @delocalsoy/web dev > web.log 2>&1 &
+          for i in $(seq 1 90); do curl -sf http://127.0.0.1:3000/ > /dev/null && break; sleep 2; done
+          curl -sf http://127.0.0.1:3000/ > /dev/null || { echo 'web no responde:'; tail -n 60 web.log; exit 1; }
+          # proxy /api → :3001 — el wiring que enciende la barra R5 «API real»
+          curl -sf http://127.0.0.1:3000/api/health > web-proxy-health.json || { echo 'proxy web→api falló:'; tail -n 60 web.log; exit 1; }
+          cat web-proxy-health.json
+
+      - name: Curls del checklist (README § Acreditación)
+        run: |
+          set -euo pipefail
+          {
+            echo '### curl -s http://127.0.0.1:3001/api/health'
+            curl -s http://127.0.0.1:3001/api/health | tee health.json; echo
+            echo '### curl -s http://127.0.0.1:3001/api/nodos/iglesia/subnodos'
+            curl -s http://127.0.0.1:3001/api/nodos/iglesia/subnodos | tee subnodos.json; echo
+            echo '### curl -s http://127.0.0.1:3001/api/sellos/tipos'
+            curl -s http://127.0.0.1:3001/api/sellos/tipos | tee sellos-tipos.json; echo
+          } > curls.txt
+          cat curls.txt
+
+      - name: Sello — criterios EV-102 (checks duros)
+        run: |
+          set -euo pipefail
+          # R5: health honesto en modo REAL con base y redis arriba (shape del contrato /api/health)
+          grep -q '"status":"ok"' health.json
+          grep -q '"mode":"real"' health.json
+          grep -q '"dataSource":"postgres"' health.json
+          grep -q '"redis":"ok"' health.json
+          # VIG-001: subnodos del seed con las claves ratificadas
+          grep -q 'sj_iglesia_rodeo' subnodos.json
+          grep -q 'sj_iglesia_p_pismanta' subnodos.json
+          # AR4: sellos/tipos no vacío
+          test -s sellos-tipos.json
+          echo 'Sello OK: health real (postgres + redis ok), subnodos VIG-001 (rodeo, p_pismanta), /api/sellos/tipos presente, proxy web→api verificado.'
+
+      - name: Ensamblar salida para #445
+        run: |
+          {
+            echo "## Acreditación full-stack — workflow manual (MONTAR-2 #445)"
+            echo ""
+            echo "Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo "Commit: `${{ github.sha }}` · disparado por la DH el $(date -u '+%Y-%m-%d %H:%M UTC')"
+            echo ""
+            echo "**Infra (PostGIS 16 + Redis 7):**"
+            echo '```'
+            cat infra.txt
+            echo '```'
+            echo "**Seed (18 SQL, 1 lote, advisory lock) — últimas líneas:**"
+            echo '```'
+            tail -n 25 seed.log
+            echo '```'
+            echo "**T1 — \`/api/health\` (modo real R5, shape del contrato):**"
+            echo '```json'
+            cat health.json
+            echo '```'
+            echo "**T2 — worker, consumer groups (últimas líneas):**"
+            echo '```'
+            tail -n 40 worker.log
+            echo '```'
+            echo "**T3 — web VITE_REAL_API=1: \`GET /\` 200 + proxy \`/api/health\` vía Vite:**"
+            echo '```json'
+            cat web-proxy-health.json
+            echo '```'
+            echo "**Curls del checklist:**"
+            echo '```'
+            cat curls.txt
+            echo '```'
+            echo ""
+            echo "Sello automático: \`status=ok\`, \`mode=real\`, \`dataSource=postgres\`, \`redis=ok\`, subnodos VIG-001 (\`sj_iglesia_rodeo\`, \`sj_iglesia_p_pismanta\`), \`/api/sellos/tipos\` presente y proxy web→api OK."
+            echo ""
+            echo "R15 — verificación visual pendiente de la DH en browser: barra R5 «API real» y sección 10 «Montaje de la plataforma» (35 bloques)."
+          } > salida-acreditacion.md
+          cat salida-acreditacion.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publicar salida en #445
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh api "repos/${{ github.repository }}/issues/445/comments" -F body=@salida-acreditacion.md
+
+      - name: Publicar fallo en #445 (si algo falló)
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api "repos/${{ github.repository }}/issues/445/comments" -F body="❌ **Acreditación full-stack (workflow manual) FALLÓ** — run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }} — ver logs. NO registrar EV-102."
