@@ -62,7 +62,7 @@ jobs:
           sed -i "s|^JWT_SECRET=.*|JWT_SECRET=$(openssl rand -hex 32)|" .env
           sed -i 's|^VITE_REAL_API=0|VITE_REAL_API=1|' .env
           echo 'JWT_SECRET: <redactado> — presente y >= 16 chars:'
-          grep -c '^JWT_SECRET=.{16,}' .env
+          grep -c '^JWT_SECRET=.\{16,\}' .env
           grep '^VITE_REAL_API=1' .env
 
       - name: pnpm install
