@@ -18,6 +18,7 @@ import nodosRouter from './routes/nodos.js';
 import oportunidadesRouter from './routes/oportunidades.js';
 import patrimonioRouter from './routes/patrimonio.js';
 import pedidosRouter from './routes/pedidos.js';
+import practicasRouter from './routes/practicas.js';
 import productosRouter from './routes/productos.js';
 import reportesRouter from './routes/reportes.js';
 import sellosRouter from './routes/sellos.js';
@@ -161,6 +162,16 @@ export function createApp(): Express {
   // persistir (ADR-020 cond. 1), idempotencia por hash único y sello
   // reporte.recibido en events_raw con rollback si el sello falla.
   app.use('/api/reportes', reportesRouter);
+
+  // Dominio: práctica territorial (LIC-DLUI LIC-R3, #452 — épica #448):
+  // POST /api/practicas/acreditar — acto de la DH (admin, patrón
+  // decision_dh): atributo de práctica sobre la cuenta ciudadana (Opción B
+  // ratificada: patrón AR1, atributo NO rol) con referente comunitario que
+  // valida y no decide (D4). El mandato NUNCA persiste (solo su hash);
+  // sello practica.acreditada sin PII con rollback (R4/R15). El sello
+  // habilita (DL-7) el canal de relevamiento del practicante en
+  // POST /api/reportes (protocolo versionado LIC-R2).
+  app.use('/api/practicas', practicasRouter);
 
   // Dominio: AMC — registro de mediadores (NODO-VIG-3 VIG-011, #378 — épica
   // #377): boca única de reporte territorial del nodo. POST /api/mediadores

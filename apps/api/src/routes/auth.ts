@@ -255,6 +255,12 @@ router.get('/me', requireJwt, async (req: Request, res: Response) => {
         residencia_subnodo_key: usuario.residencia_subnodo_key,
         residencia_declarada_en: usuario.residencia_declarada_en,
         transito_subnodo_key: usuario.transito_subnodo_key,
+        // LIC-DLUI LIC-R3 (#452, épica #448): practicante = atributo sobre la
+        // cuenta (Opción B, patrón AR1). El cliente deriva el perfil sin
+        // mandato jamás (el texto de la resolución NUNCA vive en la fila —
+        // solo su hash).
+        practica_acreditada: usuario.practica_acreditada,
+        practica_acreditada_en: usuario.practica_acreditada_en,
       },
     });
   } catch (error) {

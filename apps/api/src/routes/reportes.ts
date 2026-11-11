@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { prisma, Prisma } from '@delocalsoy/db';
 import { xaddEventReference } from '@delocalsoy/redis';
-import { ReporteAltaSchema, ReporteAmcAltaSchema, ReporteCorroboracionSchema, ReporteDuplicadoSugeridoSchema, ReporteEstadoCambioSchema, REPORTE_TRANSICIONES, AMC_CATEGORIAS_POR_DOMINIO } from '@delocalsoy/contracts';
+import { ReporteAltaSchema, ReporteAmcAltaSchema, ReporteCorroboracionSchema, ReporteDuplicadoSugeridoSchema, ReporteEstadoCambioSchema, ReportePracticaAltaSchema, REPORTE_TRANSICIONES, AMC_CATEGORIAS_POR_DOMINIO } from '@delocalsoy/contracts';
 import { detectaPII } from '../lib/anti-pii.js';
 import { requireJwt, requireRole } from '../lib/auth.js';
 
@@ -326,12 +326,21 @@ router.post('/', requireJwt, async (req: Request, res: Response) => {
   // granular para el alias); sin 'dominio', el alta CORE-005 R2 queda
   // intacta (compatibilidad total, patrón VIG-002).
   const esAmc = typeof req.body === 'object' && req.body !== null && 'dominio' in req.body;
+  // LIC-R3 (#452, épica #448): un cuerpo con 'relevamiento' activa el canal
+  // del practicante acreditado (canal v1 del protocolo LIC-R2, DL-7). Sin
+  // la clave, el alta CORE-005 queda intacta (patrón VIG-011 AMC: un canal,
+  // compatibilidad total del alta legacy).
+  const esPractica = typeof req.body === 'object' && req.body !== null && 'relevamiento' in req.body;
   let amc: z.infer<typeof ReporteAmcAltaSchema> | null = null;
+  let practica: z.infer<typeof ReportePracticaAltaSchema> | null = null;
   let parsed: z.infer<typeof ReporteAltaSchema>;
   try {
     if (esAmc) {
       amc = ReporteAmcAltaSchema.parse(req.body);
       parsed = amc;
+    } else if (esPractica) {
+      practica = ReportePracticaAltaSchema.parse(req.body);
+      parsed = practica;
     } else {
       parsed = ReporteAltaSchema.parse(req.body);
     }
@@ -351,6 +360,17 @@ router.post('/', requireJwt, async (req: Request, res: Response) => {
     // VIG-011: el alias comunitario también pasa el anti-PII (un alias
     // con nombre/apellido o contacto se rechaza — es pseudónimo, ADR-027).
     reportado_por: amc?.reportado_por ?? null,
+    // LIC-R3 (#452): el texto del relevamiento del practicante pasa la
+    // compuerta ANTES de persistir (metodo + dimensiones + evidencia —
+    // el tramo, no las personas: R5/ADR-036).
+    relevamiento:
+      practica !== null
+        ? {
+            metodo: practica.relevamiento.metodo,
+            dimensiones: practica.relevamiento.dimensiones,
+            evidencia: practica.relevamiento.evidencia,
+          }
+        : null,
   });
   const pii = detectaPII(contenido);
   if (pii) {
@@ -363,6 +383,24 @@ router.post('/', requireJwt, async (req: Request, res: Response) => {
   const usuario = res.locals.usuario as { id: string };
   const autor = seudonimo(usuario.id);
 
+  // LIC-R3 (#452, épica #448) — compuerta DL-7: el relevamiento de tramos lo
+  // ejecuta un practicante acreditado (sello practica.acreditada, Opción B:
+  // atributo sobre la cuenta ciudadana). Sin sello → 403 real: la API es la
+  // compuerta, nada se simula (R15).
+  if (practica !== null) {
+    const practicante = await prisma.usuarios.findUnique({
+      where: { id: usuario.id },
+      select: { practica_acreditada: true },
+    });
+    if (practicante?.practica_acreditada !== true) {
+      res.status(403).json({
+        success: false,
+        error: 'el relevamiento de tramos lo ejecuta un practicante acreditado (LIC-03, Opción B — sello practica.acreditada)',
+      });
+      return;
+    }
+  }
+
   // Idempotencia por hash único: mismo ciudadano + mismo reporte → una sola
   // fila (patrón activos/fichas). El hash nunca contiene PII (sha256).
   // VIG-011: el hash cubre el contexto AMC — dos planillas del mismo
@@ -372,7 +410,11 @@ router.post('/', requireJwt, async (req: Request, res: Response) => {
     .update(
       usuario.id + '|' + parsed.nodo_key + '|' + parsed.categoria + '|' +
       parsed.descripcion + '|' + parsed.lat + '|' + parsed.lng + '|' +
-      (amc?.dominio ?? '') + '|' + (amc?.subnodo_key ?? '') + '|' + (amc?.reportado_por ?? '')
+      (amc?.dominio ?? '') + '|' + (amc?.subnodo_key ?? '') + '|' + (amc?.reportado_por ?? '') + '|' +
+      // LIC-R3: el hash cubre el tramo relevado y su fecha — el mismo
+      // relevamiento reintenta idempotente, un tramo distinto es OTRO
+      // reporte (patrón VIG-011).
+      (practica?.relevamiento.feature_id ?? '') + '|' + (practica?.relevamiento.fecha_relevamiento ?? '')
     )
     .digest('hex');
 
@@ -391,6 +433,25 @@ router.post('/', requireJwt, async (req: Request, res: Response) => {
     if (categoria === null) {
       res.status(400).json({ success: false, error: 'categoría inexistente en el vocabulario del nodo' });
       return;
+    }
+
+    // LIC-R3 (#452, épica #448): el relevamiento ancla al tramo REAL de la
+    // capa sidewalks del nodo (el dominio del anuncio de repavimentación —
+    // protocolo LIC-R2 §3) y la fecha es del relevamiento, no futura (R15:
+    // relevar ≠ prometer).
+    if (practica !== null) {
+      const tramo = await prisma.features.findFirst({
+        where: { id: practica.relevamiento.feature_id, nodo_id: nodo.id, capa: { key: 'sidewalks' } },
+      });
+      if (tramo === null) {
+        res.status(404).json({ success: false, error: 'tramo no encontrado en la capa sidewalks del nodo' });
+        return;
+      }
+      const fechaRelevamiento = new Date(practica.relevamiento.fecha_relevamiento + 'T12:00:00Z');
+      if (fechaRelevamiento.getTime() > Date.now()) {
+        res.status(400).json({ success: false, error: 'fecha_relevamiento futura: el relevamiento ya ocurrió (R15)' });
+        return;
+      }
     }
 
     // VIG-011 (#378): AMC — coherencia dominio→categoría contra el espejo
@@ -452,6 +513,20 @@ router.post('/', requireJwt, async (req: Request, res: Response) => {
         precision: amc?.precision ?? null,
         riesgo_inmediato: amc?.riesgo_inmediato ?? false,
         observado_en: amc?.observado_en !== undefined ? new Date(amc.observado_en + 'T12:00:00Z') : null,
+        // LIC-R3 (#452, épica #448): relevamiento del practicante acreditado
+        // (columna Json — patrón VIG-011). Sin la clave del body la fila es
+        // un reporte legacy CORE-005 intacto.
+        relevamiento:
+          practica !== null
+            ? {
+                feature_id: practica.relevamiento.feature_id,
+                version: practica.relevamiento.version,
+                fecha_relevamiento: practica.relevamiento.fecha_relevamiento,
+                metodo: practica.relevamiento.metodo,
+                dimensiones: practica.relevamiento.dimensiones,
+                evidencia: practica.relevamiento.evidencia,
+              }
+            : null,
       },
     });
 
@@ -471,6 +546,16 @@ router.post('/', requireJwt, async (req: Request, res: Response) => {
         canal_ingreso: amc?.canal_ingreso ?? null,
         precision: amc?.precision ?? null,
         riesgo_inmediato: amc?.riesgo_inmediato ?? false,
+        // LIC-R3 (#452, épica #448): sello extendido sin PII (patrón AMC) —
+        // el texto del relevamiento vive SOLO en la tabla reportes.
+        relevamiento:
+          practica !== null
+            ? {
+                feature_id: practica.relevamiento.feature_id,
+                version: practica.relevamiento.version,
+                fecha_relevamiento: practica.relevamiento.fecha_relevamiento,
+              }
+            : null,
       });
     } catch (err) {
       // Rollback (R4/R15): sin evento no hay escritura acreditada.
