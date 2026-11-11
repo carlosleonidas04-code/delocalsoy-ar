@@ -140,6 +140,19 @@ async function registrarYLoguear(email: string): Promise<string> {
   return token as string;
 }
 
+// Re-login tras el cambio de rol (patrón VIG-012): SOLO login — un register
+// del mismo email daría 409 (AUD-05, #101).
+async function loguear(email: string): Promise<string> {
+  const login = await fetch(base + '/api/auth/login', {
+    method: 'POST',
+    headers: jsonHeaders,
+    body: JSON.stringify({ email, password: PASSWORD }),
+  });
+  expect(login.status, 'login ' + email).toBe(200);
+  const { token } = ((await login.json()) as any).data;
+  return token as string;
+}
+
 async function idDeSesion(token: string): Promise<string> {
   const me = await fetch(base + '/api/auth/me', { headers: { authorization: 'Bearer ' + token } });
   const body: any = await me.json();
@@ -163,11 +176,11 @@ describe.skipIf(!dbUp)('LIC-R3: acreditación de práctica (#452, épica #448)',
     const emailAdmin = 'licr3-admin-' + ts + '@example.test';
     await registrarYLoguear(emailAdmin);
     await prisma.usuarios.update({ where: { email: emailAdmin }, data: { rol: 'admin' } });
-    tokenAdmin = await registrarYLoguear(emailAdmin); // re-login ya admin
+    tokenAdmin = await loguear(emailAdmin); // re-login ya admin (patrón VIG-012)
     const emailVisitante = 'licr3-visitante-' + ts + '@example.test';
     await registrarYLoguear(emailVisitante);
     await prisma.usuarios.update({ where: { email: emailVisitante }, data: { rol: 'visitante' } });
-    tokenVisitante = await registrarYLoguear(emailVisitante);
+    tokenVisitante = await loguear(emailVisitante);
 
     tokenPracticante = await registrarYLoguear('licr3-practicante-' + ts + '@example.test');
     idPracticante = await idDeSesion(tokenPracticante);
@@ -473,7 +486,7 @@ describe.skipIf(!dbUp)('LIC-R3: acreditación de práctica (#452, épica #448)',
     const idMod = 'licr3-mod-' + ts + '@example.test';
     await registrarYLoguear(idMod);
     await prisma.usuarios.update({ where: { email: idMod }, data: { rol: 'moderador' } });
-    const tokenMod = await registrarYLoguear(idMod);
+    const tokenMod = await loguear(idMod);
 
     const reporteId = reportesCreados[0];
     const res = await fetch(base + '/api/reportes/' + reporteId + '/estado', {
