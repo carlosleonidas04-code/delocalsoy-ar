@@ -447,7 +447,11 @@ router.post('/', requireJwt, async (req: Request, res: Response) => {
         res.status(404).json({ success: false, error: 'tramo no encontrado en la capa sidewalks del nodo' });
         return;
       }
-      const fechaRelevamiento = new Date(practica.relevamiento.fecha_relevamiento + 'T12:00:00Z');
+      // El día del relevamiento cuenta desde su inicio (T00:00Z): la fecha
+      // declara el DÍA del relevamiento, no la hora — el practicante puede
+      // relevar de madrugada y un relevamiento de HOY es válido durante todo
+      // el día en cualquier zona horaria del runner (determinista en CI).
+      const fechaRelevamiento = new Date(practica.relevamiento.fecha_relevamiento + 'T00:00:00Z');
       if (fechaRelevamiento.getTime() > Date.now()) {
         res.status(400).json({ success: false, error: 'fecha_relevamiento futura: el relevamiento ya ocurrió (R15)' });
         return;
