@@ -112,6 +112,10 @@ de la UI muestra «API real» y, sin `JWT_SECRET`, identidad responde 503
 (fail-closed, R8). R15: sin `VITE_REAL_API` el staging sintético queda por
 defecto y la UI lo declara en la barra de origen operativo.
 
+## Observatorio de indicadores (LIC-R1 #457)
+
+`GET /api/nodos/:key/observatorio` (LIC-DLUI LIC-R1, LIC-01 — épica #448): panel público del observatorio de indicadores del nodo. Publica los 4 KPIs del set LIC-01 leídos de `kpi_snapshots` (`reportes_por_estado`, `fuentes_ingestadas_por_nodo`, `capas_con_metadatos`, `cobertura_reportes_distrito` — KPI_KEYS 21→25, cero migración patrón MK-3a, re-derivados del dominio), la **ficha metodológica de cada clave** (fórmula + fuente + cobertura, DL-1) y las familias nuevas del temario (segregación socioespacial, género y cuidados, salud urbana, vivienda y hábitat) declaradas `sin_fuente_ingestada` con valor `null` (DL-1: null ≠ 0 — R15: sin fuente ingestado el indicador NO se computa, jamás se estima). Conteos con cobertura y fecha — jamás puntajes globales (R5/ADR-036); sin corrida del consumidor `vig003-kpi` → 0 snapshots honestos (R15). Suite E2E `lic-r1-observatorio.test.ts` (6 tests). OpenAPI v7.44.0 (68 paths).
+
 ## Acreditación del montaje compilado (MONTAR-2 #445)
 
 La vista consolidadora del montaje — nueva sección 10 de la web (`MontajePlataforma`): el apilado completo del artefacto en 5 capas (superficie real de la plataforma, nodos federados con su montaje ratificado, artefactos A1–A4, stages armonizados, acreditación de compilación), 35 bloques cada uno con estado epistémico y fuente anclada (R15). Los stages 6g/6h quedan armonizados al vocabulario ratificado (Capital: `sj_capital_centro` + `sj_capital_desamparados` — PEC 2025 #154; Valle de Iglesia: cada distrito expone su clave `sj_iglesia_*` del seed VIG-001), sin dejar de ser [STAGE · ILUSTRATIVO R15].
