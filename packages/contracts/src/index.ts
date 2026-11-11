@@ -810,6 +810,14 @@ export const KpiKeySchema = z.enum([
   "comercios_habilitacion_verificada_pct",
   "titularidad_verificada_pct",
   "ofertas_activas",
+  // LIC-DLUI LIC-R1 (LIC-01 #457, épica #448): set del observatorio de
+  // indicadores — 4 claves computables desde dominios vivos, mismo canon
+  // de honestidad (agregados sin PII, Ley 25.326; sintéticos y
+  // descartado excluidos, R15/ADR-038; re-derivado del dominio).
+  "reportes_por_estado",
+  "fuentes_ingestadas_por_nodo",
+  "capas_con_metadatos",
+  "cobertura_reportes_distrito",
 ]);
 
 // Set VIG-013 (NODO-VIG-3 #382, épica #377): los 6 KPIs del dashboard público
@@ -826,6 +834,115 @@ export const VIG013_KPI_KEYS = [
   "reportes_amc_por_dominio",
   "reportes_amc_por_distrito",
   "parajes_con_reporte",
+] as const;
+
+// ─── LIC-DLUI LIC-R1 (LIC-01 #457, épica #448): observatorio de indicadores ───
+
+// Set LIC-01 (LIC-R1 #457): los 4 KPIs del observatorio público
+// (GET /api/nodos/{key}/observatorio) que la ruta lee de kpi_snapshots.
+// Los materializa el consumidor vig003-kpi (patrón VIG-003/MK-3a: upsert
+// idempotente por nodo_key+kpi_key que RE-DERIVA desde los dominios
+// vivos — reportes CORE-005, ingestas NODO-CAU R2 #147, capas por
+// nodo —, nunca incrementos). Sin corrida del worker → 0 snapshots
+// honestos (R15).
+export const LIC01_KPI_KEYS = [
+  "reportes_por_estado",
+  "fuentes_ingestadas_por_nodo",
+  "capas_con_metadatos",
+  "cobertura_reportes_distrito",
+] as const;
+
+// Ficha metodológica por clave (DL-1 ratificado por la DH 2026-11-10,
+// #457): cada KPI publicado declara fórmula, fuente y cobertura — el
+// observatorio nace honesto, no vacío de promesas. Documentación de
+// datos inspirada en el Perfil de Metadatos IDERA v2.0.
+export const FichaMetodologicaSchema = z
+  .object({
+    clave: z.enum(LIC01_KPI_KEYS),
+    nombre: z.string(),
+    formula: z.string(),
+    fuente: z.string(),
+    cobertura: z.string(),
+  })
+  .strict();
+
+export const FICHAS_METODOLOGICAS = [
+  {
+    clave: "reportes_por_estado",
+    nombre: "Reportes ciudadanos por estado",
+    formula:
+      "COUNT(*) de reportes del nodo agrupado por estado (received | evaluating | in_progress | resolved), excluyendo sintéticos y descartados",
+    fuente: "tabla reportes (CORE-005 R1 #206) — recompute vig003-kpi (LIC-R1 #457)",
+    cobertura: "solo reportes ciudadanos reales del nodo; el estado descartado nunca se publica (ADR-038)",
+  },
+  {
+    clave: "fuentes_ingestadas_por_nodo",
+    nombre: "Fuentes ingestadas por el nodo",
+    formula:
+      "COUNT(DISTINCT fuente_key) sobre ingestas del nodo, con desglose {ingestas_total, ingestas_publicadas}",
+    fuente:
+      "tabla ingestas (NODO-CAU R2 #138/#147): pipeline de procedencia recibido → validado_tecnicamente → validado_territorialmente → publicado (ADR-035)",
+    cobertura: "conjuntos con procedencia declarada; no incluye fuentes del catálogo sin ninguna ingesta en el nodo",
+  },
+  {
+    clave: "capas_con_metadatos",
+    nombre: "Capas con metadatos de procedencia",
+    formula:
+      "capas del nodo con ≥1 ingesta que las referencia (ingestas.capa_servicio = capas.key), sobre capas_total",
+    fuente:
+      "cruce capas × ingestas (NODO-CAU R2 #147): la capa cuenta con metadatos cuando existe ingesta con fuente, fechas, licencia y CRS declarados",
+    cobertura: "«X de Y capas del nodo con procedencia declarada» — sin ingesta la capa queda sin metadatos (R15)",
+  },
+  {
+    clave: "cobertura_reportes_distrito",
+    nombre: "Cobertura de reportes por distrito",
+    formula:
+      "distritos del nodo con ≥1 reporte anclado (distrito derivado del subnodo ancla por la cadena parent), sobre distritos_total",
+    fuente: "reportes.subnodo_key × jerarquía subnodos (VIG-001 #171) — recompute vig003-kpi (LIC-R1 #457)",
+    cobertura:
+      "reportes sin subnodo ancla no contribuyen a ningún distrito; parajes y subparajes aportan a su distrito por la cadena parent",
+  },
+] as const;
+
+// Familias nuevas del temario (DL-1): declaradas `sin_fuente_ingestada`
+// — null ≠ 0 (R15). El observatorio las publica como deuda de
+// federación VISIBLE (INDEC/capas oficiales por federar vía ingestas,
+// ADR-035), jamás como cero: sin fuente ingestada no hay métrica
+// computable y no se fabrica.
+export const FamiliaSinFuenteSchema = z
+  .object({
+    familia: z.string(),
+    estado: z.literal("sin_fuente_ingestada"),
+    valor: z.null(),
+    cautela: z.string(),
+  })
+  .strict();
+
+export const FAMILIAS_SIN_FUENTE_INGESTADA = [
+  {
+    familia: "segregación socioespacial",
+    estado: "sin_fuente_ingestada",
+    valor: null,
+    cautela: "requiere censo/INDEC u observatorio oficial federado vía ingestas (ADR-035) — sin fuente no hay métrica",
+  },
+  {
+    familia: "género y cuidados",
+    estado: "sin_fuente_ingestada",
+    valor: null,
+    cautela: "requiere fuente oficial federada (p. ej. Mapa Federal del Cuidado) — sin ingesta no se computa",
+  },
+  {
+    familia: "salud urbana",
+    estado: "sin_fuente_ingestada",
+    valor: null,
+    cautela: "solo agregados oficiales federados; salud individual es dato sensible prohibido (Ley 25.326, LIC-R6 #449)",
+  },
+  {
+    familia: "vivienda y hábitat",
+    estado: "sin_fuente_ingestada",
+    valor: null,
+    cautela: "requiere fuente oficial federada (INDEC/catastro) — sin ingesta no hay línea de base",
+  },
 ] as const;
 
 // Valor honesto: número O null (cobertura_geometrica es null en v1 — sin

@@ -113,7 +113,7 @@ describe.skipIf(!dbUp)('Demo final del showcase VIG-007 (#193, épica #167)', ()
 
     expect(iglesia.subnodos).toBe(subnodos);
     expect(iglesia.subnodos).toBeGreaterThanOrEqual(52); // semilla VIG-001
-    expect(iglesia.kpis).toBe(21); // set honesto v1 (VIG-003) + v2 (VIG-013) + v2 mercado (MK-3a) tras el recompute
+    expect(iglesia.kpis).toBe(25); // + 4 KPIs del observatorio (LIC-R1 #457) // set honesto v1 (VIG-003) + v2 (VIG-013) + v2 mercado (MK-3a) tras el recompute
     expect(iglesia.kpis).toBe(iglesia.kpis_detalle.length);
     expect(iglesia.activos_aprobados).toBe(idsNoRestricted.length);
     expect(iglesia.activos_aprobados).toBeGreaterThanOrEqual(6);
@@ -194,7 +194,7 @@ describe.skipIf(!dbUp)('Demo final del showcase VIG-007 (#193, épica #167)', ()
     const showcase = await getJson('/api/showcase');
     const iglesia: any = showcase.body.data.nodos.find((n: any) => n.key === 'iglesia');
     const kpis = await porKey('/api/nodos/iglesia/kpis');
-    expect(kpis.size).toBe(21); // set v1 (VIG-003) + v2 (VIG-013) + v2 mercado (MK-3a)
+    expect(kpis.size).toBe(25); // + 4 KPIs del observatorio (LIC-R1 #457) // set v1 (VIG-003) + v2 (VIG-013) + v2 mercado (MK-3a)
     expect(kpis.get('subnodos_total')?.valor).toBe(iglesia.subnodos);
     expect(kpis.get('subnodos_total')?.valor).toBeGreaterThanOrEqual(52);
     expect(kpis.get('cobertura_geometrica')?.valor).toBeNull(); // R15 honesto

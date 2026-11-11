@@ -47,6 +47,18 @@ export const KPI_KEYS = [
   'comercios_habilitacion_verificada_pct',
   'titularidad_verificada_pct',
   'ofertas_activas',
+  // LIC-DLUI LIC-R1 (LIC-01 #457, épica #448): set del observatorio de
+  // indicadores — 4 claves computables desde dominios vivos (reportes
+  // CORE-005, ingestas NODO-CAU R2 #147, capas por nodo). Mismas reglas:
+  // agregados sin PII (Ley 25.326), sintéticos y descartado excluidos
+  // (R15/ADR-038), re-derivado del dominio — nunca incrementos. Las
+  // familias nuevas del temario (segregación, género, salud, vivienda)
+  // NO viven acá: quedan declaradas `sin_fuente_ingestada` en
+  // contracts (DL-1, null ≠ 0).
+  'reportes_por_estado',
+  'fuentes_ingestadas_por_nodo',
+  'capas_con_metadatos',
+  'cobertura_reportes_distrito',
 ] as const;
 
 export type KpiKey = (typeof KPI_KEYS)[number];
@@ -299,6 +311,76 @@ export async function recomputeKpisForNode(nodoKey: string): Promise<KpiSnapshot
     ? await prisma.productos.count({ where: { estado: 'aprobado', activo_id: { in: idsComercio } } })
     : 0;
 
+  // ─── LIC-DLUI LIC-R1 (LIC-01 #457, épica #448): observatorio de
+  // indicadores — 4 claves computables desde dominios vivos (DL-2
+  // ratificado por la DH 2026-11-10). Mismas reglas que todo el set:
+  // agregados sin PII (Ley 25.326), sintéticos y descartado excluidos
+  // (R15/ADR-038), re-derivado del dominio — nunca incrementos.
+  type ReporteEstadoRow = { estado: string; total: number };
+  type IngestaKpiRow = { fuentes: number; total: number; publicadas: number };
+  type CapaKpiRow = { total: number; con_ingesta: number };
+  type AnclajeRow = { subnodo_key: string; total: number };
+
+  // Reportes ciudadanos (CORE-005): por estado del flujo received →
+  // evaluating → in_progress → resolved — excluye sintéticos y
+  // descartado (ADR-038: 'descartado' nunca es publicable).
+  const reportesPorEstado: Record<string, number> = {};
+  for (const r of (await prisma.$queryRaw(Prisma.sql`
+    SELECT estado AS estado, COUNT(*)::int AS total
+    FROM reportes
+    WHERE nodo_id = (SELECT id FROM nodos WHERE key = ${nodoKey})
+      AND is_synthetic = false AND estado <> 'descartado'
+    GROUP BY estado`)) as ReporteEstadoRow[]) {
+    reportesPorEstado[r.estado] = r.total;
+  }
+
+  // Fuentes ingestadas (NODO-CAU R2 #147): fuentes del catálogo con al
+  // menos un conjunto ingestado en el nodo (DISTINCT fuente_key), con
+  // el desglose del pipeline de procedencia.
+  const ingestaKpiRows = (await prisma.$queryRaw(Prisma.sql`
+    SELECT COUNT(DISTINCT fuente_key)::int AS fuentes,
+           COUNT(*)::int AS total,
+           COUNT(*) FILTER (WHERE estado = 'publicado')::int AS publicadas
+    FROM ingestas
+    WHERE nodo_key = ${nodoKey}`)) as IngestaKpiRow[];
+  const fuentesIngestadas = ingestaKpiRows.length ? ingestaKpiRows[0].fuentes : 0;
+
+  // Capas con metadatos (procedencia ADR-035, #147): una capa del nodo
+  // cuenta con metadatos cuando existe al menos una ingesta del nodo
+  // que la referencia (ingestas.capa_servicio = capas.key).
+  const capaKpiRows = (await prisma.$queryRaw(Prisma.sql`
+    SELECT COUNT(*)::int AS total,
+           COUNT(*) FILTER (WHERE EXISTS (
+             SELECT 1 FROM ingestas i
+             WHERE i.nodo_key = ${nodoKey} AND i.capa_servicio = c.key
+           ))::int AS con_ingesta
+    FROM capas c
+    WHERE c.nodo_id = (SELECT id FROM nodos WHERE key = ${nodoKey})`)) as CapaKpiRow[];
+  const capasTotal = capaKpiRows.length ? capaKpiRows[0].total : 0;
+  const capasConIngesta = capaKpiRows.length ? capaKpiRows[0].con_ingesta : 0;
+
+  // Cobertura de reportes por distrito: distritos del nodo con al menos
+  // un reporte anclado (el distrito se DERIVA del subnodo ancla por la
+  // cadena parent — mismo criterio que reportes_amc_por_distrito).
+  const distritosConReporte = new Set<string>();
+  for (const r of (await prisma.$queryRaw(Prisma.sql`
+    SELECT subnodo_key AS subnodo_key, COUNT(*)::int AS total
+    FROM reportes
+    WHERE nodo_id = (SELECT id FROM nodos WHERE key = ${nodoKey})
+      AND is_synthetic = false AND estado <> 'descartado'
+      AND subnodo_key IS NOT NULL
+    GROUP BY subnodo_key`)) as AnclajeRow[]) {
+    let actual: SubnodoRow | undefined = porKey.get(r.subnodo_key);
+    while (actual) {
+      if (actual.type === 'district') {
+        distritosConReporte.add(actual.key);
+        break;
+      }
+      actual = actual.parent_key ? porKey.get(actual.parent_key) : undefined;
+    }
+  }
+  const distritosTotal = subnodos.filter((s) => s.type === 'district').length;
+
   const snapshots: KpiSnapshot[] = [
     { nodo_key: nodoKey, kpi_key: 'subnodos_total', valor: subnodos.length, detalles: {} },
     { nodo_key: nodoKey, kpi_key: 'subnodos_por_distrito', valor: suma(porDistrito), detalles: porDistrito },
@@ -382,6 +464,37 @@ export async function recomputeKpisForNode(nodoKey: string): Promise<KpiSnapshot
       detalles: { verificadas: titularidadesVerificadas, total: comerciosTotal },
     },
     { nodo_key: nodoKey, kpi_key: 'ofertas_activas', valor: ofertasActivas, detalles: {} },
+    // ─── LIC-DLUI LIC-R1 (#457): observatorio de indicadores (LIC-01) ───
+    {
+      nodo_key: nodoKey,
+      kpi_key: 'reportes_por_estado',
+      valor: suma(reportesPorEstado),
+      detalles: reportesPorEstado,
+    },
+    {
+      nodo_key: nodoKey,
+      kpi_key: 'fuentes_ingestadas_por_nodo',
+      valor: fuentesIngestadas,
+      detalles: {
+        ingestas_total: ingestaKpiRows.length ? ingestaKpiRows[0].total : 0,
+        ingestas_publicadas: ingestaKpiRows.length ? ingestaKpiRows[0].publicadas : 0,
+      },
+    },
+    {
+      nodo_key: nodoKey,
+      kpi_key: 'capas_con_metadatos',
+      valor: capasConIngesta,
+      detalles: { capas_total: capasTotal, capas_con_ingesta: capasConIngesta },
+    },
+    {
+      nodo_key: nodoKey,
+      kpi_key: 'cobertura_reportes_distrito',
+      valor: distritosConReporte.size,
+      detalles: {
+        distritos_total: distritosTotal,
+        distritos_con_reporte: distritosConReporte.size,
+      },
+    },
   ];
 
   for (const s of snapshots) {
