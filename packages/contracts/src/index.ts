@@ -1503,6 +1503,106 @@ export const ReporteHistorialSchema = z.object({
   transiciones: z.array(ReporteHistorialEntrySchema),
 });
 
+// ─── LIC-DLUI LIC-R3 (#452, épica #448): práctica territorial acreditada ───
+
+// Opción B ratificada por la DH (#452): la práctica es un ATRIBUTO sobre la
+// cuenta ciudadana (patrón AR1 #400), NO un rol RBAC ni ADR nuevo. El
+// practicante sigue siendo un ciudadano: el sello practica.acreditada
+// habilita (DL-7) la escritura de relevamientos de tramos con evidencia
+// obligatoria bajo el protocolo versionado LIC-R2. Sin PII del practicante
+// jamás: el mandato NUNCA se persiste ni se responde (solo su hash sha256
+// truncado) — Ley 25.326/ADR-027.
+
+// Protocolo versionado LIC-R2 (DL-4): el relevamiento declara SU versión.
+export const PracticaVersionSchema = z.enum(["v1.0"]);
+
+// Referente comunitario (D4: los referentes VALIDAN, no deciden): rol fijo;
+// el nombre es opcional y SOLO se acepta con consentimiento explícito
+// (ADR-027) — la acreditación exige referente, con o sin nombre.
+export const PracticaReferenteSchema = z
+  .object({
+    rol: z.literal("REFERENTE_COMUNITARIO"),
+    nombre: z.string().trim().min(3).max(120).optional(),
+    consentimiento_confirmado: z.boolean(),
+  })
+  .refine((r) => r.nombre === undefined || r.consentimiento_confirmado === true, {
+    message:
+      "nombrar al referente comunitario exige consentimiento_confirmado=true (ADR-027, Ley 25.326)",
+    path: ["consentimiento_confirmado"],
+  });
+
+// Acreditación de la práctica (acto de la DH, patrón decision_dh): el
+// mandato es la resolución de la DH — NUNCA se persiste ni se responde (solo
+// su hash sha256 truncado); la referencia externa es la contraparte
+// institucional nullable (la UNSJ quedó fuera de la práctica, decisión DH).
+export const PracticaAcreditacionSchema = z.object({
+  usuario_id: z
+    .string()
+    .trim()
+    .min(10, "usuario_id: id real de la cuenta ciudadana")
+    .max(64),
+  mandato: z
+    .string()
+    .trim()
+    .min(10, "El mandato (resolución de la DH) requiere al menos 10 caracteres")
+    .max(300),
+  referente: PracticaReferenteSchema,
+  referencia_externa: z.string().trim().min(3).max(160).optional(),
+});
+
+// Evidencia OBLIGATORIA del relevamiento (DL-7, ADR-035: nada verificado
+// sin fuente): fotografía del tramo (NUNCA de personas — R5/ADR-036),
+// observación de campo o documento público.
+export const PracticaEvidenciaSchema = z.object({
+  evidence_type: z.enum(["fotografia_tramo", "observacion_campo", "documento_publico"]),
+  descripcion: z
+    .string()
+    .trim()
+    .min(10, "La evidencia requiere al menos 10 caracteres")
+    .max(1000),
+  reference_url: z
+    .string()
+    .trim()
+    .regex(/^https?:\/\S+$/, "reference_url: URL http(s) válida")
+    .max(500)
+    .optional(),
+});
+
+// Las 4 dimensiones del canon MDPI (protocolo LIC-R2 §4): observables del
+// ESPACIO público, texto descriptivo — JAMÁS puntajes de accesibilidad ni de
+// personas (R5/ADR-036).
+export const PracticaDimensionesSchema = z.object({
+  funcional: z.string().trim().min(10).max(1000),
+  seguridad: z.string().trim().min(10).max(1000),
+  confort: z.string().trim().min(10).max(1000),
+  destino: z.string().trim().min(10).max(1000),
+});
+
+// Relevamiento del tramo (canal v1 del protocolo LIC-R2): fecha REAL no
+// futura y método obligatorios — sin fecha no es relevamiento (DL-4).
+export const PracticaRelevamientoDetalleSchema = z.object({
+  feature_id: z.string().trim().min(5).max(80),
+  version: PracticaVersionSchema,
+  fecha_relevamiento: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "fecha_relevamiento: fecha real YYYY-MM-DD del relevamiento"),
+  metodo: z
+    .string()
+    .trim()
+    .min(10, "El método del relevamiento requiere al menos 10 caracteres")
+    .max(200),
+  dimensiones: PracticaDimensionesSchema,
+  evidencia: PracticaEvidenciaSchema,
+});
+
+// Alta del relevamiento-observación: ReporteAltaSchema (CORE-005) + el frame
+// del practicante. Sin la clave "relevamiento" el alta queda intacta
+// (patrón VIG-011 AMC: un canal, compatibilidad total del alta legacy).
+export const ReportePracticaAltaSchema = ReporteAltaSchema.extend({
+  relevamiento: PracticaRelevamientoDetalleSchema,
+});
+
 // ─── NODO-VIG VIG-008 (#240, épica #239): cooperativas — consentimiento institucional ───
 
 // Alcance granular del consentimiento institucional (persona jurídica):

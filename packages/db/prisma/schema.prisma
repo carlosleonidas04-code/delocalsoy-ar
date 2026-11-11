@@ -179,6 +179,12 @@ model reportes {
   riesgo_inmediato Boolean  @default(false) @map("riesgo_inmediato") // prioridad por riesgo declarado (VIG-011)
   observado_en    DateTime? @map("observado_en") // fecha del testimonio (carga diferida del mediador)
   cluster_key     String?   @map("cluster_key") // convergencia AMC: mismo dominio+categoría, ~500 m, 90 días
+  // LIC-DLUI LIC-R3 (#452, épica #448): relevamiento del practicante
+  // acreditado (canal v1 del protocolo LIC-R2). Sin la clave "relevamiento"
+  // del body la fila es un reporte legacy CORE-005 intacto (patrón VIG-011).
+  // Contiene {feature_id, version, fecha_relevamiento, metodo, dimensiones,
+  // evidencia} — texto anti-PII (compuerta en la ruta, Ley 25.326).
+  relevamiento    Json?     @map("relevamiento")
 
   nodo nodos @relation(fields: [nodo_id], references: [id], onDelete: Cascade)
 
@@ -213,6 +219,15 @@ model usuarios {
   // el alta visitante lo exige literal true, nunca pre-marcado en el cliente).
   transito_subnodo_key     String?   @map("transito_subnodo_key")
   consentimiento           Json?     @map("consentimiento")
+  // LIC-DLUI LIC-R3 (#452, épica #448) — Opción B ratificada por la DH:
+  // practicante = ATRIBUTO sobre la cuenta ciudadana, NO rol (patrón AR1).
+  // El mandato NUNCA persiste (solo su hash sha256 truncado); la referencia
+  // externa es la contraparte institucional nullable — SIN PII jamás
+  // (Ley 25.326 / ADR-027).
+  practica_acreditada         Boolean    @default(false) @map("practica_acreditada")
+  practica_acreditada_en      DateTime?  @map("practica_acreditada_en")
+  practica_mandato_hash       String?    @map("practica_mandato_hash")
+  practica_referencia_externa String?    @map("practica_referencia_externa")
   created_at    DateTime @default(now()) @map("created_at")
   updated_at    DateTime @updatedAt @map("updated_at")
 
