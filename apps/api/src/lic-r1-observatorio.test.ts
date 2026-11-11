@@ -21,7 +21,7 @@ process.env.JWT_SECRET = 'test-jwt-secret-lic-r1-observatorio-457';
 const { createApp } = await import('./app.js');
 const prisma = (await import('./lib/prisma.js')).default;
 const { recomputeKpisForNode, Prisma } = await import('@delocalsoy/db');
-const { LIC01_KPI_KEYS } = await import('@delocalsoy/contracts');
+const { LIC01_KPI_KEYS, LIC02_KPI_KEYS, OBSERVATORIO_KPI_KEYS } = await import('@delocalsoy/contracts');
 
 const repoRoot = fileURLToPath(new URL('../../../', import.meta.url));
 
@@ -75,9 +75,9 @@ describe.skipIf(!dbUp)('Observatorio de indicadores LIC-R1 (#457, épica #448)',
     const data = await observatorioDe('iglesia');
     expect(data.nodo_key).toBe('iglesia');
     expect(data.regla).toBe('Conteos con cobertura y fecha — jamás puntajes globales (R5/ADR-036)');
-    expect(data.kpis.total).toBe(4);
+    expect(data.kpis.total).toBe(LIC01_KPI_KEYS.length + LIC02_KPI_KEYS.length); // 4 del observatorio (LIC-R1 #457) + 1 accesibilidad (LIC-R2 #453)
     const map = porKey(data);
-    for (const clave of LIC01_KPI_KEYS) expect(map.has(clave)).toBe(true);
+    for (const clave of [...LIC01_KPI_KEYS, ...LIC02_KPI_KEYS]) expect(map.has(clave)).toBe(true);
 
     // 1. reportes_por_estado: espejo del predicado CORE-005 (excluye
     // sintéticos y descartado — ADR-038).
@@ -168,9 +168,9 @@ describe.skipIf(!dbUp)('Observatorio de indicadores LIC-R1 (#457, épica #448)',
     const data = await observatorioDe('iglesia');
     const fichas: any[] = data.fichas_metodologicas;
     expect(Array.isArray(fichas)).toBe(true);
-    expect(fichas.length).toBe(4);
+    expect(fichas.length).toBe(OBSERVATORIO_KPI_KEYS.length);
     const claves = new Set<string>(fichas.map((f: any) => f.clave));
-    for (const clave of LIC01_KPI_KEYS) expect(claves.has(clave)).toBe(true);
+    for (const clave of OBSERVATORIO_KPI_KEYS) expect(claves.has(clave)).toBe(true);
     for (const f of fichas) {
       expect(f.nombre.length).toBeGreaterThan(0);
       expect(f.formula.length).toBeGreaterThan(0);
@@ -205,7 +205,7 @@ describe.skipIf(!dbUp)('Observatorio de indicadores LIC-R1 (#457, épica #448)',
     expect(res.body.data.kpis.snapshots).toEqual([]);
     expect(res.body.data.kpis.fecha_corte).toBeNull();
     // El panel NUNCA oculta la ficha ni la deuda: se publican igual (DL-1).
-    expect(res.body.data.fichas_metodologicas.length).toBe(4);
+    expect(res.body.data.fichas_metodologicas.length).toBe(OBSERVATORIO_KPI_KEYS.length);
     expect(res.body.data.familias_sin_fuente_ingestada.length).toBe(4);
   });
 

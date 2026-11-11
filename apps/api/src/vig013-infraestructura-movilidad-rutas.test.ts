@@ -13,9 +13,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 // interno). Las aserciones se DERIVAN del dominio vivo (GET
 // /api/nodos/:key/features y la tabla pedidos) para no contaminarse con
 // las escrituras de otras suites del mismo job (lección VIG-011). El
-// bloque kpis ejerce el patrón VIG-003: recompute idempotente → 25
+// bloque kpis ejerce el patrón VIG-003: recompute idempotente → 26
 // snapshots (set v1 + set v2 + set v2 mercado MK-3a #426 + set observatorio LIC-R1
-// #457) y lectura consistente en AMBAS superficies
+// #457 + 1 accesibilidad LIC-R2 #453) y lectura consistente en AMBAS superficies
 // (GET /api/nodos/:key/kpis y el dashboard). Requiere Postgres/PostGIS
 // real; sin base → skip honesto.
 
@@ -224,16 +224,16 @@ describe.skipIf(!dbUp)('Dashboard infraestructura-movilidad VIG-013 (#382, épic
     );
   });
 
-  it('KPIs set v2 (patrón VIG-003): recompute 25, lectura 25 y dashboard 6 consistentes', async () => {
+  it('KPIs set v2 (patrón VIG-003): recompute 26, lectura 26 y dashboard 6 consistentes', async () => {
     // Idempotencia estructural VIG-003: el recompute RE-DERIVA desde el
     // dominio — set v1 (9) + set v2 (6) + set v2 mercado (6, MK-3a #426) +
-    // set observatorio (4, LIC-R1 #457) = 25 snapshots.
+    // set observatorio (4, LIC-R1 #457) + accesibilidad (1, LIC-R2 #453) = 26 snapshots.
     const snapshots = await recomputeKpisForNode('iglesia');
-    expect(snapshots.length).toBe(25); // set v1 (VIG-003) + set v2 (VIG-013) + set v2 mercado (MK-3a #426) + 4 del observatorio (LIC-R1 #457)
+    expect(snapshots.length).toBe(26); // set v1 (VIG-003) + set v2 (VIG-013) + set v2 mercado (MK-3a #426) + 5 del observatorio (LIC-R1 #457 + LIC-R2 #453)
 
     const kpisRes = await getJson('/api/nodos/iglesia/kpis');
     expect(kpisRes.status).toBe(200);
-    expect(kpisRes.body.count).toBe(25); // set v1 (VIG-003) + set v2 (VIG-013) + set v2 mercado (MK-3a #426) + 4 del observatorio (LIC-R1 #457)
+    expect(kpisRes.body.count).toBe(26); // set v1 (VIG-003) + set v2 (VIG-013) + set v2 mercado (MK-3a #426) + 5 del observatorio (LIC-R1 #457 + LIC-R2 #453)
     const porKey = new Map<string, any>();
     for (const row of kpisRes.body.data ?? []) porKey.set(row.kpi_key, row);
 
