@@ -116,6 +116,10 @@ const KPI_TEXTO: Record<string, string> = {
   fuentes_ingestadas_por_nodo: 'Fuentes del catálogo con conjuntos ingestados en el nodo',
   capas_con_metadatos: 'Capas del nodo con procedencia declarada por ingesta',
   cobertura_reportes_distrito: 'Distritos del nodo con al menos un reporte anclado',
+  // LIC-DLUI LIC-R2 (LIC-02 #453, épica #448): prosa del KPI de
+  // accesibilidad — mismo criterio (lectura humana sin agregar
+  // interpretación, R15).
+  tramos_con_relevamiento: 'Tramos del anuncio con relevamiento de accesibilidad completado',
 };
 
 function asReglas(v: unknown): ReglaRow[] {
