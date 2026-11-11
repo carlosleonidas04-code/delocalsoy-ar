@@ -1,7 +1,15 @@
 import { Router, type Request, type Response } from 'express';
 import prisma from '../lib/prisma.js';
 import { Prisma } from '@delocalsoy/db';
-import { AskPreguntaSchema, PEDIDOS_DPV_ESPERADOS, SubnodoFiltroSchema, VIG013_KPI_KEYS } from '@delocalsoy/contracts';
+import {
+  AskPreguntaSchema,
+  FAMILIAS_SIN_FUENTE_INGESTADA,
+  FICHAS_METODOLOGICAS,
+  LIC01_KPI_KEYS,
+  PEDIDOS_DPV_ESPERADOS,
+  SubnodoFiltroSchema,
+  VIG013_KPI_KEYS,
+} from '@delocalsoy/contracts';
 
 /**
  * Rutas de lectura del vocabulario CORE-002 (CORE-003 R1, #83).
@@ -512,6 +520,59 @@ router.get('/:key/infraestructura-movilidad', async (req: Request, res: Response
   } catch (error) {
     console.error('[nodos] infraestructura-movilidad:', error instanceof Error ? error.message : String(error));
     res.status(500).json({ success: false, error: 'Error al obtener el dashboard de infraestructura y movilidad' });
+  }
+});
+
+// GET /nodos/:key/observatorio — panel público del observatorio de
+// indicadores (LIC-DLUI LIC-R1, LIC-01 #457 — épica #448, patrón
+// NCAP-R5/VIG-013): los 4 KPIs computables del set LIC-01 leídos de
+// kpi_snapshots (patrón VIG-003: los materializa el consumidor
+// vig003-kpi — sin corrida del worker → 0 snapshots honestos, R15),
+// las fichas metodológicas por clave (DL-1: fórmula+fuente+cobertura,
+// patrón IDERA v2.0) y las familias nuevas del temario declaradas
+// `sin_fuente_ingestada` con valor null (DL-1, null ≠ 0 — R15): sin
+// fuente ingestado el indicador NO se computa, jamás se estima.
+// Conteos CON cobertura y fecha, NUNCA puntajes globales (R5/ADR-036).
+// Lectura pública anónima; 404 nodo inexistente (R15).
+router.get('/:key/observatorio', async (req: Request, res: Response) => {
+  try {
+    const nodo = await nodoPorKey(req.params.key);
+    if (!nodo) {
+      return res.status(404).json({ success: false, error: 'Nodo no encontrado' });
+    }
+    const snapshots = await prisma.kpi_snapshots.findMany({
+      where: { nodo_key: nodo.key, kpi_key: { in: [...LIC01_KPI_KEYS] } },
+      orderBy: { kpi_key: 'asc' },
+    });
+    let fechaKpiMax = 0;
+    for (const k of snapshots) {
+      const t = new Date(k.computed_at).getTime();
+      if (t > fechaKpiMax) fechaKpiMax = t;
+    }
+    res.json({
+      success: true,
+      data: {
+        nodo_key: nodo.key,
+        generado_en: new Date().toISOString(),
+        regla: 'Conteos con cobertura y fecha — jamás puntajes globales (R5/ADR-036)',
+        kpis: {
+          total: snapshots.length,
+          snapshots: snapshots.map((k: any) => ({
+            kpi_key: k.kpi_key as string,
+            valor: (k.valor as number | null) ?? null,
+            detalles: k.detalles as Record<string, number>,
+            computed_at: new Date(k.computed_at).toISOString(),
+          })),
+          fecha_corte: fechaKpiMax > 0 ? new Date(fechaKpiMax).toISOString().slice(0, 10) : null,
+          nota: 'materializados por el consumidor vig003-kpi (patrón VIG-003, LIC-R1 #457): sin corrida del worker → 0 honesto (R15)',
+        },
+        fichas_metodologicas: FICHAS_METODOLOGICAS,
+        familias_sin_fuente_ingestada: FAMILIAS_SIN_FUENTE_INGESTADA,
+      },
+    });
+  } catch (error) {
+    console.error('[nodos] observatorio:', error instanceof Error ? error.message : String(error));
+    res.status(500).json({ success: false, error: 'Error al obtener el observatorio de indicadores' });
   }
 });
 
