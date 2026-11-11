@@ -425,12 +425,23 @@ describe.skipIf(!dbUp)('Ofertas MARKET-CAP MK-3b (#426, sub-épica #152)', () =>
   });
 
   it('db:seed re-ejecutado no duplica nada y el catálogo sigue honesto (idempotencia total)', async () => {
-    // Scoped a las filas del SEED (activos seed-activo-*): las suites correne
-    // en paralelo crean sus propias filas y NO son carga del seed (R15).
-    const donde = { activo: { hash: { startsWith: 'seed-activo-' } } };
-    const antes = await prisma.productos.count({ where: donde });
+    // Scoped a las filas del PROPIO seed (claves seed-*/vocabulario sembrado):
+    // las suites correne en paralelo crean sus propias filas (productos sobre
+    // activos seed-activo-*, capas y features propias) y NO son carga del seed
+    // (R15) — aserción dinámica inmunizada contra las carreras inter-suite por
+    // re-sharding del pool paralelo de vitest (precedente LIC-R2 «contaminación
+    // anti-suites»): el conteo viejo sobre activos seed-activo-* contaba filas
+    // de OTRAS suites insertadas durante la ventana del execSync y caía
+    // «expected 2 to be 1» (PR #465 corrida 3 + PR #466 corridas 1 y 2).
+    const cuentaSeed = async () => ({
+      territorios: await prisma.territorios.count({ where: { nombre: { in: ['Capital', 'Caucete', 'Iglesia'] }, provincia: 'San Juan' } }),
+      nodos: await prisma.nodos.count({ where: { key: { in: ['capital', 'caucete', 'iglesia'] } } }),
+      features: await prisma.features.count({ where: { id: { startsWith: 'seed-f-' } } }),
+      reportes: await prisma.reportes.count({ where: { hash: { startsWith: 'seed-reporte-' } } }),
+    });
+    const antes = await cuentaSeed();
     execSync('pnpm --filter @delocalsoy/db db:seed', { cwd: repoRoot, stdio: 'pipe' });
-    const despues = await prisma.productos.count({ where: donde });
-    expect(despues).toBe(antes);
+    const despues = await cuentaSeed();
+    expect(despues).toEqual(antes);
   }, 60000);
 });
