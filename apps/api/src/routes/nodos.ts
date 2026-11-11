@@ -5,7 +5,7 @@ import {
   AskPreguntaSchema,
   FAMILIAS_SIN_FUENTE_INGESTADA,
   FICHAS_METODOLOGICAS,
-  LIC01_KPI_KEYS,
+  OBSERVATORIO_KPI_KEYS,
   PEDIDOS_DPV_ESPERADOS,
   SubnodoFiltroSchema,
   VIG013_KPI_KEYS,
@@ -524,8 +524,9 @@ router.get('/:key/infraestructura-movilidad', async (req: Request, res: Response
 });
 
 // GET /nodos/:key/observatorio — panel público del observatorio de
-// indicadores (LIC-DLUI LIC-R1, LIC-01 #457 — épica #448, patrón
-// NCAP-R5/VIG-013): los 4 KPIs computables del set LIC-01 leídos de
+// indicadores (LIC-DLUI LIC-R1 #457 + LIC-R2 #453, sets LIC-01/LIC-02
+// — épica #448, patrón NCAP-R5/VIG-013): los 5 KPIs computables de
+// los sets LIC-01 (observatorio) y LIC-02 (accesibilidad) leídos de
 // kpi_snapshots (patrón VIG-003: los materializa el consumidor
 // vig003-kpi — sin corrida del worker → 0 snapshots honestos, R15),
 // las fichas metodológicas por clave (DL-1: fórmula+fuente+cobertura,
@@ -541,7 +542,7 @@ router.get('/:key/observatorio', async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, error: 'Nodo no encontrado' });
     }
     const snapshots = await prisma.kpi_snapshots.findMany({
-      where: { nodo_key: nodo.key, kpi_key: { in: [...LIC01_KPI_KEYS] } },
+      where: { nodo_key: nodo.key, kpi_key: { in: [...OBSERVATORIO_KPI_KEYS] } },
       orderBy: { kpi_key: 'asc' },
     });
     let fechaKpiMax = 0;
@@ -564,7 +565,7 @@ router.get('/:key/observatorio', async (req: Request, res: Response) => {
             computed_at: new Date(k.computed_at).toISOString(),
           })),
           fecha_corte: fechaKpiMax > 0 ? new Date(fechaKpiMax).toISOString().slice(0, 10) : null,
-          nota: 'materializados por el consumidor vig003-kpi (patrón VIG-003, LIC-R1 #457): sin corrida del worker → 0 honesto (R15)',
+          nota: 'materializados por el consumidor vig003-kpi (patrón VIG-003, LIC-R1 #457 + LIC-R2 #453): sin corrida del worker → 0 honesto (R15)',
         },
         fichas_metodologicas: FICHAS_METODOLOGICAS,
         familias_sin_fuente_ingestada: FAMILIAS_SIN_FUENTE_INGESTADA,

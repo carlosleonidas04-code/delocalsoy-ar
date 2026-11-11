@@ -132,7 +132,7 @@ describe.skipIf(!dbUp || !redisUp)('VIG-003 (#182) — consumidor de KPIs vig003
 
     // upsert por (nodo_key, kpi_key): sin duplicados y valor estable.
     const filas = await prisma.kpi_snapshots.count({ where: { nodo_key: 'iglesia' } });
-    expect(filas).toBe(25); // + 4 KPIs del observatorio (LIC-R1 #457) // set v1 (VIG-003) + set v2 (VIG-013) + set v2 mercado (MK-3a #426)
+    expect(filas).toBe(26); // + 5 KPIs del observatorio (LIC-R1 #457 + LIC-R2 #453) // set v1 (VIG-003) + set v2 (VIG-013) + set v2 mercado (MK-3a #426)
     const despues = await snapshot('iglesia', 'subnodos_total');
     expect(despues?.valor).toBe(antes?.valor);
     expect(await pendingCount()).toBe(0);

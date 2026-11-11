@@ -59,6 +59,14 @@ export const KPI_KEYS = [
   'fuentes_ingestadas_por_nodo',
   'capas_con_metadatos',
   'cobertura_reportes_distrito',
+  // LIC-DLUI LIC-R2 (LIC-02 #453, épica #448): accesibilidad — KPI del
+  // relevamiento de los tramos del anuncio (NCAP-R5 #155). Nace honesto
+  // «0 de 18» (DL-5): sin relevamiento el 0 es REAL sobre los 18 tramos
+  // del anuncio — la brecha visible, jamás oculta. SIN puntajes de
+  // accesibilidad ni de personas (R5/ADR-036); el relevamiento lo
+  // ejecutan practicantes bajo el protocolo versionado LIC-R2 (DL-4) —
+  // el KPI cuenta estados del dominio, no calcula calidad.
+  'tramos_con_relevamiento',
 ] as const;
 
 export type KpiKey = (typeof KPI_KEYS)[number];
@@ -381,6 +389,31 @@ export async function recomputeKpisForNode(nodoKey: string): Promise<KpiSnapshot
   }
   const distritosTotal = subnodos.filter((s) => s.type === 'district').length;
 
+  // ─── LIC-DLUI LIC-R2 (LIC-02 #453, épica #448): accesibilidad — KPI del
+  // relevamiento de los tramos del anuncio (DL-5). MISMO criterio que el
+  // dashboard accesibilidad (NCAP-R5 #157 — verdad única, sin divergencia):
+  // tramos = features capa sidewalks id seed-f-tramo-% del nodo; con
+  // relevamiento = estado community_validated | verified (el relevamiento
+  // real mueve el estado, jamás un cálculo aquí). Los tramos SON el dominio
+  // del anuncio real registrado (repavimentacion_microcentro_2026, NCAP-R3
+  // #155): sus coordenadas son ilustrativas (is_synthetic, ADR-035) pero el
+  // ciclo anuncio ≠ obra (declared → in_execution → completed) y el de
+  // revisión (community_validated | verified) son la verdad que se cuenta —
+  // filtrar por is_synthetic ocultaría la brecha «0 de 18» (DL-5, R15). El
+  // desglose expone los estados del ciclo para verificación pública.
+  const porEstadoTramosAcc: Record<string, number> = {};
+  for (const r of (await prisma.$queryRaw(Prisma.sql`
+    SELECT f.estado AS estado, COUNT(*)::int AS total
+    FROM features f
+    JOIN capas c ON c.id = f.capa_id
+    WHERE c.key = 'sidewalks' AND f.id LIKE 'seed-f-tramo-%'
+      AND f.nodo_id = (SELECT id FROM nodos WHERE key = ${nodoKey})
+    GROUP BY f.estado`)) as EstadoRow[]) {
+    porEstadoTramosAcc[r.estado] = r.total;
+  }
+  const tramosConRelevamiento =
+    (porEstadoTramosAcc['community_validated'] ?? 0) + (porEstadoTramosAcc['verified'] ?? 0);
+
   const snapshots: KpiSnapshot[] = [
     { nodo_key: nodoKey, kpi_key: 'subnodos_total', valor: subnodos.length, detalles: {} },
     { nodo_key: nodoKey, kpi_key: 'subnodos_por_distrito', valor: suma(porDistrito), detalles: porDistrito },
@@ -493,6 +526,22 @@ export async function recomputeKpisForNode(nodoKey: string): Promise<KpiSnapshot
       detalles: {
         distritos_total: distritosTotal,
         distritos_con_reporte: distritosConReporte.size,
+      },
+    },
+    // ─── LIC-DLUI LIC-R2 (#453): accesibilidad — relevamiento de tramos ───
+    {
+      nodo_key: nodoKey,
+      kpi_key: 'tramos_con_relevamiento',
+      // «0 de 18» honesto (DL-5): sin relevamiento el 0 es REAL sobre los
+      // tramos del anuncio — nunca null ni estimación.
+      valor: tramosConRelevamiento,
+      detalles: {
+        tramos_total: suma(porEstadoTramosAcc),
+        tramos_declared: porEstadoTramosAcc['declared'] ?? 0,
+        tramos_in_execution: porEstadoTramosAcc['in_execution'] ?? 0,
+        tramos_completed: porEstadoTramosAcc['completed'] ?? 0,
+        tramos_community_validated: porEstadoTramosAcc['community_validated'] ?? 0,
+        tramos_verified: porEstadoTramosAcc['verified'] ?? 0,
       },
     },
   ];
