@@ -109,6 +109,13 @@ const KPI_TEXTO: Record<string, string> = {
   comercios_habilitacion_verificada_pct: 'Porcentaje de comercios con habilitación verificada',
   titularidad_verificada_pct: 'Porcentaje de comercios con titularidad verificada',
   ofertas_activas: 'Ofertas de productos activas del mercado',
+  // LIC-DLUI LIC-R1 (LIC-01 #457, épica #448): prosa de los KPIs del
+  // observatorio — mismo criterio (lectura humana sin agregar
+  // interpretación, R15).
+  reportes_por_estado: 'Reportes ciudadanos del nodo por estado del flujo',
+  fuentes_ingestadas_por_nodo: 'Fuentes del catálogo con conjuntos ingestados en el nodo',
+  capas_con_metadatos: 'Capas del nodo con procedencia declarada por ingesta',
+  cobertura_reportes_distrito: 'Distritos del nodo con al menos un reporte anclado',
 };
 
 function asReglas(v: unknown): ReglaRow[] {
