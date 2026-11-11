@@ -818,6 +818,11 @@ export const KpiKeySchema = z.enum([
   "fuentes_ingestadas_por_nodo",
   "capas_con_metadatos",
   "cobertura_reportes_distrito",
+  // LIC-DLUI LIC-R2 (LIC-02 #453, épica #448): accesibilidad — KPI del
+  // relevamiento de los tramos del anuncio (NCAP-R5 #155). Conteo CON
+  // cobertura («0 de 18»), SIN puntajes globales de accesibilidad ni de
+  // personas (R5/ADR-036); mismo canon de honestidad (R15).
+  "tramos_con_relevamiento",
 ]);
 
 // Set VIG-013 (NODO-VIG-3 #382, épica #377): los 6 KPIs del dashboard público
@@ -852,13 +857,36 @@ export const LIC01_KPI_KEYS = [
   "cobertura_reportes_distrito",
 ] as const;
 
+// ─── LIC-DLUI LIC-R2 (LIC-02 #453, épica #448): accesibilidad del anuncio ───
+
+// Set LIC-02 (LIC-R2 #453): KPI del relevamiento de los tramos del anuncio
+// de repavimentación del microcentro (NCAP-R5 #155 — 18 tramos declared).
+// Lo materializa el consumidor vig003-kpi (patrón VIG-003/MK-3a): upsert
+// idempotente por nodo_key+kpi_key que RE-DERIVA desde el dominio vivo
+// (features capa sidewalks id seed-f-tramo-*), nunca incrementos. Nace
+// honesto «0 de 18» (DL-5): sin relevamiento el 0 es REAL sobre los 18
+// tramos del anuncio — la brecha es visible, jamás oculta. El relevamiento
+// lo ejecutan practicantes (LIC-03) bajo el protocolo versionado LIC-R2
+// (DL-4); la plataforma NUNCA computa puntajes de accesibilidad ni de
+// personas (R5/ADR-036).
+export const LIC02_KPI_KEYS = [
+  "tramos_con_relevamiento",
+] as const;
+
+// Set del observatorio completo (LIC-01 + LIC-02): lo filtra la ruta
+// GET /api/nodos/{key}/observatorio y valida la ficha metodológica.
+export const OBSERVATORIO_KPI_KEYS = [
+  ...LIC01_KPI_KEYS,
+  ...LIC02_KPI_KEYS,
+] as const;
+
 // Ficha metodológica por clave (DL-1 ratificado por la DH 2026-11-10,
 // #457): cada KPI publicado declara fórmula, fuente y cobertura — el
 // observatorio nace honesto, no vacío de promesas. Documentación de
 // datos inspirada en el Perfil de Metadatos IDERA v2.0.
 export const FichaMetodologicaSchema = z
   .object({
-    clave: z.enum(LIC01_KPI_KEYS),
+    clave: z.enum(OBSERVATORIO_KPI_KEYS),
     nombre: z.string(),
     formula: z.string(),
     fuente: z.string(),
@@ -901,6 +929,16 @@ export const FICHAS_METODOLOGICAS = [
     fuente: "reportes.subnodo_key × jerarquía subnodos (VIG-001 #171) — recompute vig003-kpi (LIC-R1 #457)",
     cobertura:
       "reportes sin subnodo ancla no contribuyen a ningún distrito; parajes y subparajes aportan a su distrito por la cadena parent",
+  },
+  {
+    clave: "tramos_con_relevamiento",
+    nombre: "Tramos del anuncio con relevamiento de accesibilidad",
+    formula:
+      "tramos capa sidewalks (id seed-f-tramo-*) del nodo con estado community_validated | verified, sobre tramos_total del anuncio; desglose por estado del ciclo declared | in_execution | completed y de revisión community_validated | verified",
+    fuente:
+      "features capa sidewalks (NCAP-R5 #157) — anuncio repavimentacion_microcentro_2026 (NCAP-R3 #155); relevamiento por practicantes bajo el protocolo LIC-R2 (docs/nodes/capital/LIC-R2-PROTOCOLO-ACCESIBILIDAD.md)",
+    cobertura:
+      "nodo capital: 18 tramos del anuncio (14 norte-sur + 4 perimetrales); sin relevamiento → 0 de 18 honesto (DL-5) — jamás puntajes de accesibilidad ni de personas (R5/ADR-036)",
   },
 ] as const;
 
