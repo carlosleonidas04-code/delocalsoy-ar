@@ -383,7 +383,7 @@ gh run list --branch main --event push -L 5
 
 *NODO-CAU (#137): R2 catálogo de fuentes espaciales + procedencia por conjunto cerrada — EV-049 anclada a `757b84b` (PR #200, CI 100% verde sobre el head `a565480` con compuerta del run `labeled`, squash). 4 decisiones de diseño ratificadas por la DH el 2026-10-15 (traza #138/#147): tabla global `fuentes` con lectura pública; tabla `ingestas` con pipeline de procedencia; solo admin publica (R15 estricta); cierre de #138/#147 al acreditar NC-EV-03/NC-EV-09. #138 y #147 cerrados por merge. Pendiente de la épica: R5 servicio informativo (#142).
 
-*LIC-DLUI (#448): en curso — LIC-R1 observatorio de indicadores cerrada: EV-103 anclada a `7a6fa38d` (PR #461, CI 8/8 verde sobre el head `feb3df12`; las corridas 1-2 del PR cayeron en vig013 «25≠21» determinístico — aserción hardcode del set pre-LIC-01 corregida en rama). Prioridad de la épica B→A→C ratificada por la DH (carril licenciatura primero). Pendientes: LIC-R2..R9 (#453/#452/#455/#454/#449/#450/#451/#456). EV-102 reservada para MONTAR-2 #445.**
+*LIC-DLUI (#448): en curso — LIC-R1 observatorio de indicadores cerrada: EV-103 anclada a `7a6fa38d` (PR #461, CI 8/8 verde sobre el head `feb3df12`; las corridas 1-2 del PR cayeron en vig013 «25≠21» determinístico — aserción hardcode del set pre-LIC-01 corregida en rama). Prioridad de la épica B→A→C ratificada por la DH (carril licenciatura primero). Pendientes: LIC-R2..R9 (#453/#452/#455/#454/#449/#450/#451/#456). EV-102 reservada para MONTAR-2 #445.*
 
 
 
