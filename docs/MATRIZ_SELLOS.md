@@ -54,6 +54,7 @@ Propósito (mejora C5 de la hoja de mantenimiento): hacer explícito el contrato
 | `residencia.declarada` | usuarios (AR1) | ARTEFACTOS-ROLES #400 (épica #399) | main |
 | `visitante.registrado` | usuarios (AR1) | ARTEFACTOS-ROLES #400 (épica #399) | main |
 | `comercio.relay_recibido` | comercios (MK-4 relay) | #427 (EV-098) | main |
+| `practica.acreditada` | usuarios (AR5 / LIC-03) | LIC-DLUI LIC-R3 (#452, épica #448) | main |
 
 ## Regla
 
