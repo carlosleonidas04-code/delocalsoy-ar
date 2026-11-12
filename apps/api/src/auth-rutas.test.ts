@@ -98,9 +98,14 @@ describe.skipIf(!dbUp)('identidad por etapas (ADR-031, EV-032)', () => {
   });
 
   it('sello system.user_registered existe y NO contiene email (Ley 25.326)', async () => {
+    // Contaminación anti-suites (patrón NCAP-R1, corrección del CI del PR
+    // #468 LIC-R4 #455): el findFirst global por occurred_at desc era racy
+    // — otras suites registran usuarios en paralelo sobre la misma base y
+    // el sello "más reciente" podía ser de otro suite. El sello se acota al
+    // PROPIO usuario por payload->usuario_id (filtro JSON de Prisma,
+    // patrón caucete-insitu/lic-r4), determinista sin importar la carrera.
     const sello = await prisma.events_raw.findFirst({
-      where: { type: 'system.user_registered' },
-      orderBy: { occurred_at: 'desc' },
+      where: { type: 'system.user_registered', payload: { path: ['usuario_id'], equals: usuarioId } },
     });
     expect(sello).toBeTruthy();
     const payload = JSON.stringify(sello!.payload);
@@ -161,9 +166,10 @@ describe.skipIf(!dbUp)('identidad por etapas (ADR-031, EV-032)', () => {
   });
 
   it('sello system.user_session existe y NO contiene email', async () => {
+    // Contaminación anti-suites (mismo fix que user_registered, PR #468):
+    // acotado al propio usuario por payload->usuario_id.
     const sello = await prisma.events_raw.findFirst({
-      where: { type: 'system.user_session' },
-      orderBy: { occurred_at: 'desc' },
+      where: { type: 'system.user_session', payload: { path: ['usuario_id'], equals: usuarioId } },
     });
     expect(sello).toBeTruthy();
     const payload = JSON.stringify(sello!.payload);

@@ -983,6 +983,56 @@ export const FAMILIAS_SIN_FUENTE_INGESTADA = [
   },
 ] as const;
 
+// ─── LIC-DLUI LIC-R4 (LIC-04 #455, épica #448): capas de amenaza sísmica ───
+
+// DL-9 ratificado: la capa de amenaza nace del vocabulario (tabla capas,
+// seed-lic-r4-amenaza-sismica.sql) y su publicación fluye por el pipeline
+// de ingestas (capa_servicio = capas.key, patrón NODO-CAU R2 #138/#147 —
+// EV-049). Metadatos-antes-de-capa (regla ratificada): la capa declarada
+// SIN ingesta publicada se sirve 'declarada' con ingesta null (R15:
+// null ≠ 0 — sin fuente ingestada no hay capa publicada, jamás geometría
+// de memoria). La ingesta publicada aporta la procedencia NC-EV-09.
+export const AmenazaIngestaSchema = z.object({
+  source_id: z.string(),
+  fuente_key: z.string(),
+  fecha_corte: z.string(),
+  crs_normalizado: z.string(),
+  escala_precision: z.string(),
+  licencia: z.string().nullable(),
+});
+
+export const AmenazaNodoSchema = z.object({
+  nodo_key: SanJuanNodeSlugSchema,
+  capa_key: z.string(),
+  nombre: z.string(),
+  dominio: z.string(),
+  estado: z.enum(["declarada", "publicada"]),
+  ingesta: AmenazaIngestaSchema.nullable(),
+});
+
+// Superficie del catálogo público GET /api/amenazas (derivada, patrón
+// showcase VIG-007): capas declaradas × ingestas publicadas por nodo.
+export const AmenazaCatalogoResponseSchema = z.object({
+  amenaza: z.string(),
+  regla: z.string(),
+  nodos: z.array(AmenazaNodoSchema),
+});
+
+// Dashboard honesto de cobertura GET /api/amenazas/cobertura (criterio de
+// cierre #455): «X de N distritos con capa sísmica publicada» + fecha de
+// corte. Anti-puntaje (R5/ADR-036): conteo CON cobertura y fecha, NUNCA
+// ranking de riesgo entre nodos; nace honesto «0 de N» con fecha null.
+export const AmenazaCoberturaResponseSchema = z.object({
+  amenaza: z.string(),
+  cobertura: z.string(),
+  nodos_total: z.number().int(),
+  nodos_con_capa: z.number().int(),
+  nodos_publicados: z.number().int(),
+  fecha_corte: z.string().nullable(),
+  regla: z.string(),
+  cautela: z.string(),
+});
+
 // Valor honesto: número O null (cobertura_geometrica es null en v1 — sin
 // métrica de cobertura computada; null ≠ 0, R15).
 export const KpiValorSchema = z.union([z.number(), z.null()]);
@@ -2103,3 +2153,4 @@ export const SelloPublicoSchema = z.object({
 
 export type SellosQuery = z.infer<typeof SellosQuerySchema>;
 export type SelloPublico = z.infer<typeof SelloPublicoSchema>;
+

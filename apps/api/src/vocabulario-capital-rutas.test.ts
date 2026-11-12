@@ -71,12 +71,12 @@ const CAPAS_V51 = ['commerce', 'public_space', 'public_lighting', 'trees', 'side
 const HITOS_R1 = ['hit_plaza_25_de_mayo', 'hit_catedral', 'hit_casa_natal_sarmiento', 'hit_basilica_desamparados'];
 
 describe.skipIf(!dbUp)('Vocabulario del nodo Capital NCAP-R1 (#153)', () => {
-  it('GET /api/nodos/capital/capas — v5.1 + accessibility (complementaria) + landmarks', async () => {
+  it('GET /api/nodos/capital/capas — v5.1 + accessibility (complementaria) + landmarks + seismic_risk (LIC-R4 #455)', async () => {
     const { status, body } = await getJson('/api/nodos/capital/capas');
     expect(status).toBe(200);
-    expect(body.count).toBe(8);
+    expect(body.count).toBe(9); // 8 NCAP-R1 + seismic_risk (LIC-R4 #455)
     const keys: string[] = body.data.map((c: any) => c.key);
-    for (const k of [...CAPAS_V51, 'accessibility', 'landmarks']) {
+    for (const k of [...CAPAS_V51, 'accessibility', 'landmarks', 'seismic_risk']) {
       expect(keys, 'falta la capa ' + k).toContain(k);
     }
     const accessibility = body.data.find((c: any) => c.key === 'accessibility');
@@ -198,10 +198,11 @@ describe.skipIf(!dbUp)('Vocabulario del nodo Capital NCAP-R1 (#153)', () => {
       prisma.events_raw.count({ where: { hash: { in: SELLOS_R1 } } }),
     ]);
     expect(despues).toEqual(antes);
-    expect(despues[0]).toBe(8);
+    expect(despues[0]).toBe(9); // 8 NCAP-R1 + seismic_risk (LIC-R4 #455)
     expect(despues[1]).toBe(13); // + tramo_priorizado (NCAP-R5 #157)
     expect(despues[2]).toBe(43); // 19 NCAP-R1 + 18 tramos + 6 observaciones (NCAP-R5 #157)
     expect(despues[3]).toBe(11);
     expect(despues[4]).toBe(6);
   }, 60000);
 });
+
