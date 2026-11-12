@@ -55,7 +55,9 @@ Propósito (mejora C5 de la hoja de mantenimiento): hacer explícito el contrato
 | `visitante.registrado` | usuarios (AR1) | ARTEFACTOS-ROLES #400 (épica #399) | main |
 | `comercio.relay_recibido` | comercios (MK-4 relay) | #427 (EV-098) | main |
 | `practica.acreditada` | usuarios (AR5 / LIC-03) | LIC-DLUI LIC-R3 (#452, épica #448) | main |
+| `patrimonio.consentido` | patrimonio_consentimientos | LIC-DLUI LIC-R7 (#450, épica #448 — DL-12) | main |
 
 ## Regla
 
 Todo PR que agrega un sello nuevo agrega su fila aquí **en el mismo PR** (regla 5 de `docs/MANTENIMIENTO.md`). El estado "en cola" se actualiza al merge. La columna de origen se mantiene anclada a PR/EV reales (R15: nada sin acreditación).
+

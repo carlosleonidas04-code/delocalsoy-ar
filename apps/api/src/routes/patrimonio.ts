@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { prisma } from '@delocalsoy/db';
 import { xaddEventReference } from '@delocalsoy/redis';
-import { PatrimonioCustodiaSchema, PatrimonioObservacionAltaSchema } from '@delocalsoy/contracts';
+import { PatrimonioCustodiaSchema, PatrimonioObservacionAltaSchema, PatrimonioVivoConsentimientoSchema, PatrimonioVivoRetiroSchema } from '@delocalsoy/contracts';
 import { detectaPII } from '../lib/anti-pii.js';
 import { requireJwt, requireRole } from '../lib/auth.js';
 
@@ -87,6 +87,15 @@ router.get('/:activoId', async (req: Request, res: Response) => {
     // La respuesta pública NUNCA contiene `sensible` ni `sensible_nota`
     // (ADR-036: la nota de custodia es para gestores) ni el punto
     // propio del activo cuando su visibilidad es restricted.
+    // LIC-R7 (DL-12): bloque consentimientos honesto — qué alcances están
+    // vigentes, jamás QUIÉN los otorgó (el portador no se identifica).
+    const consentimientos = (await prisma.patrimonio_consentimientos.findMany({
+      where: { activo_id: activo.id },
+      orderBy: { created_at: 'asc' },
+      take: 100,
+    })) as ConsentimientoRow[];
+    const vigentes = consentimientos.filter((c) => c.estado === 'vigente');
+    const alcancesVigentes = [...new Set(vigentes.flatMap((c) => Object.keys(c.alcances as Record<string, boolean>)))].sort();
     res.json({
       success: true,
       data: {
@@ -105,6 +114,12 @@ router.get('/:activoId', async (req: Request, res: Response) => {
         acceso_lng: ficha.acceso_lng,
         reglas_acceso: ficha.reglas_acceso,
         sensible_status: ficha.sensible_status,
+        consentimientos: {
+          vigentes: vigentes.length,
+          revocados: consentimientos.length - vigentes.length,
+          alcances: alcancesVigentes,
+          nota: 'el portador no se identifica: la fila acredita el consentimiento y sus alcances, nunca a la persona (Ley 25.326, DL-12)',
+        },
       },
     });
   } catch (err) {
@@ -373,4 +388,227 @@ router.get('/:activoId/observaciones', async (req: Request, res: Response) => {
   }
 });
 
+// ─── LIC-DLUI LIC-R7 (#450, épica #448) — DL-12: consentimiento del portador ───
+// Extensión OPERATIVA del instrumento de consentimiento VIG-009 (custodio_hash)
+// a patrimonio cultural vivo y memoria oral. El PORTADOR JAMÁS se identifica
+// (Ley 25.326 / ADR-027): la fila acredita QUE existe el consentimiento y sus
+// alcances, nunca QUIÉN lo otorgó. Consentimiento granular NUNCA pre-marcado
+// (ADR-027): cada alcance es literal true explícito en el contrato; ausente =
+// no otorgado (null ≠ 0, R15). Lo firma un ROL comunitario, jamás un nombre
+// civil (gramática VIG-009 R3). Nace con 0 registros: preparar el instrumento
+// NO es simular otorgamientos (R15, DL-12).
+
+// Filas tipadas de las lecturas (patrón ObservacionRow — fix TS7006 del PR #151).
+type ConsentimientoRow = {
+  id: string;
+  activo_id: string;
+  firmante_rol: string;
+  alcances: object;
+  vigencia_desde: string;
+  vigencia_hasta: string | null;
+  estado: string;
+  revocado_en: Date | null;
+  motivo: string | null;
+  created_by_hash: string;
+  created_at: Date;
+};
+
+// POST /api/patrimonio/:activoId/consentimientos — registro del consentimiento
+// real (moderador|admin): el alta es el acto institucional que da fe de un
+// consentimiento obtenido fuera de línea; el registrante queda como
+// custodio_hash sha32 (instrumento VIG-009). Solo sobre activos con ficha
+// patrimonial (patrón observaciones VIG-009 R1). Sin sello no hay
+// consentimiento acreditado (patrón custodia): rollback de la fila.
+router.post('/:activoId/consentimientos', requireJwt, requireRole('moderador', 'admin'), async (req: Request, res: Response) => {
+  const id = req.params.activoId;
+
+  let parsed: z.infer<typeof PatrimonioVivoConsentimientoSchema>;
+  try {
+    parsed = PatrimonioVivoConsentimientoSchema.parse(req.body);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ success: false, error: 'datos inválidos', details: error.issues });
+      return;
+    }
+    throw error;
+  }
+
+  try {
+    const activo = await prisma.activos.findUnique({ where: { id } });
+    if (activo === null) {
+      res.status(404).json({ success: false, error: 'activo no encontrado' });
+      return;
+    }
+    // Patrón VIG-009 R1: consentimientos SOLO sobre activos con ficha patrimonial (VIG-004).
+    const ficha = await prisma.activos_patrimonio.findUnique({ where: { activo_id: id } });
+    if (ficha === null) {
+      res.status(404).json({ success: false, error: 'el activo no tiene ficha patrimonial' });
+      return;
+    }
+
+    const custodioHash = seudonimo((res.locals.usuario as { id: string }).id);
+    const hash = createHash('sha256')
+      .update([custodioHash, id, parsed.firmante_rol, JSON.stringify(parsed.alcance), parsed.vigencia_desde].join('|'))
+      .digest('hex');
+
+    const existente = await prisma.patrimonio_consentimientos.findUnique({ where: { hash } });
+    if (existente !== null) {
+      res.json({ success: true, data: { consentimiento_id: existente.id, activo_id: id, duplicada: true } });
+      return;
+    }
+
+    const consentimiento = await prisma.patrimonio_consentimientos.create({
+      data: {
+        activo_id: id,
+        firmante_rol: parsed.firmante_rol,
+        alcances: parsed.alcance,
+        vigencia_desde: parsed.vigencia_desde,
+        vigencia_hasta: parsed.vigencia_hasta ?? null,
+        estado: 'vigente',
+        created_by_hash: custodioHash,
+        hash,
+      },
+    });
+
+    try {
+      await sellarEvento('patrimonio.consentido', {
+        activo_id: id,
+        consentimiento_id: consentimiento.id,
+        accion: 'otorgado',
+        firmante_rol: parsed.firmante_rol,
+        alcances: parsed.alcance,
+        vigencia_desde: parsed.vigencia_desde,
+        custodio_hash: custodioHash,
+      });
+    } catch (err) {
+      // Sin sello no hay consentimiento acreditado: rollback de la fila (patrón custodia).
+      await prisma.patrimonio_consentimientos.delete({ where: { id: consentimiento.id } }).catch(() => undefined);
+      console.error('[patrimonio] sellar consentimiento:', err instanceof Error ? err.message : String(err));
+      res.status(500).json({ success: false, error: 'fallo al sellar el consentimiento' });
+      return;
+    }
+
+    res.status(201).json({
+      success: true,
+      data: { consentimiento_id: consentimiento.id, activo_id: id, duplicada: false },
+    });
+  } catch (err) {
+    console.error('[patrimonio] consentimiento:', err instanceof Error ? err.message : String(err));
+    res.status(500).json({ success: false, error: 'fallo al registrar el consentimiento' });
+  }
+});
+
+// PATCH /api/patrimonio/:activoId/consentimientos/:id — retiro (DL-12):
+// transición vigente → revocado, sellada y con rollback. Revocable en
+// cualquier momento (gramática VIG-009 R3); jamás DELETE (ADR-038).
+router.patch('/:activoId/consentimientos/:consentimientoId', requireJwt, requireRole('moderador', 'admin'), async (req: Request, res: Response) => {
+  const id = req.params.activoId;
+  const cid = req.params.consentimientoId;
+
+  let parsed: z.infer<typeof PatrimonioVivoRetiroSchema>;
+  try {
+    parsed = PatrimonioVivoRetiroSchema.parse(req.body);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ success: false, error: 'datos inválidos', details: error.issues });
+      return;
+    }
+    throw error;
+  }
+
+  // Anti-PII (ADR-020 cond. 1, Ley 25.326): sobre el motivo del retiro —
+  // el retiro tampoco es un refugio de PII.
+  const pii = detectaPII(parsed.motivo ?? '');
+  if (pii) {
+    res.status(400).json({
+      error: 'payload rechazado: contiene datos personales identificables (' + pii + ') — ADR-020 cond. 1, Ley 25.326',
+    });
+    return;
+  }
+
+  try {
+    const consentimiento = await prisma.patrimonio_consentimientos.findFirst({
+      where: { id: cid, activo_id: id },
+    });
+    if (consentimiento === null) {
+      res.status(404).json({ success: false, error: 'consentimiento no encontrado' });
+      return;
+    }
+    if (consentimiento.estado !== 'vigente') {
+      res.status(409).json({ success: false, error: 'el consentimiento ya está revocado' });
+      return;
+    }
+
+    const revocado = await prisma.patrimonio_consentimientos.update({
+      where: { id: cid },
+      data: { estado: 'revocado', revocado_en: new Date(), motivo: parsed.motivo ?? null },
+    });
+
+    const custodioHash = seudonimo((res.locals.usuario as { id: string }).id);
+    try {
+      await sellarEvento('patrimonio.consentido', {
+        activo_id: id,
+        consentimiento_id: cid,
+        accion: 'revocado',
+        firmante_rol: revocado.firmante_rol,
+        custodio_hash: custodioHash,
+      });
+    } catch (err) {
+      // Rollback (R4/R15): sin sello no hay retiro acreditado.
+      await prisma.patrimonio_consentimientos
+        .update({ where: { id: cid }, data: { estado: 'vigente', revocado_en: null, motivo: null } })
+        .catch(() => undefined);
+      console.error('[patrimonio] sellar retiro:', err instanceof Error ? err.message : String(err));
+      res.status(500).json({ success: false, error: 'fallo al sellar el retiro' });
+      return;
+    }
+
+    res.json({ success: true, data: { consentimiento_id: cid, activo_id: id, estado: 'revocado' } });
+  } catch (err) {
+    console.error('[patrimonio] retiro:', err instanceof Error ? err.message : String(err));
+    res.status(500).json({ success: false, error: 'fallo al revocar el consentimiento' });
+  }
+});
+
+// GET /api/patrimonio/:activoId/consentimientos — bandeja pública anónima:
+// qué alcances se otorgaron, con qué rol firman y su estado. El portador NO
+// se identifica (Ley 25.326, DL-12). Nace honesta en 0: preparar el
+// instrumento no es simular otorgamientos (R15).
+router.get('/:activoId/consentimientos', async (req: Request, res: Response) => {
+  try {
+    const activo = await prisma.activos.findUnique({ where: { id: req.params.activoId } });
+    if (activo === null) {
+      res.status(404).json({ success: false, error: 'activo no encontrado' });
+      return;
+    }
+    const consentimientos = (await prisma.patrimonio_consentimientos.findMany({
+      where: { activo_id: activo.id },
+      orderBy: { created_at: 'asc' },
+      take: 100,
+    })) as ConsentimientoRow[];
+    res.json({
+      success: true,
+      data: consentimientos.map((c) => ({
+        id: c.id,
+        activo_id: c.activo_id,
+        firmante_rol: c.firmante_rol,
+        alcances: c.alcances,
+        vigencia_desde: c.vigencia_desde,
+        vigencia_hasta: c.vigencia_hasta,
+        estado: c.estado,
+        revocado_en: c.revocado_en,
+        motivo: c.motivo,
+        custodio_hash: c.created_by_hash,
+        created_at: c.created_at,
+      })),
+      count: consentimientos.length,
+      portador_nota: 'el portador no se identifica: la fila acredita el consentimiento y sus alcances, nunca a la persona (Ley 25.326, DL-12)',
+    });
+  } catch (err) {
+    console.error('[patrimonio] consentimientos:', err instanceof Error ? err.message : String(err));
+    res.status(500).json({ success: false, error: 'fallo al obtener los consentimientos' });
+  }
+});
+
 export default router;
+
