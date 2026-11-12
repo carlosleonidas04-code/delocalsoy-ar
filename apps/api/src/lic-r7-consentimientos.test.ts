@@ -71,6 +71,13 @@ describe.skipIf(!dbUp)('Consentimiento del portador (LIC-DLUI LIC-R7 — #450, �
   let activoSinFicha = ''; // fixture caucete SIN ficha (compuerta VIG-009 R1)
   let activoIglesia = ''; // activo del seed (READ-ONLY): capilla de iglesia
 
+  // Tokens con login ÚNICO por email: el rate limit de identidad (R5a, #101:
+  // 5 intentos / 300 s por ip + hash de email, contadores en Redis COMPARTIDO
+  // entre las suites paralelas de CI) bloquea logins repetidos del mismo email
+  // dentro de la suite — el JWT vive 15 min y se reutiliza entre tests.
+  let modToken = '';
+  let adminToken = '';
+
   beforeAll(async () => {
     // Capital READ-ONLY: los fixtures de escritura viven en caucete.
     activoIglesia = (
@@ -165,7 +172,7 @@ describe.skipIf(!dbUp)('Consentimiento del portador (LIC-DLUI LIC-R7 — #450, �
   });
 
   it('alta granular: moderador registra consentimiento literal true → 201 vigente + sello patrimonio.consentido accion otorgado', async () => {
-    const token = await rolYLoguear('licr7-' + ts + '-mod@example.test', 'moderador');
+    const token = (modToken = await rolYLoguear('licr7-' + ts + '-mod@example.test', 'moderador'));
     const payload = payloadConsentimiento();
 
     const res = await fetch(base + '/api/patrimonio/' + activoConFicha + '/consentimientos', {
@@ -199,11 +206,10 @@ describe.skipIf(!dbUp)('Consentimiento del portador (LIC-DLUI LIC-R7 — #450, �
   });
 
   it('compuerta ADR-027: alcance vacío → 400, false → 400, declaracion ausente → 400 (jamás pre-marcado)', async () => {
-    const token = await fetch(base + '/api/auth/login', {
-      method: 'POST',
-      headers: jsonHeaders,
-      body: JSON.stringify({ email: 'licr7-' + ts + '-mod@example.test', password: PASSWORD }),
-    }).then((r) => r.json().then((b: any) => b.data.token as string));
+    // Token del moderador del alta (login ÚNICO por email — R5a): reutilizado
+    // entre tests, el JWT vive 15 min.
+    const token = modToken;
+    expect(token, 'token del moderador (login único del test de alta)').toBeTruthy();
 
     const base_ = payloadConsentimiento();
     const vacio = await fetch(base + '/api/patrimonio/' + activoConFicha + '/consentimientos', {
@@ -236,11 +242,10 @@ describe.skipIf(!dbUp)('Consentimiento del portador (LIC-DLUI LIC-R7 — #450, �
   });
 
   it('idempotencia: mismo registrante + mismo payload → duplicada true sin segunda fila', async () => {
-    const token = await fetch(base + '/api/auth/login', {
-      method: 'POST',
-      headers: jsonHeaders,
-      body: JSON.stringify({ email: 'licr7-' + ts + '-mod@example.test', password: PASSWORD }),
-    }).then((r) => r.json().then((b: any) => b.data.token as string));
+    // Token del moderador del alta (login ÚNICO por email — R5a): reutilizado
+    // entre tests, el JWT vive 15 min.
+    const token = modToken;
+    expect(token, 'token del moderador (login único del test de alta)').toBeTruthy();
 
     const res = await fetch(base + '/api/patrimonio/' + activoConFicha + '/consentimientos', {
       method: 'POST',
@@ -258,7 +263,7 @@ describe.skipIf(!dbUp)('Consentimiento del portador (LIC-DLUI LIC-R7 — #450, �
 
   it('integridad custodio_hash: sha32 del registrante, distinto por registrante, bandeja sin PII', async () => {
     const emailAdmin = 'licr7-' + ts + '-admin@example.test';
-    const token = await rolYLoguear(emailAdmin, 'admin');
+    const token = (adminToken = await rolYLoguear(emailAdmin, 'admin'));
 
     // Mismo payload, DISTINTO registrante → distinto hash → segunda fila.
     const res = await fetch(base + '/api/patrimonio/' + activoConFicha + '/consentimientos', {
@@ -298,11 +303,10 @@ describe.skipIf(!dbUp)('Consentimiento del portador (LIC-DLUI LIC-R7 — #450, �
   });
 
   it('retiro: transición sellada vigente → revocado con sello accion revocado, 409 al repetir (jamás DELETE)', async () => {
-    const token = await fetch(base + '/api/auth/login', {
-      method: 'POST',
-      headers: jsonHeaders,
-      body: JSON.stringify({ email: 'licr7-' + ts + '-mod@example.test', password: PASSWORD }),
-    }).then((r) => r.json().then((b: any) => b.data.token as string));
+    // Token del moderador del alta (login ÚNICO por email — R5a): reutilizado
+    // entre tests, el JWT vive 15 min.
+    const token = modToken;
+    expect(token, 'token del moderador (login único del test de alta)').toBeTruthy();
 
     const filas = (await prisma.patrimonio_consentimientos.findMany({
       where: { activo_id: activoConFicha },
@@ -371,11 +375,10 @@ describe.skipIf(!dbUp)('Consentimiento del portador (LIC-DLUI LIC-R7 — #450, �
   });
 
   it('compuerta VIG-009 R1: activo sin ficha patrimonial (VIG-004) → 404', async () => {
-    const token = await fetch(base + '/api/auth/login', {
-      method: 'POST',
-      headers: jsonHeaders,
-      body: JSON.stringify({ email: 'licr7-' + ts + '-mod@example.test', password: PASSWORD }),
-    }).then((r) => r.json().then((b: any) => b.data.token as string));
+    // Token del moderador del alta (login ÚNICO por email — R5a): reutilizado
+    // entre tests, el JWT vive 15 min.
+    const token = modToken;
+    expect(token, 'token del moderador (login único del test de alta)').toBeTruthy();
 
     const res = await fetch(base + '/api/patrimonio/' + activoSinFicha + '/consentimientos', {
       method: 'POST',
@@ -388,11 +391,10 @@ describe.skipIf(!dbUp)('Consentimiento del portador (LIC-DLUI LIC-R7 — #450, �
   });
 
   it('anti-PII (ADR-020 cond. 1, Ley 25.326): motivo del retiro con email → 400 y el consentimiento queda vigente', async () => {
-    const token = await fetch(base + '/api/auth/login', {
-      method: 'POST',
-      headers: jsonHeaders,
-      body: JSON.stringify({ email: 'licr7-' + ts + '-mod@example.test', password: PASSWORD }),
-    }).then((r) => r.json().then((b: any) => b.data.token as string));
+    // Token del moderador del alta (login ÚNICO por email — R5a): reutilizado
+    // entre tests, el JWT vive 15 min.
+    const token = modToken;
+    expect(token, 'token del moderador (login único del test de alta)').toBeTruthy();
 
     const filas = (await prisma.patrimonio_consentimientos.findMany({
       where: { activo_id: activoConFicha, estado: 'vigente' },
