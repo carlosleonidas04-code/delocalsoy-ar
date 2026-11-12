@@ -134,7 +134,7 @@ async function estadoSalud() {
 
   let publicados = 0;
   let total = 0;
-  const nodosOut = clavesNodo.map((nodo_key) => ({
+  const nodosOut = clavesNodo.map((nodo_key: string) => ({
     nodo_key,
     pares: SALUD_INDICADORES.map((ind) => {
       total += 1;
