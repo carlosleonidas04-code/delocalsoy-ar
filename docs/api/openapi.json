@@ -987,3 +987,1555 @@
         }
       },
       "post": {
+        "summary": "NODO-CAU R2 (#138/#147): alta de ingesta curada — requireRole admin (decisión DH 2026-10-15); NC-EV-09: procedencia completa obligatoria (fuente del catálogo, capa/servicio, fecha de acceso y de corte, CRS origen/normalizado, escala/precisión; id externo y transformaciones opcionales); anti-PII server-side antes de persistir (ADR-020); autor = pseudónimo sha256(usuario_id) sin PII (Ley 25.326); idempotencia por hash único; sello ingesta.creada en events_raw con rollback si falla",
+        "responses": {
+          "200": {
+            "description": "Ingesta idéntica ya existente (idempotente: true)"
+          },
+          "201": {
+            "description": "Ingesta creada (estado: recibido) + sello en events_raw"
+          },
+          "400": {
+            "description": "Datos inválidos (contrato Zod, NC-EV-09) o PII detectada — sin eco del valor"
+          },
+          "401": {
+            "description": "Bearer token ausente o inválido"
+          },
+          "403": {
+            "description": "Rol insuficiente (requiere admin)"
+          },
+          "404": {
+            "description": "Fuente no encontrada en el catálogo de procedencia (honesto, R15)"
+          },
+          "500": {
+            "description": "Error interno sanitizado (R5a, #100)"
+          },
+          "503": {
+            "description": "Sin JWT_SECRET (identidad cerrada, fail-closed)"
+          }
+        }
+      }
+    },
+    "/api/ingestas/{id}": {
+      "get": {
+        "summary": "NODO-CAU R2 (#138/#147): ficha pública de una ingesta publicada; el pipeline en curso no se publica (404 sin eco — honesto, R15)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK — envelope {success, data}; procedencia completa (fuente, fechas, CRS, escala/precisión, transformaciones)"
+          },
+          "404": {
+            "description": "Ingesta no encontrada o no publicada (honesto, R15)"
+          },
+          "500": {
+            "description": "Error interno sanitizado (R5a, #100)"
+          }
+        }
+      }
+    },
+    "/api/ingestas/{id}/estado": {
+      "patch": {
+        "summary": "NODO-CAU R2 (#138/#147): avance del pipeline de procedencia — requireRole admin (decisión DH 2026-10-15); solo hacia adelante: recibido → validado_tecnicamente → validado_territorialmente → publicado; salto inválido 400, mismo estado 409; sello ingesta.estado_cambiado en events_raw con rollback si falla",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Estado actualizado + sello en events_raw"
+          },
+          "400": {
+            "description": "Transición inválida, contrato Zod o PII en el motivo — sin eco del valor"
+          },
+          "401": {
+            "description": "Bearer token ausente o inválido"
+          },
+          "403": {
+            "description": "Rol insuficiente (requiere admin)"
+          },
+          "404": {
+            "description": "Ingesta no encontrada (honesto, R15)"
+          },
+          "409": {
+            "description": "La ingesta ya está en ese estado (sin transición no hay evento)"
+          },
+          "500": {
+            "description": "Error interno sanitizado (R5a, #100)"
+          },
+          "503": {
+            "description": "Sin JWT_SECRET (identidad cerrada, fail-closed)"
+          }
+        }
+      }
+    },
+    "/api/me/residencia": {
+      "put": {
+        "summary": "ARTEFACTOS-ROLES AR1 (#400, épica #399): auto-declaración de residencia — el vecino es un ATRIBUTO de la cuenta ciudadana, NO un rol (decisión DH 2026-11-06). Solo la clave de un subnodo REAL del vocabulario + timestamp: sin verificación (R15), sin domicilio jamás (Ley 25.326 / ADR-027). La re-declaración renueva el atributo y sella de nuevo (append-only: el historial vive en events_raw). Sello 'residencia.declarada' SIN PII (solo subnodo_key + pseudónimo sha256 truncado) con rollback si falla (R4/R15). El visitante es solo lectura v0.2: 403.",
+        "responses": {
+          "200": {
+            "description": "Atributo declarado — envelope {success, data: {residencia_subnodo_key, residencia_declarada_en}} + sello residencia.declarada"
+          },
+          "400": {
+            "description": "Datos inválidos (ResidenciaAltaSchema) / subnodo inexistente en el vocabulario (R15)"
+          },
+          "401": {
+            "description": "Bearer token ausente o inválido"
+          },
+          "403": {
+            "description": "Solo ciudadano|moderador|admin declara residencia — el visitante es solo lectura (v0.2)"
+          },
+          "429": {
+            "description": "Demasiados intentos (header Retry-After)"
+          },
+          "500": {
+            "description": "Error interno sanitizado (AUD-06, #100)"
+          }
+        }
+      }
+    },
+    "/api/mediadores": {
+      "get": {
+        "summary": "NODO-VIG-3 VIG-011 (#378, épica #377): registro comunitario de mediadores del AMC — lectura pública anónima de vigentes con filtro ?nodo=, sin PII (alias slug + rol visible + aval comunitario asamblea|comision_vecinal; nunca nombre ni contacto — la devolución al vecino va por el canal de origen con el mediador). Nace VACÍO (R15): la asamblea aún no ratificó mediadores — conteo 0 honesto, ninguna fila se siembra.",
+        "parameters": [
+          {
+            "name": "nodo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "capital",
+                "caucete",
+                "iglesia"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK — envelope {success, data: [{key, label, aval, nodo_key}], count}"
+          },
+          "500": {
+            "description": "Error interno sanitizado (AUD-06, #100)"
+          }
+        }
+      },
+      "post": {
+        "summary": "NODO-VIG-3 VIG-011 (#378): registro de mediador SOLO admin (ADR-031) — alias comunitario único (409 si existe) + aval (asamblea | comision_vecinal: comunitario, no gubernamental, ratificado por la DH). Sello mediador.registrado en events_raw sin PII, con rollback si falla (R4/R15). El mediador carga las planillas papel y los mensajes del número único de WhatsApp de la asamblea SIN bot (R15 — ingesta humana); el alta AMC valida mediador_ref contra este registro (400 si no está vigente).",
+        "responses": {
+          "201": {
+            "description": "Mediador registrado con aval vigente + sello mediador.registrado"
+          },
+          "400": {
+            "description": "Datos inválidos (MediadorAltaSchema: nodo_key, key slug >= 4, label, aval)"
+          },
+          "401": {
+            "description": "Bearer token ausente o inválido"
+          },
+          "403": {
+            "description": "Solo admin registra mediadores (ADR-031)"
+          },
+          "409": {
+            "description": "Ya existe un mediador con ese alias comunitario"
+          },
+          "500": {
+            "description": "Error interno sanitizado (AUD-06, #100)"
+          }
+        }
+      }
+    },
+    "/api/nodos": {
+      "get": {
+        "summary": "Vocabulario CORE-003 (EV-029): listar nodos federados con población INDEC y centro",
+        "responses": {
+          "200": {
+            "description": "OK — envelope {success, data, count}"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      }
+    },
+    "/api/nodos/{key}": {
+      "get": {
+        "summary": "Un nodo federado por key (capital | caucete | iglesia)",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK — envelope {success, data}"
+          },
+          "404": {
+            "description": "Nodo no encontrado (honesto, R15)"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      }
+    },
+    "/api/nodos/{key}/accesibilidad": {
+      "get": {
+        "summary": "NODO-CAPITAL NCAP-R5 (#157, épica #152): dashboard público de accesibilidad peatonal del nodo — conteos CON cobertura y fecha, NUNCA puntajes globales (R5/ADR-036): features del dominio movilidad (accessibility + sidewalks) por capa y por fuente con desglose por estado, reportes por categoría, tramos de vereda priorizados vs. relevados (los 18 declarados del anuncio de repavimentación microcentro 2026 — fuente repavimentacion_microcentro_2026 — son anuncio ≠ obra: estado por tramo exige verificación municipal, R15), observaciones de accesibilidad ingresadas/revisadas/corroboradas/disputadas (estado de revisión por registro) e hitos con ficha y fecha de última revisión",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK — envelope {success, data}; data: {nodo_key, generado_en, regla, features_por_capa[], features_por_fuente[], reportes_por_categoria[], tramos_vereda {priorizados, con_relevamiento, cobertura, fecha_corte, cautela}, observaciones {ingresadas, revisadas, corroboradas, disputadas, ilustrativas, fecha_corte}, hitos[]}"
+          },
+          "404": {
+            "description": "Nodo no encontrado (honesto, R15)"
+          },
+          "500": {
+            "description": "Error interno sanitizado (AUD-06, #100)"
+          }
+        }
+      }
+    },
+    "/api/nodos/{key}/ask": {
+      "post": {
+        "summary": "NODO-VIG VIG-006 (NVIG-R8 #188, épica #167): consulta territorial ética — recuperación full-text nativa PostgreSQL (español) sobre rag_index, SIN LLM: interpretación y sugerencia son PLANTILLAS AUTORIZADAS por dominio dominante (patrimonial|productivo_rural|turistico|territorial — nada generado); sin fragmentos → null honesto (R15); confidence derivado de la cobertura de fuentes; toda respuesta nace human_review 'pending' (revisión humana habilitada); filtros opcionales subnodo y n1 (capital N1 primaria de activos aprobados no restricted); restricted y sensible JAMÁS indexados ni recuperados (ADR-036, VIG-004)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "pregunta"
+                ],
+                "properties": {
+                  "pregunta": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 300
+                  },
+                  "subnodo": {
+                    "type": "string"
+                  },
+                  "n1": {
+                    "type": "string",
+                    "enum": [
+                      "productivo_rural",
+                      "turistico",
+                      "patrimonial",
+                      "civico_social"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK — envelope {success, data}; data: {nodo_key, pregunta, dato (fragmentos autorizados con fuentes), dominio, interpretacion, sugerencia (plantillas o null), fuentes deduplicadas, confidence, recovered, human_review: 'pending'}"
+          },
+          "400": {
+            "description": "Pregunta inválida (3-300 caracteres; subnodo slug; n1 de la taxonomía)"
+          },
+          "404": {
+            "description": "Nodo no encontrado (honesto, R15)"
+          },
+          "500": {
+            "description": "Error interno sanitizado (R5a, #100)"
+          }
+        }
+      }
+    },
+    "/api/nodos/{key}/capas": {
+      "get": {
+        "summary": "Catálogo de capas del nodo",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK — envelope {success, data, count}"
+          },
+          "404": {
+            "description": "Nodo no encontrado"
+          }
+        }
+      }
+    },
+    "/api/nodos/{key}/categorias": {
+      "get": {
+        "summary": "Categorías de reporte del nodo (layer = capa.key)",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK — envelope {success, data, count}"
+          },
+          "404": {
+            "description": "Nodo no encontrado"
+          }
+        }
+      }
+    },
+    "/api/nodos/{key}/features": {
+      "get": {
+        "summary": "Features del nodo (domain heredado de la capa, lat/lng, is_synthetic)",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK — envelope {success, data, count}"
+          },
+          "404": {
+            "description": "Nodo no encontrado"
+          }
+        }
+      }
+    },
+    "/api/nodos/{key}/infraestructura-movilidad": {
+      "get": {
+        "summary": "NODO-VIG-3 VIG-013 (#382, épica #377): dashboard público «Infraestructura y movilidad» del nodo (patrón NCAP-R5 #157) — conteos CON cobertura y fecha, NUNCA puntajes globales (R5/ADR-036), lectura pública anónima SIN migración ni tabla nueva. Secciones: obras viales por estado del ciclo (declared/in_execution/completed — anuncio ≠ obra, R15) y por fuente con km_ejecucion null honesto (los km de los tramos no están estructurados en fuente verificada — null ≠ 0); puntos críticos del AMC VIG-011 por estado de revisión con lista id/titulo/estado/observado_at SIN lat/lng (ADR-036: el dashboard cuenta, no dibuja; community_validated ≠ verificado — la comunidad corrobora, NUNCA verifica); paradas de transporte (capa parada_transporte nace VACÍA, R15 — sin padrón verificado no se siembran paradas; fuente secundaria/provisional ADR-035); cobertura SOS (red verificada del Paso Agua Negra VIG-010 + 3 brechas por tramo DECLARADAS por el trabajo territorial — ADR-027, jamás padrón oficial); resumen del tablero de pedidos DPV VIG-012 («X de 15 presentados · Y respondidos (corte …)») y 6 KPIs VIG-013 leídos de kpi_snapshots (patrón VIG-003: materializados por el consumidor vig003-kpi — sin corrida → 0 snapshots honestos, R15).",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK — envelope {success, data: {nodo_key, generado_en, regla, obras {total, por_estado, por_fuente[], km_ejecucion, km_nota, fecha_corte, cautela}, puntos_criticos {total, por_estado, criticos[], fecha_corte, cautela}, paradas_transporte {total, por_estado, cobertura, fuente, cautela}, cobertura_sos {red_por_estado, brechas_declaradas[], fecha_corte, cautela}, pedidos_dpv {esperados_documento, presentados, respondidos, cobertura, fecha_corte}, kpis {total, snapshots[], fecha_corte, nota}}}"
+          },
+          "404": {
+            "description": "Nodo no encontrado (honesto, R15)"
+          },
+          "500": {
+            "description": "Error interno sanitizado (AUD-06, #100)"
+          }
+        }
+      }
+    },
+    "/api/nodos/{key}/kpis": {
+      "get": {
+        "summary": "NODO-VIG VIG-003 (NVIG-R3 #182, épica #167): KPIs materializados del nodo — set honesto v1 de 9 KPIs re-computado desde el dominio por el consumidor vig003-kpi del worker (upsert idempotente por nodo_key+kpi_key en kpi_snapshots); agregados sin PII (Ley 25.326), restricted excluida del cálculo (ADR-036), cobertura v1 null honesto (R15); count 0 = nodo sin snapshots aún",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK — envelope {success, data, count}; filas kpi_snapshots (kpi_key, valor, detalles, computed_at)"
+          },
+          "404": {
+            "description": "Nodo no encontrado (honesto, R15)"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      }
+    },
+    "/api/nodos/{key}/observatorio": {
+      "get": {
+        "summary": "LIC-DLUI LIC-R1 (LIC-01 #457, épica #448): panel público del observatorio de indicadores del nodo — los 5 KPIs del observatorio (set LIC-01: reportes_por_estado, fuentes_ingestadas_por_nodo, capas_con_metadatos, cobertura_reportes_distrito + set LIC-02: tramos_con_relevamiento — accesibilidad del anuncio LIC-R2 #453, conteo CON cobertura «0 de 18» honesto DL-5, jamás puntajes globales de accesibilidad ni de personas) leídos de kpi_snapshots (patrón VIG-003: los materializa el consumidor vig003-kpi — sin corrida del worker → 0 honesto, R15), la ficha metodológica de cada clave (DL-1: fórmula+fuente+cobertura, patrón IDERA v2.0) y las familias nuevas del temario (segregación socioespacial, género y cuidados, salud urbana, vivienda y hábitat) declaradas sin_fuente_ingestada con valor null (DL-1: null ≠ 0 — R15: sin fuente ingestado el indicador NO se computa, jamás se estima). Conteos CON cobertura y fecha, NUNCA puntajes globales (R5/ADR-036). Lectura pública anónima; 404 nodo inexistente (R15).",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK — envelope {success, data: {nodo_key, generado_en, regla, kpis: {total, snapshots: [{kpi_key, valor, detalles, computed_at}], fecha_corte, nota}, fichas_metodologicas: [{clave, nombre, formula, fuente, cobertura}], familias_sin_fuente_ingestada: [{familia, estado, valor, cautela}]}}"
+          },
+          "404": {
+            "description": "Nodo no encontrado"
+          },
+          "500": {
+            "description": "Error interno sanitizado (AUD-06, #100)"
+          }
+        }
+      }
+    },
+    "/api/nodos/{key}/reportes": {
+      "get": {
+        "summary": "Reportes del nodo (flujo received → resolved)",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK — envelope {success, data, count}"
+          },
+          "404": {
+            "description": "Nodo no encontrado"
+          }
+        }
+      }
+    },
+    "/api/nodos/{key}/subnodos": {
+      "get": {
+        "summary": "NODO-VIG VIG-001 (#171, épica #167): jerarquía territorial del nodo — distritos, parajes, subparajes y localidades INDEC del primer lote ratificado (34 en iglesia); filtros ?type=district|paraje|subparaje|locality y ?parent=<key>|none (none = hijos directos del nodo)",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "parent",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK — envelope {success, data, count}; lat/lng solo con punto público (BAHRA cod_ase | Georef id)"
+          },
+          "400": {
+            "description": "Filtros inválidos (type/parent)"
+          },
+          "404": {
+            "description": "Nodo no encontrado (honesto, R15)"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      }
+    },
+    "/api/operativa/{activoId}": {
+      "get": {
+        "summary": "NODO-VIG VIG-005 (NVIG-R7 #174): operativa pública del activo — horario, temporada de picos, capacidad honesta (capacity_status unknown → null, R15: distinguido ≠ habilitado) y habilitación con verificación; activo restricted → 404 sin eco (ADR-036)",
+        "parameters": [
+          {
+            "name": "activoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK — envelope {success, data}; horario, temporada, capacidad y habilitación del activo — honesto, nunca inventado (R15)"
+          },
+          "404": {
+            "description": "Activo no encontrado, sin operativa o restricted — 404 sin eco (honesto, ADR-036/R15)"
+          },
+          "500": {
+            "description": "Error interno sanitizado (R5a, #100)"
+          }
+        }
+      }
+    },
+    "/api/oportunidades": {
+      "get": {
+        "summary": "NODO-CAPITAL NCAP-R6 (#158): lectura pública y anónima de oportunidades de desarrollo local (Banco de Potencialidades, Bloque 9); filtros ?nodo= ?tipo= ?estado= (nunca admite discarded) y ?subnodo=; sin recorte espacial — la oportunidad no tiene geometría propia (contexto territorial por nodo+subnodo); NCAP-R6-ext #165: paginación ?limit= (1-100, default 20) y ?offset= (>=0, default 0) con el total de la consulta en el header X-DELocalSoy-Total-Count",
+        "parameters": [
+          {
+            "name": "nodo",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tipo",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "estado",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "subnodo",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK — envelope {success, data, count, total}; total de la consulta en header X-DELocalSoy-Total-Count"
+          },
+          "400": {
+            "description": "nodo/tipo/estado/subnodo inválidos o paginación inválida (limit 1-100, offset >= 0)"
+          },
+          "500": {
+            "description": "Error interno sanitizado (R5a, #100)"
+          }
+        }
+      },
+      "post": {
+        "summary": "NODO-CAPITAL NCAP-R6 (#158): registro ciudadano autenticado (requireJwt) — la oportunidad nace detected con evidencia obligatoria; autor = pseudónimo sha256(usuario_id) sin PII (Ley 25.326); actores nombrados exigen consentimiento confirmado; anti-PII server-side antes de persistir (ADR-020); idempotencia por hash único (mismo ciudadano+tipo+título+descripción+territorio → 200 idempotente); sello oportunidad.propuesta en events_raw con rollback si falla",
+        "responses": {
+          "200": {
+            "description": "Oportunidad idéntica ya existente (idempotente: true)"
+          },
+          "201": {
+            "description": "Oportunidad creada (estado: detected) + sello en events_raw"
+          },
+          "400": {
+            "description": "Datos inválidos (contrato Zod: evidencia requerida, consentimiento de actores nombrados) o PII detectada — sin eco del valor"
+          },
+          "401": {
+            "description": "Bearer token ausente o inválido"
+          },
+          "500": {
+            "description": "Error interno sanitizado (R5a, #100)"
+          },
+          "503": {
+            "description": "Sin JWT_SECRET (identidad cerrada, fail-closed)"
+          }
+        }
+      }
+    },
+    "/api/oportunidades/{id}": {
+      "get": {
+        "summary": "NODO-CAPITAL NCAP-R6 (#158): ficha pública de una oportunidad; 404 si no existe o fue descartada (honesto, R15)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK — envelope {success, data}"
+          },
+          "404": {
+            "description": "Oportunidad no encontrada o descartada"
+          },
+          "500": {
+            "description": "Error interno sanitizado (R5a, #100)"
+          }
+        }
+      }
+    },
+    "/api/oportunidades/{id}/conexiones": {
+      "get": {
+        "summary": "NODO-CAPITAL NCAP-R6-ext (#165): lectura pública y anónima de los vínculos entre actores de una oportunidad publicada ('discarded' no existe para la lectura pública); data: filas de oportunidad_conexiones sin PII (actores con consentimiento confirmado, autor = pseudónimo sha256)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK — envelope {success, data, count}"
+          },
+          "404": {
+            "description": "Oportunidad no encontrada (honesto, R15)"
+          },
+          "500": {
+            "description": "Error interno sanitizado (R5a, #100)"
+          }
+        }
+      },
+      "post": {
+        "summary": "NODO-CAPITAL NCAP-R6-ext (#165): registro ciudadano autenticado (requireJwt) de un vínculo oferta|demanda|colaboracion entre dos actores de una oportunidad con consentimiento explícito literal(true) — el refine del contrato hace imposible default(true) (ADR-027, Ley 25.326) —; anti-PII server-side sobre TODO el payload antes de persistir (ADR-020 cond. 1, sin eco del valor); idempotencia por hash único (mismo ciudadano+oportunidad+actores+tipo_vinculo → 200 idempotente: true); sello oportunidad.conexion_creada en events_raw con rollback si falla",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Vínculo idéntico ya existente (idempotente: true)"
+          },
+          "201": {
+            "description": "Conexión creada (consentimiento_confirmado: true) + sello en events_raw"
+          },
+          "400": {
+            "description": "Datos inválidos (contrato Zod: consentimiento explícito obligatorio, tipo de vínculo) o PII detectada — sin eco del valor"
+          },
+          "401": {
+            "description": "Bearer token ausente o inválido"
+          },
+          "404": {
+            "description": "Oportunidad no encontrada (honesto, R15)"
+          },
+          "500": {
+            "description": "Error interno sanitizado (R5a, #100)"
+          },
+          "503": {
+            "description": "Sin JWT_SECRET (identidad cerrada, fail-closed)"
+          }
+        }
+      }
+    },
+    "/api/oportunidades/{id}/estado": {
+      "patch": {
+        "summary": "NODO-CAPITAL NCAP-R6 (#158): moderación del ciclo de vida — requireRole moderador|admin; matriz de transiciones detected→under_review→validated→prioritized→in_development→active→implemented (+paused/discarded/archived; 400 salto inválido); sello oportunidad.estado_cambiado (estado_anterior, estado, motivo, moderador_hash) en events_raw con rollback si falla",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Estado actualizado + sello en events_raw"
+          },
+          "400": {
+            "description": "Transición inválida (matriz del ciclo de vida), contrato Zod o PII en el motivo — sin eco del valor"
+          },
+          "401": {
+            "description": "Bearer token ausente o inválido"
+          },
+          "403": {
+            "description": "Rol insuficiente (requiere moderador|admin)"
+          },
+          "404": {
+            "description": "Oportunidad no encontrada (honesto, R15)"
+          },
+          "409": {
+            "description": "La oportunidad ya está en ese estado (sin transición no hay evento)"
+          },
+          "500": {
+            "description": "Error interno sanitizado (R5a, #100)"
+          },
+          "503": {
+            "description": "Sin JWT_SECRET (identidad cerrada, fail-closed)"
+          }
+        }
+      }
+    },
+    "/api/oportunidades/{id}/evidencia": {
+      "patch": {
+        "summary": "NODO-CAPITAL NCAP-R6-ext (#165): veredicto de moderación sobre la evidencia (requireRole moderador|admin): validationStatus corroborated|reviewed habilita el gate de evidencia del ciclo de vida (avanzar a validated/active/implemented exige evidencia corroborated|reviewed — sin veredicto, el avance es un salto epistémico); 'pending' es el default honesto del alta — el autor nunca auto-corrobora (R15); sello oportunidad.evidencia_validada (validation_status, motivo, moderador_hash) en events_raw con rollback si falla",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Evidencia actualizada (validationStatus corroborated|reviewed) + sello en events_raw"
+          },
+          "400": {
+            "description": "Datos inválidos (contrato Zod: solo corroborated|reviewed) o PII en el motivo — sin eco del valor"
+          },
+          "401": {
+            "description": "Bearer token ausente o inválido"
+          },
+          "403": {
+            "description": "Rol insuficiente (requiere moderador|admin)"
+          },
+          "404": {
+            "description": "Oportunidad no encontrada (honesto, R15)"
+          },
+          "500": {
+            "description": "Error interno sanitizado (R5a, #100)"
+          },
+          "503": {
+            "description": "Sin JWT_SECRET (identidad cerrada, fail-closed)"
+          }
+        }
+      }
+    },
+    "/api/oportunidades/{id}/scoring": {
+      "patch": {
+        "summary": "NODO-CAPITAL NCAP-R6-ext (#165): scoring territorial declarado por moderación (requireRole moderador|admin): niveles cualitativos territorial_impact|feasibility|urgency baja|media|alta CON método obligatorio (min 10) y fuente opcional (ADR-035 — interpretación con método, nunca un puntaje «del territorio»); anti-PII sobre TODO el payload; sello oportunidad.scoring_declarado (niveles + moderador_hash) en events_raw con rollback si falla",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoring persistido (con método declarado) + sello en events_raw"
+          },
+          "400": {
+            "description": "Datos inválidos (contrato Zod: método obligatorio, ADR-035) o PII detectada — sin eco del valor"
+          },
+          "401": {
+            "description": "Bearer token ausente o inválido"
+          },
+          "403": {
+            "description": "Rol insuficiente (requiere moderador|admin)"
+          },
+          "404": {
+            "description": "Oportunidad no encontrada (honesto, R15)"
+          },
+          "500": {
+            "description": "Error interno sanitizado (R5a, #100)"
+          },
+          "503": {
+            "description": "Sin JWT_SECRET (identidad cerrada, fail-closed)"
+          }
+        }
+      }
+    },
+    "/api/oportunidades/stats/resumen": {
+      "get": {
+        "summary": "NODO-CAPITAL NCAP-R6-ext (#165): resumen público y anónimo del Banco de Potencialidades — totales por estado y por tipo sobre lo publicado ('discarded' nunca entra en el conteo) y tasa de corroboración de evidencia (cobertura de registros corroborated|reviewed sobre el total publicado, NUNCA un «estado del territorio» — R5/ADR-035); sin PII",
+        "responses": {
+          "200": {
+            "description": "OK — envelope {success, data: {total_publicado, por_estado, por_tipo, evidencia: {corroboradas, revisadas, tasa_corroboracion}}}"
+          },
+          "500": {
+            "description": "Error interno sanitizado (R5a, #100)"
+          }
+        }
+      }
+    },
+    "/api/patrimonio/{activoId}": {
+      "get": {
+        "summary": "NODO-VIG VIG-004 (NVIG-R6 #173, épica #167): ficha patrimonial pública del activo — declaratoria (norma + fuente), estado de conservación, reglas de acceso con fuente, punto público de acceso y sensible_status honesto (sin_relevamiento → null, R15); NUNCA expone sensible ni sensible_nota (ADR-036); el activo restricted publica la ficha (la declaratoria es registro público) sin el punto propio del activo",
+        "parameters": [
+          {
+            "name": "activoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK — envelope {success, data}; ficha: declaratoria, conservación, reglas de acceso, punto público de acceso, sensible_status; NUNCA sensible ni sensible_nota (ADR-036); sin punto propio si el activo es restricted"
+          },
+          "404": {
+            "description": "Activo no encontrado o sin ficha patrimonial (honesto, R15)"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      },
+      "patch": {
+        "summary": "NODO-VIG VIG-004 (NVIG-R6 #173): custodia patrimonial — requireRole moderador|admin; upsert de la ficha (se crea si no existe); transición de visibilidad del activo (public|generalized|restricted, ADR-036) en la misma escritura; anti-PII sobre todo texto (sin eco del valor); sello patrimonio.custodiado en events_raw (custodio_hash sha32, sin PII) con rollback si falla",
+        "parameters": [
+          {
+            "name": "activoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ficha patrimonial actualizada (o creada) + visibilidad del activo sincronizada + sello en events_raw"
+          },
+          "400": {
+            "description": "Datos inválidos (contrato Zod) o PII detectada — sin eco del valor"
+          },
+          "401": {
+            "description": "Bearer token ausente o inválido"
+          },
+          "403": {
+            "description": "Rol insuficiente (requiere moderador|admin)"
+          },
+          "404": {
+            "description": "Activo no encontrado (honesto, R15)"
+          },
+          "500": {
+            "description": "Error interno sanitizado (R5a, #100)"
+          },
+          "503": {
+            "description": "Sin JWT_SECRET (identidad cerrada, fail-closed)"
+          }
+        }
+      }
+    },
+    "/api/patrimonio/{activoId}/observaciones": {
+      "get": {
+        "summary": "NODO-VIG VIG-009 (#241, épica #239): bandeja pública append-only de observaciones de estado patrimonial — anónima; cada observación con fecha, checklist de 5 dimensiones (grietas, cornisas, techos, maderos, muros), evidencia con procedencia ADR-035 y observador como hash pseudónimo sha256 truncado sin PII (Ley 25.326, ADR-027); el estado de conservación global se declara SIEMPRE no verificado aquí — la observación es testimonio, jamás diagnóstico (R15): solo un informe técnico oficial acredita estado",
+        "parameters": [
+          {
+            "name": "activoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK — envelope {success, data, count, estado_conservacion_global (SIEMPRE null), estado_conservacion_nota}; data: observaciones (id, activo_id, fecha_observacion, checklist, nota, evidencia, created_by_hash, created_at)"
+          },
+          "404": {
+            "description": "Activo no encontrado"
+          },
+          "500": {
+            "description": "Error interno sanitizado (R5a, #100)"
+          }
+        }
+      },
+      "post": {
+        "summary": "NODO-VIG VIG-009 (#241, épica #239): alta ciudadana autenticada (requireJwt) de observación de estado patrimonial append-only, SOLO sobre activos con ficha patrimonial VIG-004; testimonio del EDIFICIO, nunca de personas — anti-PII sobre nota y evidencia (ADR-020 cond. 1, Ley 25.326); autor como hash pseudónimo sha256 truncado; idempotencia por hash único (autor|activo|fecha|checklist|nota) — la duplicada responde 200 duplicada:true sin nueva fila ni sello; sello patrimonio.observado en events_raw con rollback: sin sello no hay observación acreditada (ADR-032); el estado de conservación global de la ficha NO cambia por observaciones (R15)",
+        "parameters": [
+          {
+            "name": "activoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Observación duplicada (idempotencia por hash): duplicada:true, sin nueva fila ni sello"
+          },
+          "201": {
+            "description": "Observación registrada + sello patrimonio.observado (payload {activo_id, observacion_id, fecha_observacion, checklist, observador_hash} — sin PII)"
+          },
+          "400": {
+            "description": "Payload inválido (contrato Zod) o rechazado por anti-PII (ADR-020 cond. 1, Ley 25.326)"
+          },
+          "401": {
+            "description": "Bearer token ausente o inválido"
+          },
+          "404": {
+            "description": "Activo no encontrado o sin ficha patrimonial VIG-004"
+          },
+          "500": {
+            "description": "Error interno sanitizado (R5a, #100)"
+          },
+          "503": {
+            "description": "Sin JWT_SECRET (identidad cerrada, fail-closed)"
+          }
+        }
+      }
+    },
+    "/api/pedidos": {
+      "get": {
+        "summary": "NODO-VIG-3 VIG-012 (#379, épica #377): tablero público de pedidos formales del nodo ante Vialidad Provincial (DPV) — cobertura/fecha contra el documento vecinal interno (15 pedidos esperados, procedencia declarada, sin firmantes expuestos — ADR-027), NUNCA un puntaje global (R5/R15). La tabla nace VACÍA: «0 de 15 presentados · 0 respondidos (corte …)» es el estado honesto del día 1. Estado efectivo DERIVADO en lectura: presentado con plazo vencido y sin respuesta → sin_respuesta (nunca se almacena ni se sella — no existe el evento «no contestaron», existe la fecha vencida, R15). Evidencia ampliada: cada cluster citado muestra el título REAL del punto crítico corroborado del AMC (pc-* community_validated, VIG-011: «N reportes de M vecinos») o NULL honesto si el feature fue retirado.",
+        "parameters": [
+          {
+            "name": "nodo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "capital",
+                "caucete",
+                "iglesia"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK — envelope {success, data: {esperados_documento, presentados, respondidos, respondidos_en_plazo, respondidos_tardio, sin_respuesta, en_espera, fecha_corte, cobertura, fuente, pedidos: [{key, nodo_key, bloque, tema, destinatario, fecha_presentacion, plazo_dias, estado, estado_efectivo, respondido_en, nota_respuesta, evidencia: [{cluster_key, titulo, estado}]}]}, count}"
+          },
+          "500": {
+            "description": "Error interno sanitizado (AUD-06, #100)"
+          }
+        }
+      },
+      "post": {
+        "summary": "NODO-VIG-3 VIG-012 (#379): registro de un pedido REALMENTE presentado — solo admin (acto institucional del nodo ante el organismo, ADR-031; ciudadano y moderador 403). R15: preparar la nota ≠ presentarla — la fecha de presentación es real (la futura se rechaza 400). Anti-PII sobre el tema (ADR-020 cond. 1) y evidencia_cluster_keys validada contra features pc-* community_validated del AMC (VIG-011). Idempotencia por hash (200 sin sello nuevo); key única (409). Sello pedido.presentado en events_raw sin PII y sin tema, con rollback si falla (R4/R15).",
+        "responses": {
+          "200": {
+            "description": "Reintento idempotente del mismo pedido — envelope {success, data, idempotente: true} sin sello nuevo (R4)"
+          },
+          "201": {
+            "description": "Pedido registrado en estado presentado + sello pedido.presentado"
+          },
+          "400": {
+            "description": "Datos inválidos (PedidoAltaSchema) / fecha futura (R15) / tema con PII / evidencia pc-* inexistente o sin validación comunitaria"
+          },
+          "401": {
+            "description": "Bearer token ausente o inválido"
+          },
+          "403": {
+            "description": "Solo admin presenta pedidos formales (ADR-031)"
+          },
+          "409": {
+            "description": "Ya existe un pedido con esa key"
+          },
+          "500": {
+            "description": "Error interno sanitizado (AUD-06, #100)"
+          }
+        }
+      }
+    },
+    "/api/pedidos/{key}": {
+      "get": {
+        "summary": "NODO-VIG-3 VIG-012 (#379): seguimiento público de un pedido — historial de transiciones DERIVADO de los sellos pedido.presentado / pedido.respondido (ADR-038: la línea de tiempo es la acreditación, nunca el estado puntual de la fila) + estado_efectivo derivado en lectura. Sin PII (ADR-027, Ley 25.326).",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK — envelope {success, data: {…pedido público, estado_efectivo, evidencia, transiciones: [{estado_nuevo, occurred_at}]}}"
+          },
+          "404": {
+            "description": "Pedido no encontrado"
+          },
+          "500": {
+            "description": "Error interno sanitizado (AUD-06, #100)"
+          }
+        }
+      }
+    },
+    "/api/pedidos/{key}/respuesta": {
+      "post": {
+        "summary": "NODO-VIG-3 VIG-012 (#379): registro de la respuesta del organismo — solo admin (acto institucional). La fecha de respuesta es real (la futura se rechaza 400, R15) y el estado final se DERIVA contra el plazo declarado: respondido_en_plazo si llegó a más tardar el día fecha_presentacion + plazo_dias, respondido_tardio después — nunca se declara a mano. Reintento sobre un pedido ya respondido → 409. Anti-PII sobre la nota. Sello pedido.respondido sin PII y sin nota, con rollback si falla (R4/R15).",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Respuesta registrada con estado DERIVADO (respondido_en_plazo | respondido_tardio) + sello pedido.respondido"
+          },
+          "400": {
+            "description": "Datos inválidos (PedidoRespuestaSchema) / fecha futura (R15) / nota con PII"
+          },
+          "401": {
+            "description": "Bearer token ausente o inválido"
+          },
+          "403": {
+            "description": "Solo admin registra respuestas (ADR-031)"
+          },
+          "404": {
+            "description": "Pedido no encontrado"
+          },
+          "409": {
+            "description": "El pedido ya tiene respuesta registrada"
+          },
+          "500": {
+            "description": "Error interno sanitizado (AUD-06, #100)"
+          }
+        }
+      }
+    },
+    "/api/practicas/acreditar": {
+      "post": {
+        "summary": "LIC-DLUI LIC-R3 (LIC-03 #452, épica #448): Práctica Territorial Acreditada — acto institucional decision_dh: solo admin acredita (patrón VIG-012); Opción B ratificada por la DH: el practicante ES un ciudadano con atributo (patrón AR1 #400), NO un rol — la acreditación jamás promueve el rol. El mandato de la DH NUNCA se persiste ni se responde (solo su hash sha256 truncado, Ley 25.326/ADR-027); el referente comunitario valida y no decide (D4: nombre opcional que exige consentimiento_confirmado ADR-027); la referencia externa es nullable (la UNSJ quedó fuera, decisión DH). Atributos practica_* sobre la cuenta + sello practica.acreditada SIN PII (practicante_hash, mandato_hash, referente_rol, referencia_externa_presente, created_by_hash) con rollback de los atributos si el sello falla (R4/R15); re-acreditación renueva (patrón residencia AR1); GET /api/auth/me expone el atributo. El sello habilita la compuerta DL-7 del relevamiento en POST /api/reportes (clave relevamiento: protocolo versionado LIC-R2 v1.0, evidencia obligatoria ADR-035, 4 dimensiones del espacio — jamás puntajes de personas ni de accesibilidad, R5/ADR-036).",
+        "responses": {
+          "201": {
+            "description": "Practicante acreditado: atributo practica_acreditada=true sobre la cuenta ciudadana + sello practica.acreditada sin PII (el mandato jamás en la respuesta)"
+          },
+          "400": {
+            "description": "Datos inválidos (PracticaAcreditacionSchema) / cuenta no ciudadana (el practicante es ciudadano con sello, no un rol) / PII en referencia_externa o referente (ADR-020 cond. 1)"
+          },
+          "401": {
+            "description": "Bearer token ausente o inválido"
+          },
+          "403": {
+            "description": "Solo admin acredita (acto decision_dh, ADR-031)"
+          },
+          "404": {
+            "description": "Usuario no encontrado"
+          },
+          "500": {
+            "description": "Error interno sanitizado (AUD-06, #100)"
+          }
+        }
+      }
+    },
+    "/api/productos": {
+      "get": {
+        "summary": "MARKET-CAP MK-3b (#426, sub-épica #152): catálogo público de ofertas del Mercado de Proximidad — DOBLE compuerta (solo producto aprobado cuyo comercio padre está aprobado y público con ficha de mercado: propuesto, rechazado, archivado y restricted jamás salen; las ofertas de activos NO comerciales siguen en /api/activos/{id}/productos, VIG-005); filtros ?nodo ?subnodo ?rubro (por CÓDIGO, canon de 11 o legado cat-*) ?precio_max (centavos AR enteros) ?vigente=true (excluye SOLO la ventana vencida — RFC-027: caducidad declarada, no silenciosa) y ?q (LIKE simple por nombre, decisión DH 2026-11-07 — la búsqueda semántica vive en el RAG VIG-006); take 100 v1 (MK-0 §2.5); público anónimo, sin PII, estado_vigencia DERIVADO en lectura",
+        "parameters": [
+          {
+            "name": "nodo",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "capital",
+                "caucete",
+                "iglesia"
+              ]
+            }
+          },
+          {
+            "name": "subnodo",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "rubro",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "precio_max",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "vigente",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ofertas públicas del Mercado (máx. 100, orden created_at desc) con precio_centavos, ventana de vigencia declarada y estado_vigencia derivado (sin_vigencia|programada|vigente|vencida)"
+          },
+          "400": {
+            "description": "Filtros inválidos (ProductoFiltroSchema) — sin eco del valor"
+          },
+          "500": {
+            "description": "Error interno sanitizado (R5a, #100)"
+          }
+        }
+      }
+    },
+    "/api/productos/{productoId}": {
+      "get": {
+        "summary": "MARKET-CAP MK-3b (#426): ficha pública de la oferta — el «producto específico buscado»: la misma oferta del catálogo con su comercio padre (id, título, nodo_key, subnodo_key, rubro por código con label honesto null, R15); 404 SIN eco para inexistente, propuesto, archivado, comercio padre no aprobado/público o producto de activo sin ficha de mercado (ADR-036/R15: indistinguible desde afuera)",
+        "parameters": [
+          {
+            "name": "productoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ficha pública de la oferta (sin PII por construcción — relay MK-4, sin contacto en v1)"
+          },
+          "404": {
+            "description": "Producto no encontrado (honesto, sin eco, ADR-036)"
+          },
+          "500": {
+            "description": "Error interno sanitizado (R5a, #100)"
+          }
+        }
+      },
+      "patch": {
+        "summary": "MARKET-CAP MK-3b (#426): edición de la oferta — titular verificado del comercio padre o moderador|admin (403 real sin eco, Ley 25.326; para productos de activos SIN ficha de mercado no existe titular: solo moderación, frontera declarada R15); ProductoEdicionSchema: edición PARCIAL por campos presentes (nombre, categoria, temporada_meses, precio_centavos — centavos AR ENTEROS jamás float, MK-3 D2; vigencia_desde/vigencia_hasta YYYY-MM-DD o null limpia el campo), justificación pública >=10 (ADR-038) con anti-PII sin eco (ADR-020 cond. 1); PATCH vacío 400 (R15); sello producto.atributos_editados en events_raw con payload {producto_id, activo_id, slug, nodo_key, subnodo_key, campos_editados, justificacion, actualizado_por_hash} y rollback si falla (R4/R15)",
+        "parameters": [
+          {
+            "name": "productoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Oferta actualizada + campos_editados + sello en events_raw"
+          },
+          "400": {
+            "description": "Datos inválidos, PATCH vacío, precio float, ventana de vigencia invertida o PII — sin eco del valor"
+          },
+          "401": {
+            "description": "Bearer token ausente o inválido"
+          },
+          "403": {
+            "description": "Ni titular verificado del comercio padre ni moderación (403 real, sin eco)"
+          },
+          "404": {
+            "description": "Producto no encontrado (honesto, R15)"
+          },
+          "500": {
+            "description": "Error interno sanitizado (R5a, #100) — sin sello no hay edición acreditada (rollback)"
+          },
+          "503": {
+            "description": "Sin JWT_SECRET (identidad cerrada, fail-closed)"
+          }
+        }
+      }
+    },
+    "/api/productos/{productoId}/estado": {
+      "patch": {
+        "summary": "NODO-VIG VIG-005 (NVIG-R7 #174): moderación de productos — requireRole moderador|admin; transición propuesto → aprobado|rechazado|archivado (archivado retira del catálogo vivo); sello producto.estado_cambiado en events_raw con rollback si falla",
+        "parameters": [
+          {
+            "name": "productoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Estado actualizado (aprobado | rechazado | archivado) + sello en events_raw"
+          },
+          "400": {
+            "description": "Datos inválidos o PII en el motivo — sin eco del valor"
+          },
+          "401": {
+            "description": "Bearer token ausente o inválido"
+          },
+          "403": {
+            "description": "Rol insuficiente (requiere moderador|admin)"
+          },
+          "404": {
+            "description": "Producto no encontrado (honesto, R15)"
+          },
+          "409": {
+            "description": "El producto ya está en ese estado (sin transición no hay evento)"
+          },
+          "500": {
+            "description": "Error interno sanitizado (R5a, #100)"
+          },
+          "503": {
+            "description": "Sin JWT_SECRET (identidad cerrada, fail-closed)"
+          }
+        }
+      }
+    },
+    "/api/reportes": {
+      "post": {
+        "summary": "CORE-005 R2 (#206): alta ciudadana de un reporte territorial — requireJwt; el reporte nace received (ReporteEstadoSchema R1: received | evaluating | in_progress | resolved | descartado), autor = pseudónimo sha256(usuario_id) truncado sin PII (Ley 25.326, ADR-027); categoría validada contra el vocabulario real del nodo (404 nodo inexistente, 400 categoría ajena); anti-PII sobre la descripción antes de persistir (ADR-020 cond. 1); idempotencia por hash único (mismo ciudadano + mismo reporte → 200 idempotente, sin sello nuevo); sello reporte.recibido en events_raw con rollback si falla; visible en GET /api/nodos/{key}/reportes CORE-005 R5 (#206, ADR-039): la respuesta incluye duplicados_sugeridos — reportes abiertos reales del mismo nodo dentro del radio de proximidad (sugerencia, NUNCA fusión automática; duplicados_verificados honesto). LIC-DLUI LIC-R3 (#452, épica #448): el body con clave relevamiento activa el canal del practicante acreditado (compuerta DL-7: solo cuenta con sello practica.acreditada, 403 real sin sello; patrón VIG-011 AMC — sin la clave el alta CORE-005 queda intacta): relevamiento del tramo REAL de la capa sidewalks del nodo (404 si el tramo no existe, 400 fecha futura R15), con evidencia obligatoria (ADR-035) y 4 dimensiones del espacio bajo el protocolo versionado LIC-R2 v1.0 — jamás puntajes de personas ni de accesibilidad (R5/ADR-036); sello reporte.recibido extendido con {feature_id, version, fecha_relevamiento} sin el texto del relevamiento.",
+        "responses": {
+          "200": {
+            "description": "Reintento idempotente del mismo reporte — envelope {success, data, idempotente: true, duplicados_sugeridos, duplicados_verificados}"
+          },
+          "201": {
+            "description": "Reporte creado (estado: received) + sello reporte.recibido en events_raw + duplicados_sugeridos (reportes abiertos del mismo nodo dentro del radio, con distancia_m — ADR-039: sugerencia, nunca fusión; duplicados_verificados: false honesto R15 si la consulta de sugerencia falló)"
+          },
+          "400": {
+            "description": "Datos inválidos (contrato Zod R1), PII detectada (sin eco del valor) o categoría inexistente en el vocabulario del nodo"
+          },
+          "401": {
+            "description": "Bearer token ausente o inválido"
+          },
+          "404": {
+            "description": "Nodo no encontrado"
+          },
+          "500": {
+            "description": "Error interno sanitizado (R5a, #100)"
+          },
+          "503": {
+            "description": "Sin JWT_SECRET (identidad cerrada, fail-closed)"
+          }
+        }
+      }
+    },
+    "/api/reportes/{id}/corroboracion": {
+      "post": {
+        "summary": "NODO-VIG-3 VIG-011 (#378, épica #377): corroboración ciudadana — requireJwt; la comunidad corrobora, NUNCA verifica (R15: la promoción a verified es solo técnica — organismo, estudio, inspección). Un reportante distinto = un peso: el autor de un reporte abierto no corrobora el propio (400), un reporte cerrado no admite corroboración (409) y el mismo vecino re-corroborando es idempotente por hash determinista del par (usuario, reporte) → 200 {peso: false} sin sello nuevo (R4). Sello reporte.corroborado en events_raw sin PII (reportante_hash = pseudónimo sha256, ADR-027); tras sellar, la convergencia del cluster se re-deriva (fail-open honesto: la corroboración YA está acreditada; cluster_verificado: false si el cómputo falla, R15).",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reintento idempotente del mismo vecino — envelope {success, data: {reporte_id, peso: false}, idempotente: true} (sin nuevo peso ni sello, R4)"
+          },
+          "201": {
+            "description": "Corroboración sellada {reporte_id, peso: true} + cluster re-derivado si el reporte es del AMC (cluster + cluster_verificado honesto)"
+          },
+          "400": {
+            "description": "Datos inválidos (ReporteCorroboracionSchema), PII en la nota (sin eco del valor) o el autor corroborando su propio reporte"
+          },
+          "401": {
+            "description": "Bearer token ausente o inválido"
+          },
+          "404": {
+            "description": "Reporte no encontrado"
+          },
+          "409": {
+            "description": "El reporte está cerrado (resolved | descartado) — no hay nada que corroborar"
+          },
+          "500": {
+            "description": "Error interno sanitizado (R5a, #100)"
+          }
+        }
+      }
+    },
+    "/api/reportes/{id}/estado": {
+      "patch": {
+        "summary": "CORE-005 R3 (#206, ADR-038): moderación transparente del reporte — requireRole moderador|admin; justificación pública obligatoria por transición (>=10 caracteres, 400 sin justificación); matriz REPORTE_TRANSICIONES del ciclo (400 salto inválido, 409 sin transición — resolved y descartado terminales en v1); anti-PII sobre la justificación antes de sellar (sin eco del valor); sello reporte.estado_cambiado con {estado_anterior, estado_nuevo, justificacion, moderador_hash} en events_raw con rollback si falla",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Estado actualizado + sello reporte.estado_cambiado en events_raw"
+          },
+          "400": {
+            "description": "Salto inválido (matriz ADR-038), contrato Zod (justificación >=10) o PII en la justificación — sin eco del valor"
+          },
+          "401": {
+            "description": "Bearer token ausente o inválido"
+          },
+          "403": {
+            "description": "Rol insuficiente (requiere moderador|admin)"
+          },
+          "404": {
+            "description": "Reporte no encontrado (honesto, R15)"
+          },
+          "409": {
+            "description": "El reporte ya está en ese estado (sin transición no hay evento)"
+          },
+          "500": {
+            "description": "Error interno sanitizado (R5a, #100)"
+          },
+          "503": {
+            "description": "Sin JWT_SECRET (identidad cerrada, fail-closed)"
+          }
+        }
+      }
+    },
+    "/api/reportes/{id}/historial": {
+      "get": {
+        "summary": "CORE-005 R4 (#206, ADR-038): historial público del reporte — anónimo; transiciones derivadas 1:1 de los sellos reporte.estado_cambiado en events_raw (única fuente de verdad, ADR-032 — nunca una tabla mutable), en orden por occurred_at; descartado nunca publicable (404 — su historial es del reportero en /mios); reporte sin transiciones → transiciones vacías (honesto, R15); contrato ReporteHistorialSchema (R1) valida la salida",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK — envelope {success, data: {reporte_id, transiciones[]: {estado_anterior, estado_nuevo, justificacion, moderador_hash, occurred_at}}}"
+          },
+          "404": {
+            "description": "Reporte no encontrado o descartado (nunca publicable — honesto, R15)"
+          },
+          "500": {
+            "description": "Error interno sanitizado (R5a, #100)"
+          }
+        }
+      }
+    },
+    "/api/reportes/mios": {
+      "get": {
+        "summary": "CORE-005 R4 (#206, ADR-038): suscripción del reportero — requireJwt; los reportes del ciudadano por created_by_hash (pseudónimo sha256 truncado, sin PII — Ley 25.326, ADR-027); cada reporte con estado, nodo_key y las transiciones justificadas derivadas 1:1 de los sellos reporte.estado_cambiado en events_raw (única fuente de verdad, ADR-032); el reportero ve su ciclo completo, incluido el descartado (nunca publicable) — la transparencia del propio reclamo es suya",
+        "responses": {
+          "200": {
+            "description": "OK — envelope {success, data, count}; data: reportes del ciudadano (id, nodo_key, categoria, descripcion, estado, lat, lng, created_at, transiciones[] con justificación y moderador_hash)"
+          },
+          "401": {
+            "description": "Bearer token ausente o inválido"
+          },
+          "500": {
+            "description": "Error interno sanitizado (R5a, #100)"
+          },
+          "503": {
+            "description": "Sin JWT_SECRET (identidad cerrada, fail-closed)"
+          }
+        }
+      }
+    },
+    "/api/sellos": {
+      "get": {
+        "summary": "Libro contable de sellos — lectura pública de events_raw (ARTEFACTOS-ROLES AR4, #403, épica #399)",
+        "description": "Sellos YA emitidos de la fuente append-only (ADR-032), orden occurred_at desc. Filtros ?nodo= (enum del vocabulario de nodos San Juan: capital, caucete, iglesia — filtra por payload->nodo_key) y ?type= exacto (3-120). Paginación limit 1-200 default 50 / offset min 0 con el total de la consulta en el header X-DELocalSoy-Total-Count (patrón #165). Envelope {success, data: [{id, type, hash, occurred_at ISO, payload}], count, total, limit, offset}. Sin PII por construcción: la compuerta anti-PII vive en la ingesta POST /api/events (Ley 25.326/ADR-027). 400 = query inválido (SellosQuerySchema, details con error.issues); 500 sanitizado AUD-06. Contratos: packages/contracts SellosQuerySchema/SelloPublicoSchema.",
+        "parameters": [
+          {
+            "name": "nodo",
+            "in": "query",
+            "required": false,
+            "description": "Clave del subnodo del vocabulario (payload->nodo_key del sello). Omitir = todos los nodos.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "capital",
+                "caucete",
+                "iglesia"
+              ]
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "description": "Type exacto del sello (p. ej. reporte.recibido). Match exacto, 3-120 caracteres.",
+            "schema": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 120
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Tamaño de página (1-200, default 50).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "description": "Desplazamiento de página (min 0, default 0).",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Envelope con la página de sellos (data), count de la página, total de la consulta y paginación echo. Header X-DELocalSoy-Total-Count con el mismo total."
+          },
+          "400": {
+            "description": "Query inválido (limit/offset fuera de rango o type inválido) — envelope {success: false, error, details}."
+          },
+          "500": {
+            "description": "Error interno sanitizado (AUD-06) — envelope {success: false, error}."
+          }
+        }
+      }
+    },
+    "/api/sellos/tipos": {
+      "get": {
+        "summary": "Conteo de sellos por type (ARTEFACTOS-ROLES AR4, #403, épica #399)",
+        "description": "groupBy por type con _count, orden desc por cantidad — base de la cobertura del auditor contra docs/MATRIZ_SELLOS.md v0.2 (34 sellos; espejo MATRIZ_SELLOS_V0_2 + coberturaSellos en apps/web/src/lib/artefactoA4.ts). Los types SIN fila en la matriz se exponen como hallazgo honesto (R15). Envelope {success, data: [{type, count}]}. 500 sanitizado AUD-06.",
+        "responses": {
+          "200": {
+            "description": "Envelope con la lista {type, count} ordenada desc por count."
+          },
+          "500": {
+            "description": "Error interno sanitizado (AUD-06) — envelope {success: false, error}."
+          }
+        }
+      }
+    },
+    "/api/showcase": {
+      "get": {
+        "summary": "NODO-VIG VIG-007 (NVIG-R9 #193, épica #167): recorrido federado de la demo final (Caucete → Capital → Valle de Iglesia) — lectura pública anónima del estado REAL de los tres nodos: counts derivados del dominio con exclusión ADR-036 (las fichas patrimoniales cuentan también para restricted: la declaratoria es registro público, decisión DH VIG-004); sin snapshots → kpis 0 honesto (R15); guion referenciado (docs/nodes/valle-de-iglesia/VIG-007-DEMO-FINAL.md: 13 pasos, 4 escenarios, 10 criterios con estado real); contrato ShowcaseResponseSchema como fuente única",
+        "responses": {
+          "200": {
+            "description": "OK — envelope {success, data, count}; data: {recorrido [caucete, capital, iglesia], nodos (subnodos, kpis, activos_aprobados, fichas_patrimoniales, operativas, productos_aprobados, rag_fragmentos, kpis_detalle por nodo), guion {doc, pasos}}"
+          },
+          "500": {
+            "description": "Error interno sanitizado (R5a, #100)"
+          }
+        }
+      }
+    },
+    "/api/territorios": {
+      "get": {
+        "summary": "PostGIS BBOX Spatial Filter (SRID=4326)",
+        "parameters": [
+          {
+            "name": "bbox",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Invalid BBOX"
+          }
+        }
+      }
+    }
+  }
+}
