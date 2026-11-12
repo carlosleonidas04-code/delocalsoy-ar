@@ -759,6 +759,7 @@ export const MATRIZ_SELLOS_V0_2: readonly FilaMatrizSello[] = [
   { sello: 'visitante.registrado', dominio: 'usuarios (AR1)', origen: 'ARTEFACTOS-ROLES #400 (épica #399)' },
   { sello: 'comercio.relay_recibido', dominio: 'comercios (MK-4 relay)', origen: '#427 (EV-098)' },
   { sello: 'practica.acreditada', dominio: 'usuarios (AR5 / LIC-03)', origen: 'LIC-DLUI LIC-R3 (#452, épica #448)' },
+  { sello: 'patrimonio.consentido', dominio: 'patrimonio_consentimientos', origen: 'LIC-DLUI LIC-R7 (#450, épica #448 — DL-12)' },
 ];
 
 /** Parser local del sello (mismo patrón que los parsers A4). */
@@ -811,3 +812,4 @@ export function coberturaSellos(tipos: readonly SelloTipoCount[]): CoberturaSell
   }
   return { documentados, sinFilaEnMatriz, sinEventosAun };
 }
+

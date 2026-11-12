@@ -1830,6 +1830,81 @@ export type CustodiaConsentimientoAlcance = z.infer<typeof CustodiaConsentimient
 export type CustodiaConsentimiento = z.infer<typeof CustodiaConsentimientoSchema>;
 export type CustodiaConsentimientoRevocacion = z.infer<typeof CustodiaConsentimientoRevocacionSchema>;
 
+// ─── LIC-DLUI LIC-R7 (#450, épica #448): DL-12 — extensión del instrumento
+// de consentimiento VIG-009 (custodio_hash) a patrimonio cultural vivo y
+// memoria oral. El instrumento VIG-009 R3 (CustodiaConsentimiento*) queda
+// intacto; esta sección lo extiende con la MISMA gramática: firmante por ROL
+// (jamás nombre civil), alcances opt-in explícitos, declaracion
+// z.literal(true) y revocabilidad en cualquier momento (ADR-027, Ley 25.326).
+
+// Rol que firma el consentimiento del portador (DL-12): gramática
+// CustodiaConsentimientoSchema — un ROL comunitario, jamás un nombre civil.
+export const PatrimonioVivoFirmanteRolSchema = z.enum([
+  "portador",
+  "familiar_autorizado",
+  "referente_comunitario",
+]);
+
+// Alcance granular DL-12 (patrimonio cultural vivo y memoria oral): cada
+// campo es opt-in explícito z.literal(true) — NUNCA pre-marcado (ADR-027):
+// ausente = no otorgado; false NO es válido (no existe el "consentimiento en
+// falso"); sin al menos un alcance true no hay consentimiento.
+export const PatrimonioVivoAlcanceSchema = z
+  .object({
+    memoria_oral: z.literal(true).optional(), // testimonios y relatos orales del portador
+    practica_viva: z.literal(true).optional(), // documentación de la práctica cultural viva (oficio, tejido, fiesta)
+    imagen_persona: z.literal(true).optional(), // imágenes con personas identificables (CRPD, consentimiento por capas)
+    nombre_portador: z.literal(true).optional(), // nombre público del portador (patrón ficha de tejedora VIG-004)
+  })
+  .strict();
+
+// Alta del consentimiento (DL-12): la declaracion z.literal(true) hace
+// imposible el consentimiento implícito (misma compuerta que VIG-009 R3);
+// la vigencia es del consentimiento REAL, no del alta en plataforma.
+export const PatrimonioVivoConsentimientoSchema = z.object({
+  firmante_rol: PatrimonioVivoFirmanteRolSchema,
+  alcance: PatrimonioVivoAlcanceSchema.refine(
+    (a) => Object.values(a).some((v) => v === true),
+    "al menos un alcance debe otorgarse explícitamente (nunca pre-marcado)",
+  ),
+  vigencia_desde: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, "vigencia_desde: YYYY-MM-DD"),
+  vigencia_hasta: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "vigencia_hasta: YYYY-MM-DD")
+    .nullable(),
+  declaracion: z.literal(true),
+});
+
+// Retiro del consentimiento (DL-12): revocable en cualquier momento
+// (gramática VIG-009 R3). El motivo pasa el anti-PII de la API ANTES de
+// sellarse. Solo transición vigente → revocado (409 en cualquier otra).
+export const PatrimonioVivoRetiroSchema = z.object({
+  estado: z.literal("revocado"),
+  motivo: z.string().trim().max(500).optional(),
+});
+
+// Fila pública del registro de consentimientos (bandeira anónima): el
+// portador NO se identifica — solo el ROL que firmó y los alcances otorgados.
+export const PatrimonioVivoRowSchema = z.object({
+  id: z.string(),
+  activo_id: z.string(),
+  firmante_rol: PatrimonioVivoFirmanteRolSchema,
+  alcances: z.record(z.string(), z.boolean()),
+  vigencia_desde: z.string(),
+  vigencia_hasta: z.string().nullable(),
+  estado: z.enum(["vigente", "revocado"]),
+  revocado_en: z.string().nullable(),
+  motivo: z.string().nullable(),
+  created_at: z.string(),
+});
+
+export type PatrimonioVivoFirmanteRol = z.infer<typeof PatrimonioVivoFirmanteRolSchema>;
+export type PatrimonioVivoAlcance = z.infer<typeof PatrimonioVivoAlcanceSchema>;
+export type PatrimonioVivoConsentimiento = z.infer<typeof PatrimonioVivoConsentimientoSchema>;
+export type PatrimonioVivoRetiro = z.infer<typeof PatrimonioVivoRetiroSchema>;
+export type PatrimonioVivoRow = z.infer<typeof PatrimonioVivoRowSchema>;
+
 // ─── CORE-005 R5 (#206, ADR-039): duplicados sugeridos por proximidad ───
 
 // Estados "abiertos" del reporte: los no terminales de la matriz R1 —
@@ -2153,4 +2228,5 @@ export const SelloPublicoSchema = z.object({
 
 export type SellosQuery = z.infer<typeof SellosQuerySchema>;
 export type SelloPublico = z.infer<typeof SelloPublicoSchema>;
+
 

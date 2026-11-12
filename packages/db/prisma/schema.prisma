@@ -293,6 +293,7 @@ model activos {
   productos      productos[]
   operativa      activos_operativa?
   observaciones  patrimonio_observaciones[]
+  consentimientos patrimonio_consentimientos[]
   comercio_ficha  comercio_ficha?
   comercio_relay  comercio_relay[]
 
@@ -701,6 +702,47 @@ model patrimonio_observaciones {
   @@map("patrimonio_observaciones")
 }
 
+// ─── LIC-DLUI LIC-R7 (#450, épica #448): DL-12 — consentimiento del portador ───
+
+/// Consentimiento granular para patrimonio cultural vivo y memoria oral
+/// (DL-12): extensión OPERATIVA del instrumento de consentimiento VIG-009
+/// (custodio_hash) — el contrato vivía en packages/contracts
+/// (CustodiaConsentimientoSchema, VIG-009 R3) sin aterrizaje; esta tabla lo
+/// aterriza extendido al dominio vivo. El PORTADOR JAMÁS se identifica
+/// (Ley 25.326 / ADR-027): la fila acredita QUE existe el consentimiento y
+/// para qué alcances, nunca QUIÉN lo otorgó — el registrante institucional
+/// queda como custodio_hash sha32 (pseudónimo, patrón VIG-004). Alcances
+/// granulares {memoria_oral, practica_viva, imagen_persona, nombre_portador}:
+/// cada uno literal true en el contrato Zod, NUNCA pre-marcado (ADR-027) —
+/// ausente = no otorgado (null ≠ 0, R15). Lo firma un ROL comunitario
+/// (portador | familiar_autorizado | referente_comunitario), jamás un nombre
+/// civil (gramática VIG-009 R3). Nace VACÍA (R15, DL-12): 0 registros hasta
+/// consentimientos reales — preparar el instrumento NO es simular
+/// otorgamientos. Append-only en los hechos: el retiro es una transición
+/// sellada (vigente → revocado), jamás un DELETE (patrón mediadores,
+/// ADR-038). SIN geometría (criterio estructural #149 — el ancla es el
+/// activo patrimonial). hash único → idempotencia del alta.
+model patrimonio_consentimientos {
+  id              String    @id @default(cuid())
+  activo_id       String    @map("activo_id")
+  firmante_rol    String    @map("firmante_rol") // PatrimonioVivoFirmanteRolSchema: portador | familiar_autorizado | referente_comunitario
+  alcances        Json      @map("alcances") // PatrimonioVivoAlcanceSchema — solo claves con literal true
+  vigencia_desde  String    @map("vigencia_desde") // YYYY-MM-DD — fecha del consentimiento real
+  vigencia_hasta  String?   @map("vigencia_hasta") // YYYY-MM-DD — null = sin vencimiento declarado (R15)
+  estado          String    @default("vigente") @map("estado") // vigente | revocado
+  revocado_en     DateTime? @map("revocado_en") // timestamp del retiro (transición sellada)
+  motivo          String?   @map("motivo") // nota pública del retiro (anti-PII, compuerta en la ruta)
+  created_by_hash String    @map("created_by_hash") // custodio_hash sha32 del registrante — sin PII
+  hash            String    @unique @map("hash") // idempotencia del alta
+  created_at      DateTime  @default(now()) @map("created_at")
+  updated_at      DateTime  @updatedAt @map("updated_at")
+
+  activo activos @relation(fields: [activo_id], references: [id], onDelete: Cascade)
+
+  @@index([activo_id])
+  @@map("patrimonio_consentimientos")
+}
+
 // ─── NODO-CAPITAL NCAP-R4 (#156): red de corredores v0.1 ───
 
 /// Corredores como red modelada (#156): grafo relacional — corredor →
@@ -851,3 +893,4 @@ model comercio_relay {
   @@index([comercio_id, created_at])
   @@map("comercio_relay")
 }
+
