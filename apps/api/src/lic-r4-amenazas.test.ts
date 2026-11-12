@@ -145,7 +145,7 @@ describe.skipIf(!dbUp)('Capas de amenaza sísmica (LIC-DLUI LIC-R4 — #455, ép
     expect(cobBody.data.nodos_total).toBe(3);
     expect(cobBody.data.nodos_publicados).toBe(0);
     expect(cobBody.data.fecha_corte).toBeNull(); // R15: sin ingesta el null es REAL
-    expect(cobBody.data.regla).toContain('jamás ranking');
+    expect(cobBody.data.regla).toContain('ranking de riesgo');
   });
 
   it('E2E publicación: ingesta INPRES en caucete avanza el pipeline y SOLO al publicar la capa pasa a publicada con metadatos (NC-EV-09)', async () => {
