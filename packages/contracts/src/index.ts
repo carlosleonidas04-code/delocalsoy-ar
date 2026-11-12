@@ -2230,3 +2230,124 @@ export type SellosQuery = z.infer<typeof SellosQuerySchema>;
 export type SelloPublico = z.infer<typeof SelloPublicoSchema>;
 
 
+
+// ─── LIC-DLUI LIC-R6 (#449, épica #448): DL-11 — salud urbana federada ───
+//
+// DL-11 ratificado: SOLO agregados oficiales federados vía ingestas (patrón
+// EV-049). La salud individual es dato sensible PROHIBIDO (Ley 25.326,
+// NCS-2): esta superficie no registra personas, casos ni eventos
+// individuales — solo conteos departamentales/anuales publicados por
+// organismos oficiales (REFES/DEIS). Mientras no exista fuente ingestado
+// el indicador queda declarado `sin_fuente_ingestada` con valor null
+// (R15: null ≠ 0 — la brecha es visible, jamás estimada). NUNCA ranking de
+// salud entre nodos (R5/ADR-036).
+
+// Claves del catálogo declarado de indicadores de entorno de salud (DL-11).
+export const SaludIndicadorKeySchema = z.enum([
+  "efectores_salud", // establecimientos de salud registrados (REFES)
+  "camas_internacion", // camas de internación registradas (REFES)
+  "nacimientos_vivos", // nacimientos vivos del período (DEIS)
+  "defunciones_generales", // defunciones generales del período (DEIS)
+]);
+
+// Catálogo declarado (DL-11): indicador × unidad × organismo oficial. Son
+// AGREGADOS departamentales/anuales — jamás registros individuales.
+export const SALUD_INDICADORES = [
+  { key: "efectores_salud", nombre: "Establecimientos de salud registrados", unidad: "efectores", organismo: "MSAL · REFES" },
+  { key: "camas_internacion", nombre: "Camas de internación registradas", unidad: "camas", organismo: "MSAL · REFES" },
+  { key: "nacimientos_vivos", nombre: "Nacimientos vivos", unidad: "nacimientos/año", organismo: "MSAL · DEIS" },
+  { key: "defunciones_generales", nombre: "Defunciones generales", unidad: "defunciones/año", organismo: "MSAL · DEIS" },
+] as const;
+
+// Estado honesto del par (nodo, indicador) — DL-11: la clave declarada SIN
+// fuente ingestado se ve `sin_fuente_ingestada` con valor null (null ≠ 0);
+// el agregado ya cargado pero cuya ingesta aún no está publicada queda
+// `en_custodia` con valor null (NC-EV-09: el pipeline en curso no se lee).
+export const SaludParEstadoSchema = z.enum([
+  "sin_fuente_ingestada",
+  "en_custodia",
+  "publicado",
+]);
+
+// Alta de un agregado federado (SOLO admin — R15 estricta, patrón ingestas):
+// sin campos de texto libre — superficie PII cero por construcción (Ley
+// 25.326). El agregado cita su ingesta del pipeline de procedencia; la ruta
+// verifica que la fuente declarada coincida con la de la ingesta.
+export const SaludAgregadoAltaSchema = z.object({
+  indicador: SaludIndicadorKeySchema,
+  periodo: z.string().trim().regex(/^\d{4}$/, "periodo: año YYYY"),
+  valor: z.number().min(0, "valor: agregado no negativo"),
+  fuente_key: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9_]+$/, "fuente_key: slug del catálogo de procedencia")
+    .max(60),
+  ingesta_id: z.string().trim().min(1, "ingesta_id requerido"),
+});
+
+// Procedencia visible del par publicado (NC-EV-09): fuente del catálogo,
+// source_id y fecha de corte de la ingesta que federó el agregado.
+export const SaludProcedenciaSchema = z.object({
+  fuente_key: z.string(),
+  source_id: z.string(),
+  fecha_corte: z.string(),
+});
+
+// Par (nodo, indicador) del catálogo público: valor null ≠ 0 (R15).
+export const SaludParSchema = z.object({
+  indicador: SaludIndicadorKeySchema,
+  nombre: z.string(),
+  unidad: z.string(),
+  organismo: z.string(),
+  periodo: z.string().nullable(),
+  valor: z.number().nullable(),
+  estado: SaludParEstadoSchema,
+  procedencia: SaludProcedenciaSchema.nullable(),
+});
+
+// Nodo del catálogo público: sus pares indicador × estado honesto.
+export const SaludNodoSchema = z.object({
+  nodo_key: SanJuanNodeSlugSchema,
+  pares: z.array(SaludParSchema),
+});
+
+// GET /api/salud — catálogo público anónimo (criterio de cierre #449):
+// catálogo declarado × nodos con estado honesto + cobertura «X de Y» pares
+// publicados (conteo CON cobertura, jamás ranking — R5/ADR-036).
+export const SaludCatalogoResponseSchema = z.object({
+  dominio: z.string(),
+  regla: z.string(),
+  cautela: z.string(),
+  indicadores: z.array(
+    z.object({
+      key: SaludIndicadorKeySchema,
+      nombre: z.string(),
+      unidad: z.string(),
+      organismo: z.string(),
+    })
+  ),
+  nodos: z.array(SaludNodoSchema),
+  cobertura: z.string(),
+});
+
+// Fila del agregado registrado (respuesta del alta, sin PII).
+export const SaludAgregadoRowSchema = z.object({
+  id: z.string(),
+  nodo_key: SanJuanNodeSlugSchema,
+  indicador: SaludIndicadorKeySchema,
+  periodo: z.string(),
+  valor: z.number(),
+  fuente_key: z.string(),
+  ingesta_id: z.string(),
+  created_by_hash: z.string(),
+  created_at: z.string(),
+});
+
+export type SaludIndicadorKey = z.infer<typeof SaludIndicadorKeySchema>;
+export type SaludParEstado = z.infer<typeof SaludParEstadoSchema>;
+export type SaludAgregadoAlta = z.infer<typeof SaludAgregadoAltaSchema>;
+export type SaludProcedencia = z.infer<typeof SaludProcedenciaSchema>;
+export type SaludPar = z.infer<typeof SaludParSchema>;
+export type SaludNodo = z.infer<typeof SaludNodoSchema>;
+export type SaludCatalogoResponse = z.infer<typeof SaludCatalogoResponseSchema>;
+export type SaludAgregadoRow = z.infer<typeof SaludAgregadoRowSchema>;

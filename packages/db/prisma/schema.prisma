@@ -643,6 +643,8 @@ model ingestas {
   created_at       DateTime @default(now()) @map("created_at")
   updated_at       DateTime @updatedAt @map("updated_at")
 
+  agregados salud_agregados[] // LIC-R6 #449: agregados federados por esta ingesta (DL-11)
+
   @@unique([fuente_key, source_id])
   @@index([nodo_key])
   @@index([estado])
@@ -741,6 +743,39 @@ model patrimonio_consentimientos {
 
   @@index([activo_id])
   @@map("patrimonio_consentimientos")
+}
+
+// ─── LIC-DLUI LIC-R6 (LIC-06 #449, épica #448): DL-11 — salud urbana ───
+
+/// Agregados oficiales de salud urbana federados VÍA ingestas (DL-11, patrón
+/// EV-049): SOLO conteos departamentales publicados por organismos oficiales
+/// (REFES/DEIS) — la salud individual es dato sensible PROHIBIDO (Ley 25.326):
+/// aquí no vive ninguna persona, caso ni evento individual. El agregado cita
+/// su ingesta del pipeline de procedencia (NC-EV-09: sin fuente/fecha de
+/// corte acreditada no hay lectura pública); la ruta valida que la fuente
+/// declarada coincida con la de la ingesta. Nace VACÍA (R15, DL-11): sin
+/// fuente ingestado el indicador queda `sin_fuente_ingestada` con valor null
+/// (null ≠ 0 — la brecha es visible, jamás estimada). Sin campos de texto
+/// libre: superficie PII cero por construcción.
+model salud_agregados {
+  id              String   @id @default(cuid())
+  nodo_key        String   @map("nodo_key")
+  indicador       String   @map("indicador") // SaludIndicadorKeySchema: efectores_salud | camas_internacion | nacimientos_vivos | defunciones_generales
+  periodo         String   @map("periodo") // YYYY — período del agregado oficial
+  valor           Float    @map("valor") // conteo agregado del período (jamás un dato individual)
+  fuente_key      String   @map("fuente_key") // → fuentes.key (validada en la ruta contra la ingesta)
+  ingesta_id      String   @map("ingesta_id") // → ingestas.id: el agregado no viaja suelto (NC-EV-09)
+  created_by_hash String   @map("created_by_hash") // pseudónimo sha32 del admin — sin PII
+  hash            String   @unique @map("hash") // idempotencia del alta
+  created_at      DateTime @default(now()) @map("created_at")
+  updated_at      DateTime @updatedAt @map("updated_at")
+
+  ingesta ingestas @relation(fields: [ingesta_id], references: [id], onDelete: Cascade)
+
+  @@index([nodo_key])
+  @@index([indicador])
+  @@index([ingesta_id])
+  @@map("salud_agregados")
 }
 
 // ─── NODO-CAPITAL NCAP-R4 (#156): red de corredores v0.1 ───
@@ -893,4 +928,5 @@ model comercio_relay {
   @@index([comercio_id, created_at])
   @@map("comercio_relay")
 }
+
 

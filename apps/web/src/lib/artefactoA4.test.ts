@@ -21,8 +21,8 @@ function clienteCon(respuesta: (ruta: string) => RespuestaFake, rutasVistas: str
 }
 
 describe('ARTEFACTOS-ROLES AR4 — matriz de sellos v0.2 (#403)', () => {
-  it('el espejo MATRIZ_SELLOS_V0_2 tiene 42 filas — 33 de docs v0.2 + cluster.creado (AR4) + 4 de deuda saldadas por C5 (#412) + producto.atributos_editados (MK-3b #426) + comercio.relay_recibido (MK-4a #427) + practica.acreditada (LIC-R3 #452) + patrimonio.consentido (LIC-R7 #450)', () => {
-    expect(MATRIZ_SELLOS_V0_2).toHaveLength(42);
+  it('el espejo MATRIZ_SELLOS_V0_2 tiene 43 filas — 33 de docs v0.2 + cluster.creado (AR4) + 4 de deuda saldadas por C5 (#412) + producto.atributos_editados (MK-3b #426) + comercio.relay_recibido (MK-4a #427) + practica.acreditada (LIC-R3 #452) + patrimonio.consentido (LIC-R7 #450) + salud.agregado_ingestado (LIC-R6 #449)', () => {
+    expect(MATRIZ_SELLOS_V0_2).toHaveLength(43);
   });
 
   it('incluye la fila saldada cluster.creado (VIG-011 #378) y los sellos AR1 residencia.declarada/visitante.registrado', () => {
@@ -52,9 +52,9 @@ describe('ARTEFACTOS-ROLES AR4 — cobertura de la matriz (#403)', () => {
     expect(cobertura.sinFilaEnMatriz).toEqual([{ type: 'system.mode_change', count: 3 }]);
   });
 
-  it('la cobertura es exhaustiva: documentados + sinEventosAun = 42 filas de la matriz', () => {
+  it('la cobertura es exhaustiva: documentados + sinEventosAun = 43 filas de la matriz', () => {
     const cobertura = coberturaSellos(MATRIZ_SELLOS_V0_2.map((f, i) => ({ type: f.sello, count: i + 1 })));
-    expect(cobertura.documentados).toHaveLength(42);
+    expect(cobertura.documentados).toHaveLength(43);
     expect(cobertura.sinEventosAun).toHaveLength(0);
     expect(cobertura.sinFilaEnMatriz).toHaveLength(0);
   });
@@ -144,3 +144,4 @@ describe('ARTEFACTOS-ROLES AR4 — errores R5 del libro contable (#403)', () => 
     await expect(cNoLista.sellosTipos()).rejects.toBeInstanceOf(ErrorA4);
   });
 });
+

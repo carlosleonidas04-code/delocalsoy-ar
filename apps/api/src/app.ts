@@ -22,6 +22,7 @@ import pedidosRouter from './routes/pedidos.js';
 import practicasRouter from './routes/practicas.js';
 import productosRouter from './routes/productos.js';
 import reportesRouter from './routes/reportes.js';
+import saludRouter from './routes/salud.js';
 import sellosRouter from './routes/sellos.js';
 import showcaseRouter from './routes/showcase.js';
 import territoriosRouter from './routes/territorios.js';
@@ -185,6 +186,21 @@ export function createApp(): Express {
   // operativa.
   app.use('/api/amenazas', amenazasRouter);
 
+  // Dominio: LIC-DLUI LIC-R6 (LIC-06 #449, épica #448) — salud urbana
+  // federada (DL-11): SOLO agregados oficiales (REFES/DEIS) federados VÍA
+  // ingestas del pipeline de procedencia (patrón EV-049); la salud
+  // individual es dato sensible PROHIBIDO (Ley 25.326) — sin campos de
+  // texto libre, superficie PII cero. GET /api/salud — catálogo público
+  // anónimo: indicadores declarados × nodos con estado honesto
+  // `sin_fuente_ingestada` (valor null, R15: null ≠ 0) | `en_custodia`
+  // (NC-EV-09: ingesta no publicada no se lee) | `publicado` (valor +
+  // procedencia) y cobertura «X de Y» pares publicados — conteo CON
+  // cobertura, NUNCA ranking de salud entre nodos (R5/ADR-036).
+  // POST /api/salud/agregados — alta curada por admin (R15 estricta,
+  // patrón ingestas): idempotencia por hash, sello `salud.agregado_ingestado`
+  // con rollback.
+  app.use('/api/salud', saludRouter);
+
   // Dominio: AMC — registro de mediadores (NODO-VIG-3 VIG-011, #378 — épica
   // #377): boca única de reporte territorial del nodo. POST /api/mediadores
   // (admin): alias comunitario + aval (asamblea | comision_vecinal —
@@ -243,4 +259,5 @@ export function createApp(): Express {
 
   return app;
 }
+
 
