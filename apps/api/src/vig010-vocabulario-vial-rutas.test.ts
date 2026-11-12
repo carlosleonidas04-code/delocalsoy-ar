@@ -84,12 +84,12 @@ async function getJson(path: string): Promise<any> {
 }
 
 describe.skipIf(!dbUp)('Vocabulario vial del nodo Iglesia (NODO-VIG-3 VIG-010, #381)', () => {
-  it('GET /api/nodos/iglesia/capas — 12 capas: 3 demo + 5 v5.1 reutilizadas + 4 nuevas', async () => {
+  it('GET /api/nodos/iglesia/capas — 13 capas: 3 demo + 5 v5.1 reutilizadas + 4 nuevas + seismic_risk (LIC-R4 #455)', async () => {
     const { status, body } = await getJson('/api/nodos/iglesia/capas');
     expect(status).toBe(200);
-    expect(body.count).toBe(12);
+    expect(body.count).toBe(13); // 12 VIG-010 + seismic_risk (LIC-R4 #455)
     const keys: string[] = body.data.map((c: any) => c.key);
-    for (const k of [...CAPAS_VIG010, 'productive_units', 'rural_services', 'tourism_resources']) {
+    for (const k of [...CAPAS_VIG010, 'productive_units', 'rural_services', 'tourism_resources', 'seismic_risk']) {
       expect(keys, 'falta la capa ' + k).toContain(k);
     }
     const por = (k: string) => body.data.find((c: any) => c.key === k);
@@ -280,9 +280,10 @@ describe.skipIf(!dbUp)('Vocabulario vial del nodo Iglesia (NODO-VIG-3 VIG-010, #
       prisma.events_raw.count({ where: { hash: { in: SELLOS_VIG010 } } }),
     ]);
     expect(despues).toEqual(antes);
-    expect(despues[0]).toBe(12);
+    expect(despues[0]).toBe(13); // 12 VIG-010 + seismic_risk (LIC-R4 #455)
     expect(despues[1]).toBe(52); // 10 demo + 2 VIG-009 + 40 VIG-010
     expect(despues[2]).toBe(11); // 6 demo CORE-003 + 5 VIG-010
     expect(despues[3]).toBe(13);
   }, 60000);
 });
+

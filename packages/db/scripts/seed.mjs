@@ -62,6 +62,7 @@ const SEED_FILES = [
   'seed-vocabulario-capital.sql',
   'seed-accesibilidad-capital.sql',
   'seed-vocabulario-vial-iglesia.sql',
+  'seed-lic-r4-amenaza-sismica.sql',
 ];
 
 // Clave de lock de aplicación: constante arbitraria y estable (sin
@@ -121,3 +122,4 @@ for (const f of SEED_FILES) {
 }
 console.error('db:seed: el lote fallo pero los 18 archivos pasan secuencialmente — la siembra quedo completa (idempotente). Causa probable: carrera resuelta por el lock.');
 process.exit(0);
+

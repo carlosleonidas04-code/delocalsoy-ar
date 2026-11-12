@@ -2,6 +2,7 @@ import express, { type Express, type Request, type Response, type NextFunction }
 import { randomUUID } from 'node:crypto';
 import { levelForStatus, logJson } from './logger.js';
 import activosRouter from './routes/activos.js';
+import amenazasRouter from './routes/amenazas.js';
 import authRouter from './routes/auth.js';
 import comerciosRouter from './routes/comercios.js';
 import corredoresRouter from './routes/corredores.js';
@@ -173,6 +174,17 @@ export function createApp(): Express {
   // POST /api/reportes (protocolo versionado LIC-R2).
   app.use('/api/practicas', practicasRouter);
 
+  // Dominio: capas de amenaza sísmica (LIC-DLUI LIC-R4, #455 — épica #448):
+  // GET /api/amenazas — catálogo público derivado de capas declaradas ×
+  // ingestas publicadas (capa_servicio = capas.key, DL-9 — patrón
+  // NODO-CAU R2 #138/#147); GET /api/amenazas/cobertura — dashboard honesto
+  // «X de N distritos con capa sísmica publicada» + fecha de corte (criterio
+  // de cierre #455). Regla metadatos-antes-de-capa: sin ingesta publicada la
+  // capa queda 'declarada' con ingesta null (R15: null ≠ 0). Sin escritura,
+  // sin PII, sin ranking de riesgo (R5/ADR-036) — la plataforma no es alerta
+  // operativa.
+  app.use('/api/amenazas', amenazasRouter);
+
   // Dominio: AMC — registro de mediadores (NODO-VIG-3 VIG-011, #378 — épica
   // #377): boca única de reporte territorial del nodo. POST /api/mediadores
   // (admin): alias comunitario + aval (asamblea | comision_vecinal —
@@ -231,3 +243,4 @@ export function createApp(): Express {
 
   return app;
 }
+
