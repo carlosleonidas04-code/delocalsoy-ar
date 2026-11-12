@@ -130,7 +130,7 @@ describe.skipIf(!dbUp)('Capas de amenaza sísmica (LIC-DLUI LIC-R4 — #455, ép
     expect(body.count).toBe(3);
     // La superficie deriva del contrato (patrón showcase).
     expect(() => AmenazaCatalogoResponseSchema.parse(body.data)).not.toThrow();
-    expect(body.data.nodos.map((n: any) => n.nodo_key).sort()).toEqual(['caucete', 'capital', 'iglesia']);
+    expect(body.data.nodos.map((n: any) => n.nodo_key).sort()).toEqual(['capital', 'caucete', 'iglesia']);
     for (const n of body.data.nodos) {
       expect(n.capa_key).toBe('seismic_risk');
       expect(n.estado).toBe('declarada');
@@ -221,13 +221,18 @@ describe.skipIf(!dbUp)('Capas de amenaza sísmica (LIC-DLUI LIC-R4 — #455, ép
     expect(cobBody.data.fecha_corte).toBe('2018');
 
     // Sello del sistema de la publicación: ingesta.estado_cambiado sin PII.
-    const sello = await prisma.events_raw.findFirst({
+    // findMany + filtro en JS: el pipeline sella 3 transiciones para la
+    // misma ingesta y la consulta debe quedar en la FINAL ('publicado'),
+    // no en la primera (orden frágil entre occurred_at casi simultáneos).
+    const sellosTransicion: any[] = await prisma.events_raw.findMany({
       where: { type: 'ingesta.estado_cambiado', payload: { path: ['ingesta_id'], equals: ingesta.id } },
     });
-    expect(sello).not.toBeNull();
-    expect((sello?.payload as any).estado).toBe('publicado');
-    expect(JSON.stringify(sello?.payload)).not.toContain('@');
-    expect(JSON.stringify(sello?.payload)).not.toContain('example.test');
+    expect(sellosTransicion.length).toBe(3); // 3 transiciones del pipeline
+    const sello = sellosTransicion.find((s: any) => (s.payload as any).estado === 'publicado');
+    expect(sello, 'falta el sello de la transición a publicado').toBeTruthy();
+    expect((sello!.payload as any).estado).toBe('publicado');
+    expect(JSON.stringify(sello!.payload)).not.toContain('@');
+    expect(JSON.stringify(sello!.payload)).not.toContain('example.test');
   });
 
   it('idempotencia: re-ejecutar db:seed no duplica capas ni sellos del seed LIC-R4', async () => {
