@@ -824,6 +824,11 @@ export const KpiKeySchema = z.enum([
   // cobertura («0 de 18»), SIN puntajes globales de accesibilidad ni de
   // personas (R5/ADR-036); mismo canon de honestidad (R15).
   "tramos_con_relevamiento",
+  // LIC-DLUI LIC-R8 (LIC-08 #451, épica #448): comunicación pública —
+  // avisos del nodo CON fuente (DL-13). Mismo canon de honestidad:
+  // agregados sin PII (Ley 25.326), cobertura «X de N» jamás ranking.
+  "avisos_publicados_con_fuente",
+  "nodos_con_avisos",
 ]);
 
 // Set VIG-013 (NODO-VIG-3 #382, épica #377): los 6 KPIs del dashboard público
