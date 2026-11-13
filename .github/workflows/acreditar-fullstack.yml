@@ -98,7 +98,9 @@ jobs:
       - name: T3 — web VITE_REAL_API=1 en :3000
         run: |
           set -euo pipefail
-          nohup pnpm --filter @delocalsoy/web dev > web.log 2>&1 & HOST=127.0.0.1
+          # fix T3 (runs #1-#5): HOST debe estar ANTES del nohup — vite.config.ts lee process.env.HOST;
+          # después del & es una asignación muerta y vite sigue bindeando ::1 (causa raíz de los 5 fallos)
+          HOST=127.0.0.1 nohup pnpm --filter @delocalsoy/web dev > web.log 2>&1 &
           for i in $(seq 1 90); do curl -sf http://127.0.0.1:3000/ > /dev/null && break; sleep 2; done
           curl -sf http://127.0.0.1:3000/ > /dev/null || { echo 'web no responde:'; tail -n 60 web.log; exit 1; }
           # proxy /api → :3001 — el wiring que enciende la barra R5 «API real»
