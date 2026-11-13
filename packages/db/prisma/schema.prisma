@@ -962,3 +962,28 @@ model avisos {
   @@index([nodo_key, estado])
   @@map("avisos")
 }
+
+/// LIC-DLUI LIC-R9 (#456, épica #448 — DL-14): convenios de cooperación del
+/// nodo. Contrapartes GENÉRICAS (organismos/instituciones, jamás personas —
+/// Ley 25.326/ADR-027). Estados honestos: propuesto | en_negociacion |
+/// vigente | vencido | sin_instrumento_encontrado (el vacío se declara, no
+/// se maquilla — R15, precedente not_found). Nace VACÍA (R15): 0 convenios
+/// hasta actos institucionales reales — declarar la estructura NO es simular
+/// datos.
+model convenios {
+  id              String   @id @default(cuid())
+  nodo_key        String   @map("nodo_key") // clave del vocabulario — validada contra nodos en la ruta
+  contraparte     String   @map("contraparte") // organismo/institución — anti-PII: compuerta en la ruta
+  contraparte_tipo String  @map("contraparte_tipo") // TipoContraparteSchema: nacional | provincial | municipal | universidad | organismo | organizacion_social | empresa | otro
+  objeto          String   @map("objeto") // objeto del convenio — anti-PII: compuerta en la ruta
+  estado          String   @default("propuesto") @map("estado") // EstadoConvenioSchema — incluye sin_instrumento_encontrado (honesto, R15)
+  fuente_key      String   @map("fuente_key") // fuente oficial de la declaración (patrón DL-13.1)
+  fuente_url      String?  @map("fuente_url") // enlace abrible al instrumento cuando exista
+  fecha_corte     String   @map("fecha_corte") // YYYY-MM-DD — fuente + fecha (regla 13)
+  created_by_hash String   @map("created_by_hash") // pseudónimo sha32 del admin — sin PII
+  hash            String   @unique @map("hash") // idempotencia del alta (contraparte|nodo|objeto|fuente|fecha_corte)
+  creado_en       DateTime @default(now()) @map("creado_en")
+
+  @@index([nodo_key, estado])
+  @@map("convenios")
+}

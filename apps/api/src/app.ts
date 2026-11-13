@@ -6,6 +6,7 @@ import amenazasRouter from './routes/amenazas.js';
 import authRouter from './routes/auth.js';
 import comerciosRouter from './routes/comercios.js';
 import comunicacionRouter from './routes/comunicacion.js';
+import conveniosRouter from './routes/convenios.js';
 import corredoresRouter from './routes/corredores.js';
 import evidenciasRouter from './routes/evidencias.js';
 import eventsRouter from './routes/events.js';
@@ -214,6 +215,15 @@ export function createApp(): Express {
   // solo admin (R15 estricta, patrón salud): idempotencia por hash → 409,
   // sello `comunicacion.aviso_publicado` con rollback.
   app.use('/api/comunicacion', comunicacionRouter);
+
+  // Dominio: cooperación y convenios (LIC-DLUI LIC-R9, LIC-09 #456 — épica
+  // #448): DL-14. El convenio es acto institucional: alta SOLO admin
+  // (ADR-031) y lectura pública con cobertura «X de N» honesta que nace
+  // «0 de N» (DL-5). Contrapartes genéricas sin PII (Ley 25.326/ADR-027);
+  // estados honestos — el vacío sin_instrumento_encontrado se declara, no
+  // se maquilla (R15, precedente not_found); UNSJ-fuera (decisión DH).
+  // Idempotencia por hash → 409, sello convenio.declarado con rollback.
+  app.use('/api/convenios', conveniosRouter);
 
   // Dominio: AMC — registro de mediadores (NODO-VIG-3 VIG-011, #378 — épica
   // #377): boca única de reporte territorial del nodo. POST /api/mediadores

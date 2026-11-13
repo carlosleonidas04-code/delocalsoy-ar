@@ -715,7 +715,8 @@ export interface FilaMatrizSello {
 // + 4 filas de deuda saldadas por C5 #412 + producto.atributos_editados
 // MK-3b #426 + comercio.relay_recibido MK-4a #427 + practica.acreditada
 // LIC-R3 #452 + salud.agregado_ingestado LIC-R6 #449 + comunicacion.aviso_publicado
-// LIC-R8 #451): 44 sellos documentados. Espejo de
+// LIC-R8 #451 +
+// convenio.declarado LIC-R9 #456): 45 sellos documentados. Espejo de
 // docs/MATRIZ_SELLOS.md — si la matriz cambia en un PR, este espejo cambia en
 // el MISMO PR (regla 5).
 export const MATRIZ_SELLOS_V0_2: readonly FilaMatrizSello[] = [
@@ -763,6 +764,7 @@ export const MATRIZ_SELLOS_V0_2: readonly FilaMatrizSello[] = [
   { sello: 'patrimonio.consentido', dominio: 'patrimonio_consentimientos', origen: 'LIC-DLUI LIC-R7 (#450, épica #448 — DL-12)' },
   { sello: 'salud.agregado_ingestado', dominio: 'salud_agregados', origen: 'LIC-DLUI LIC-R6 (#449, épica #448 — DL-11)' },
   { sello: 'comunicacion.aviso_publicado', dominio: 'avisos', origen: 'LIC-DLUI LIC-R8 (#451, épica #448 — DL-13)' },
+  { sello: 'convenio.declarado', dominio: 'convenios', origen: 'LIC-DLUI LIC-R9 (#456, épica #448 — DL-14)' },
 ];
 
 /** Parser local del sello (mismo patrón que los parsers A4). */
