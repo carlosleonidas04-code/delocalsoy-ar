@@ -52,7 +52,7 @@ describe('ARTEFACTOS-ROLES AR4 — cobertura de la matriz (#403)', () => {
     expect(cobertura.sinFilaEnMatriz).toEqual([{ type: 'system.mode_change', count: 3 }]);
   });
 
-  it('la cobertura es exhaustiva: documentados + sinEventosAun = 44 filas de la matriz', () => {
+  it('la cobertura es exhaustiva: documentados + sinEventosAun = 45 filas de la matriz', () => {
     const cobertura = coberturaSellos(MATRIZ_SELLOS_V0_2.map((f, i) => ({ type: f.sello, count: i + 1 })));
     expect(cobertura.documentados).toHaveLength(45);
     expect(cobertura.sinEventosAun).toHaveLength(0);
