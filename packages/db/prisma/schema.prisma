@@ -929,4 +929,36 @@ model comercio_relay {
   @@map("comercio_relay")
 }
 
+// ─── LIC-DLUI LIC-R8 (LIC-08 #451, épica #448): DL-13 — comunicación pública ───
 
+/// Avisos de comunicación pública honesta (DL-13, canon DLUI-569): la
+/// comunicación JAMÁS sustituye la evidencia — sin fuente no hay aviso
+/// (fuente_key + fecha_corte + certeza obligatorias a nivel contrato, el
+/// alta sin fuente es inválida por construcción); la plataforma traduce,
+/// jamás alerta (cita y enlaza la fuente oficial — SMN, Hidráulica,
+/// Vialidad, municipio — sin reemplazar el sistema de alerta operativa);
+/// caducidad honesta (el vencido se expone `caducado` COMPUTADO en lectura,
+/// jamás borrado — ADR-038); anti-infodemia (certeza verificado |
+/// reportado | rumor_descartado — el desmentido se publica CON fuente);
+/// sin PII (Ley 25.326/ADR-027: sin datos de personas en título ni cuerpo).
+/// Nace VACÍA (R15): 0 avisos hasta comunicación real con fuente —
+/// declarar la estructura NO es simular datos.
+model avisos {
+  id          String   @id @default(cuid())
+  nodo_key    String   @map("nodo_key") // clave del vocabulario — validada contra nodos en la ruta
+  titulo      String   @map("titulo") // anti-PII: compuerta en la ruta (Ley 25.326/ADR-027)
+  cuerpo      String   @map("cuerpo") // anti-PII: compuerta en la ruta
+  tipo        String   @map("tipo") // TipoAvisoSchema: riesgo_climatico | aluvional | vial | servicio_publico | comunitario | desmentido
+  estado      String   @default("publicado") @map("estado") // EstadoAvisoSchema: publicado al alta (borrador queda para la UI de la DH, fuera de v1); caducado es COMPUTADO en lectura
+  fuente_key  String   @map("fuente_key") // DL-13.1: sin fuente no hay aviso
+  fuente_url  String?  @map("fuente_url") // enlace abrible a la fuente oficial cuando exista
+  fecha_corte String   @map("fecha_corte") // YYYY-MM-DD — fuente + fecha + certeza (regla 13)
+  certeza     String   @map("certeza") // CertezaAvisoSchema: verificado | reportado | rumor_descartado
+  caduca_en   String?  @map("caduca_en") // YYYY-MM-DD — obligatoria en avisos de riesgo (DL-13.3)
+  created_by_hash String @map("created_by_hash") // pseudónimo sha32 del admin — sin PII
+  hash        String   @unique @map("hash") // idempotencia del alta (titulo|nodo|fuente|fecha_corte)
+  creado_en   DateTime @default(now()) @map("creado_en")
+
+  @@index([nodo_key, estado])
+  @@map("avisos")
+}

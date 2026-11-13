@@ -126,6 +126,7 @@ export * from './modeloFederado.js';
 export * from './territorialModel.js';
 export * from './directoryTaxonomy.js';
 export * from './caucete.js';
+export * from './comunicacion.js';
 // oportunidades.js ELIMINADO (decisión DH 2026-10-17, armonización de dominio #233):
 // duplicaba el dominio Bloque 9 canónico (Oportunidad* inline, PR #160). El vocabulario
 // de economía popular del agente queda documentado en la traza del PR como propuesta futura.
@@ -823,6 +824,11 @@ export const KpiKeySchema = z.enum([
   // cobertura («0 de 18»), SIN puntajes globales de accesibilidad ni de
   // personas (R5/ADR-036); mismo canon de honestidad (R15).
   "tramos_con_relevamiento",
+  // LIC-DLUI LIC-R8 (LIC-08 #451, épica #448): comunicación pública —
+  // avisos del nodo CON fuente (DL-13). Mismo canon de honestidad:
+  // agregados sin PII (Ley 25.326), cobertura «X de N» jamás ranking.
+  "avisos_publicados_con_fuente",
+  "nodos_con_avisos",
 ]);
 
 // Set VIG-013 (NODO-VIG-3 #382, épica #377): los 6 KPIs del dashboard público

@@ -67,6 +67,15 @@ export const KPI_KEYS = [
   // ejecutan practicantes bajo el protocolo versionado LIC-R2 (DL-4) —
   // el KPI cuenta estados del dominio, no calcula calidad.
   'tramos_con_relevamiento',
+  // LIC-DLUI LIC-R8 (LIC-08 #451, épica #448): DL-13 — comunicación pública
+  // honesta. Por construcción todo aviso publicado lleva fuente (DL-13.1:
+  // sin fuente no hay aviso) — el KPI sirve de control de integridad:
+  // avisos_publicados == avisos_publicados_con_fuente, siempre. Mismas
+  // reglas: agregados sin PII (Ley 25.326), re-derivado del dominio —
+  // nunca incrementos. No entra al observatorio en v1 (decisión DH: LIC-08
+  // entra cuando la DH lo ratifique).
+  'avisos_publicados_con_fuente',
+  'nodos_con_avisos',
 ] as const;
 
 export type KpiKey = (typeof KPI_KEYS)[number];
@@ -543,6 +552,29 @@ export async function recomputeKpisForNode(nodoKey: string): Promise<KpiSnapshot
         tramos_community_validated: porEstadoTramosAcc['community_validated'] ?? 0,
         tramos_verified: porEstadoTramosAcc['verified'] ?? 0,
       },
+    },
+    // ─── LIC-DLUI LIC-R8 (#451): DL-13 — avisos de comunicación con fuente ───
+    {
+      nodo_key: nodoKey,
+      kpi_key: 'avisos_publicados_con_fuente',
+      // Control de integridad (DL-13.1): todo aviso publicado lleva fuente
+      // por construcción — el count publicado == count con fuente, siempre.
+      valor: await prisma.avisos.count({ where: { nodo_key: nodoKey, estado: 'publicado' } }),
+      detalles: {},
+    },
+    {
+      nodo_key: nodoKey,
+      kpi_key: 'nodos_con_avisos',
+      // Distinct de nodos con ≥1 aviso publicado (global — el mismo valor
+      // honesto para cada nodo; cobertura «X de N» jamás ranking, DL-13.6).
+      valor: (
+        await prisma.avisos.findMany({
+          where: { estado: 'publicado' },
+          select: { nodo_key: true },
+          distinct: ['nodo_key'],
+        })
+      ).length,
+      detalles: {},
     },
   ];
 

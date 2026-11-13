@@ -70,7 +70,7 @@ type SnapshotRow = { kpi_key: string; valor: number | null; detalles: Record<str
 
 async function kpisDe(nodo: string): Promise<Map<string, SnapshotRow>> {
   const snapshots = (await recomputeKpisForNode(nodo)) as unknown as SnapshotRow[];
-  expect(snapshots.length).toBe(26); // 15 vivos + 6 del mercado (MK-3a D2) + 5 del observatorio (LIC-R1 #457 + LIC-R2 #453)
+  expect(snapshots.length).toBe(28); // 15 vivos + 6 del mercado (MK-3a D2) + 5 del observatorio (LIC-R1 #457 + LIC-R2 #453) + 2 de comunicación (LIC-R8 #451)
   const map = new Map<string, SnapshotRow>();
   for (const s of snapshots) map.set(s.kpi_key, s);
   return map;
