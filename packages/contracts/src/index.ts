@@ -126,6 +126,7 @@ export * from './modeloFederado.js';
 export * from './territorialModel.js';
 export * from './directoryTaxonomy.js';
 export * from './caucete.js';
+export * from './comunicacion.js';
 // oportunidades.js ELIMINADO (decisión DH 2026-10-17, armonización de dominio #233):
 // duplicaba el dominio Bloque 9 canónico (Oportunidad* inline, PR #160). El vocabulario
 // de economía popular del agente queda documentado en la traza del PR como propuesta futura.
