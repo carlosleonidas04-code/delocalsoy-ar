@@ -111,7 +111,7 @@ const ConveniosQuerySchema = z.object({
 });
 
 // GET /api/convenios?nodo=&estado= — lectura pública anónima.
-router.get('/convenios', async (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   let q: z.infer<typeof ConveniosQuerySchema>;
   try {
     q = ConveniosQuerySchema.parse(req.query);
@@ -175,7 +175,7 @@ router.get('/cobertura', async (_req: Request, res: Response) => {
 // POST /api/convenios — alta curada SOLO admin (R15 estricta, patrón
 // comunicacion/salud): nodo validado contra el vocabulario, anti-PII,
 // idempotencia por hash → 409, sello con rollback (R4/R15).
-router.post('/convenios', requireJwt, requireRole('admin'), async (req: Request, res: Response) => {
+router.post('/', requireJwt, requireRole('admin'), async (req: Request, res: Response) => {
   let parsed: z.infer<typeof ConvenioAltaSchema>;
   try {
     parsed = ConvenioAltaSchema.parse(req.body);
