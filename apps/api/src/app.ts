@@ -5,6 +5,7 @@ import activosRouter from './routes/activos.js';
 import amenazasRouter from './routes/amenazas.js';
 import authRouter from './routes/auth.js';
 import comerciosRouter from './routes/comercios.js';
+import comunicacionRouter from './routes/comunicacion.js';
 import corredoresRouter from './routes/corredores.js';
 import evidenciasRouter from './routes/evidencias.js';
 import eventsRouter from './routes/events.js';
@@ -200,6 +201,19 @@ export function createApp(): Express {
   // patrón ingestas): idempotencia por hash, sello `salud.agregado_ingestado`
   // con rollback.
   app.use('/api/salud', saludRouter);
+
+  // Dominio: comunicación pública honesta (LIC-DLUI LIC-R8, LIC-08 #451 —
+  // épica #448): DL-13, canon DLUI-569 como ley interna. Sin fuente no hay
+  // aviso (DL-13.1); la plataforma traduce, jamás alerta (cita y enlaza la
+  // fuente oficial — no sirena, R5/ADR-036); caducidad honesta (el vencido
+  // se expone `caducado` COMPUTADO en lectura, jamás borrado — ADR-038);
+  // anti-infodemia (certeza verificado|reportado|rumor_descartado); sin PII
+  // (Ley 25.326/ADR-027). GET /api/comunicacion/avisos — lectura pública con
+  // filtros validados; GET /api/comunicacion/cobertura — «X de N» honesto
+  // que nace «0 de N» (DL-5); POST /api/comunicacion/avisos — alta curada
+  // solo admin (R15 estricta, patrón salud): idempotencia por hash → 409,
+  // sello `comunicacion.aviso_publicado` con rollback.
+  app.use('/api/comunicacion', comunicacionRouter);
 
   // Dominio: AMC — registro de mediadores (NODO-VIG-3 VIG-011, #378 — épica
   // #377): boca única de reporte territorial del nodo. POST /api/mediadores
