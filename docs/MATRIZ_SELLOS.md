@@ -59,6 +59,7 @@ Propósito (mejora C5 de la hoja de mantenimiento): hacer explícito el contrato
 | `salud.agregado_ingestado` | salud_agregados | LIC-DLUI LIC-R6 (#449, épica #448 — DL-11) | main |
 | `comunicacion.aviso_publicado` | avisos | LIC-DLUI LIC-R8 (#451, épica #448 — DL-13) | main |
 | `convenio.declarado` | convenios | LIC-DLUI LIC-R9 (#456, épica #448 — DL-14) | main |
+| `curricular.curso_declarado` | courses | MVP-1 «Atlas Territorial» S1/S2 (#532, épica #531 — RFC-020/021, ADR-082) | main |
 
 ## Regla
 
