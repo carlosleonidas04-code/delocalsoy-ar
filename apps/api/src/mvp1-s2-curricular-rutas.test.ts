@@ -148,6 +148,18 @@ describe.skipIf(!dbUp)('Matriz curricular (MVP-1 S2 — RFC-020/021, #532)', () 
     expect(rutasBody.data.tracks).toHaveLength(0);
     expect(rutasBody.data.perfiles).toHaveLength(0);
     expect(rutasBody.data.rutas).toHaveLength(0);
+
+    // Conteo directo de las 7 tablas (R15: la migración nace VACÍA). Este es
+    // el primer test del único archivo que escribe estas tablas: las suites
+    // corren en paralelo por archivo en CI, así que un conteo global en otro
+    // archivo sería una carrera contra los fixtures de este.
+    expect(await prisma.courses.count()).toBe(0);
+    expect(await prisma.competencies.count()).toBe(0);
+    expect(await prisma.course_competencies.count()).toBe(0);
+    expect(await prisma.tracks.count()).toBe(0);
+    expect(await prisma.perfiles.count()).toBe(0);
+    expect(await prisma.learning_paths.count()).toBe(0);
+    expect(await prisma.learning_path_steps.count()).toBe(0);
   });
 
   it('acto de catálogo: POST sin JWT → 401; ciudadano → 403 (solo admin, ADR-031)', async () => {
