@@ -3,7 +3,7 @@
 **Fecha:** 2026-11-15
 **Base canónica:** `main @ dbb11fe` (merge PR #530) — openapi **v7.51.0** (79 paths), matriz de sellos **45**, ADR-001..081, EV-001..112.
 **Épica:** OBJE-CAMPUS [#531] · **Issue:** MVP-1 [#532] · **Fuente:** OBJE-000 contraste v0 (PR #528, §4).
-**Estado del documento:** ESPECIFICACIÓN (PLAN). No registra evidencia; no habilita código (criterio «fuera de alcance» de #532). Las decisiones nuevas se proponen como **ADR-082..ADR-084 (propuesta)** y requieren ratificación expresa de la DH antes de aterrizarse.
+**Estado del documento:** ESPECIFICACIÓN RATIFICADA. No registra evidencia. Las decisiones **ADR-082..ADR-084 fueron RATIFICADAS por la DH (2026-11-15, orden expresa en la sesión de construcción)** y quedaron registradas en `docs/DECISIONES.md` y `docs/REGISTRO_ADRS_RATIFICADOS.md`; la estructura (S1) ya está aterrizada en el PR #535 con CI verde.
 
 ---
 
@@ -44,11 +44,11 @@ learning_paths (rutas)          ← secuencia ordenada de courses con criterio_d
 learning_path_steps (pasos)     ← orden + course_id + obligatoriedad declarada
 ```
 
-Decisiones de diseño propuestas (cada una con su ADR propuesto):
+Decisiones de diseño (RATIFICADAS por la DH el 2026-11-15):
 
-- **ADR-082 (propuesta):** la matriz curricular es **catálogo con procedencia por ingesta** (patrón DL-9/DL-11), no sistema de gestión académica: sin inscripción, sin notas, sin persona. El corpus DLUI-IT es la única fuente autorizada v1; cualquier otra fuente requiere resolución DH.
-- **ADR-083 (propuesta):** trazabilidad curricular en **dos direcciones** (curso → competencias que aporta; competencia → cursos que la desarrollan) expuesta en la API pública; los `tracks`, `perfiles` y `learning_paths` son vistas declaradas sobre esa matriz, jamás cálculos.
-- **ADR-084 (propuesta):** el Atlas Territorial por nodo es una **composición de solo-lectura** de superficies públicas ya acreditadas (nodos/capas/categorías/features/reportes + KPIs + convenios + amenazas), con estados honestos por bloque (`publicado` / `sin_fuente_ingestada` / `en_custodia`), sin nueva escritura territorial.
+- **ADR-082 (RATIFICADA):** la matriz curricular es **catálogo con procedencia por ingesta** (patrón DL-9/DL-11), no sistema de gestión académica: sin inscripción, sin notas, sin persona. El corpus DLUI-IT es la única fuente autorizada v1; cualquier otra fuente requiere resolución DH.
+- **ADR-083 (RATIFICADA):** trazabilidad curricular en **dos direcciones** (curso → competencias que aporta; competencia → cursos que la desarrollan) expuesta en la API pública; los `tracks`, `perfiles` y `learning_paths` son vistas declaradas sobre esa matriz, jamás cálculos.
+- **ADR-084 (RATIFICADA):** el Atlas Territorial por nodo es una **composición de solo-lectura** de superficies públicas ya acreditadas (nodos/capas/categorías/features/reportes + KPIs + convenios + amenazas), con estados honestos por bloque (`publicado` / `sin_fuente_ingestada` / `en_custodia`), sin nueva escritura territorial.
 
 ## 4. Contratos Zod propuestos (`packages/contracts/src/curricular.ts`)
 
@@ -100,4 +100,4 @@ Un solo sello nuevo v1: la matriz se acredita por procedencia de ingesta, no por
 
 ## 10. Próximo paso
 
-Ratificación DH de ADR-082/083/084 (propuesta) y de la autorización de carga del corpus como ingesta. Con eso, S1 puede aterrizar por PR con CI verde antes de merge (R15/ADR-019).
+ADR-082/083/084 RATIFICADOS por la DH (2026-11-15) y registrados en `docs/DECISIONES.md` + `docs/REGISTRO_ADRS_RATIFICADOS.md`. S1 (contratos + schema + migración que nace vacía) aterrizado en el PR #535 con CI 7/7 verde. Sigue: **S2** (API matriz + rutas + sello `curricular.curso_declarado`) y la autorización de carga del corpus DLUI-IT como ingesta declarada (ECO-5) — sin corpus ingerido, el catálogo permanece en 0 honesto (R15).
