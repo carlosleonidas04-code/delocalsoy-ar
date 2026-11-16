@@ -8,6 +8,7 @@ import comerciosRouter from './routes/comercios.js';
 import comunicacionRouter from './routes/comunicacion.js';
 import conveniosRouter from './routes/convenios.js';
 import curricularRouter from './routes/curricular.js';
+import atlasRouter from './routes/atlas.js';
 import corredoresRouter from './routes/corredores.js';
 import evidenciasRouter from './routes/evidencias.js';
 import eventsRouter from './routes/events.js';
@@ -238,6 +239,15 @@ export function createApp(): Express {
   // fuente_key coincidente, track existente, anti-PII, idempotencia por
   // hash → 409, sello `curricular.curso_declarado` con rollback).
   app.use('/api/curricular', curricularRouter);
+
+  // Dominio: Atlas Territorial por nodo — MVP-1 (RFC-021, #532, épica
+  // OBJE-CAMPUS #531): ADR-084 — composición de SOLO-LECTURA de superficies
+  // públicas ya acreditadas (vocabulario CORE-002, KPIs LIC-R1, amenaza
+  // sísmica LIC-R4, convenios LIC-R9, matriz curricular MVP-1), con estado
+  // honesto por bloque (publicado | sin_fuente_ingestada | en_custodia),
+  // sin nueva escritura territorial, sin geometrías de dominios sensibles
+  // (patrón Iglesia) y jamás ranking entre nodos (R5/ADR-036).
+  app.use('/api/atlas', atlasRouter);
 
   // Dominio: AMC — registro de mediadores (NODO-VIG-3 VIG-011, #378 — épica
   // #377): boca única de reporte territorial del nodo. POST /api/mediadores
