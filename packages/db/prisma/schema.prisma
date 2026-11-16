@@ -644,6 +644,11 @@ model ingestas {
   updated_at       DateTime @updatedAt @map("updated_at")
 
   agregados salud_agregados[] // LIC-R6 #449: agregados federados por esta ingesta (DL-11)
+  cursos courses[] // MVP-1 S1 #532: cursos del catálogo curricular con esta procedencia (ECO-5)
+  competencias competencies[] // MVP-1 S1 #532: competencias con esta procedencia
+  tracks tracks[] // MVP-1 S1 #532: trayectos con esta procedencia
+  perfiles perfiles[] // MVP-1 S1 #532: perfiles de egreso con esta procedencia
+  rutas learning_paths[] // MVP-1 S1 #532: rutas de aprendizaje con esta procedencia
 
   @@unique([fuente_key, source_id])
   @@index([nodo_key])
@@ -986,4 +991,165 @@ model convenios {
 
   @@index([nodo_key, estado])
   @@map("convenios")
+}
+
+// ─── MVP-1 «Atlas Territorial» (RFC-020/021, #532, épica #531): S1 ───
+
+/// Dominio curricular como CATÁLOGO con procedencia (ADR-082 propuesta,
+/// especificación docs/MVP1_ATLAS_TERRITORIAL_ESPECIFICACION_v0.1.md): sin
+/// inscripción, sin notas, sin persona (Ley 25.326/ADR-027). Única fuente
+/// autorizada v1: corpus DLUI-IT (ECO-5). Procedencia por ingesta (NC-EV-09
+/// — el dato no viaja suelto). Nace VACÍA (R15): 0 filas hasta que la DH
+/// autorice la carga del corpus como ingesta declarada — declarar la
+/// estructura NO es simular datos.
+model tracks {
+  id              String   @id @default(cuid())
+  key             String   @unique @map("key") // slug del vocabulario curricular
+  titulo          String   @map("titulo") // anti-PII: compuerta en la ruta (Ley 25.326/ADR-027)
+  descripcion     String?  @map("descripcion")
+  tipo            String   @map("tipo") // TipoTrackSchema: nucleo | optativa | taller_territorial
+  orden           Int?     @map("orden") // posición DECLARADA en el corpus, jamás una métrica (ADR-036)
+  fuente_key      String   @map("fuente_key") // DL-13.1: sin fuente no hay fila
+  fuente_url      String?  @map("fuente_url")
+  fecha_corte     String   @map("fecha_corte") // YYYY-MM-DD (regla 13)
+  ingesta_id      String   @map("ingesta_id") // → ingestas.id: el dato no viaja suelto (NC-EV-09)
+  created_by_hash String   @map("created_by_hash") // pseudónimo sha32 del admin — sin PII
+  hash            String   @unique @map("hash") // idempotencia del alta (key|fuente|fecha_corte)
+  creado_en       DateTime @default(now()) @map("creado_en")
+
+  ingesta ingestas @relation(fields: [ingesta_id], references: [id], onDelete: Cascade)
+
+  @@index([tipo])
+  @@index([ingesta_id])
+  @@map("tracks")
+}
+
+model competencies {
+  id              String   @id @default(cuid())
+  key             String   @unique @map("key")
+  titulo          String   @map("titulo") // anti-PII: compuerta en la ruta
+  descripcion     String?  @map("descripcion")
+  tipo            String   @map("tipo") // TipoCompetenciaSchema: territorial | tecnica | comunitaria | transversal
+  fuente_key      String   @map("fuente_key")
+  fuente_url      String?  @map("fuente_url")
+  fecha_corte     String   @map("fecha_corte")
+  ingesta_id      String   @map("ingesta_id") // → ingestas.id (NC-EV-09)
+  created_by_hash String   @map("created_by_hash")
+  hash            String   @unique @map("hash") // idempotencia (key|fuente|fecha_corte)
+  creado_en       DateTime @default(now()) @map("creado_en")
+
+  ingesta  ingestas               @relation(fields: [ingesta_id], references: [id], onDelete: Cascade)
+  vinculos course_competencies[]
+
+  @@index([tipo])
+  @@index([ingesta_id])
+  @@map("competencies")
+}
+
+model courses {
+  id              String   @id @default(cuid())
+  key             String   @unique @map("key")
+  titulo          String   @map("titulo") // anti-PII: compuerta en la ruta
+  descripcion     String?  @map("descripcion")
+  track_key       String   @map("track_key") // → tracks.key (validado en la ruta)
+  estado          String   @default("declarado") @map("estado") // EstadoCursoSchema: declarado | vigente | retirado (retiro sin borrado, patrón ADR-038)
+  fuente_key      String   @map("fuente_key")
+  fuente_url      String?  @map("fuente_url")
+  fecha_corte     String   @map("fecha_corte")
+  ingesta_id      String   @map("ingesta_id") // → ingestas.id (NC-EV-09)
+  created_by_hash String   @map("created_by_hash")
+  hash            String   @unique @map("hash") // idempotencia (key|fuente|fecha_corte)
+  creado_en       DateTime @default(now()) @map("creado_en")
+
+  ingesta  ingestas              @relation(fields: [ingesta_id], references: [id], onDelete: Cascade)
+  vinculos course_competencies[]
+  pasos    learning_path_steps[]
+
+  @@index([track_key])
+  @@index([estado])
+  @@index([ingesta_id])
+  @@map("courses")
+}
+
+model perfiles {
+  id              String   @id @default(cuid())
+  key             String   @unique @map("key")
+  titulo          String   @map("titulo") // anti-PII: compuerta en la ruta
+  descripcion     String?  @map("descripcion")
+  fuente_key      String   @map("fuente_key")
+  fuente_url      String?  @map("fuente_url")
+  fecha_corte     String   @map("fecha_corte")
+  ingesta_id      String   @map("ingesta_id") // → ingestas.id (NC-EV-09)
+  created_by_hash String   @map("created_by_hash")
+  hash            String   @unique @map("hash") // idempotencia (key|fuente|fecha_corte)
+  creado_en       DateTime @default(now()) @map("creado_en")
+
+  ingesta ingestas        @relation(fields: [ingesta_id], references: [id], onDelete: Cascade)
+  rutas   learning_paths[]
+
+  @@index([ingesta_id])
+  @@map("perfiles")
+}
+
+model learning_paths {
+  id                String   @id @default(cuid())
+  key               String   @unique @map("key")
+  titulo            String   @map("titulo") // anti-PII: compuerta en la ruta
+  descripcion       String?  @map("descripcion")
+  perfil_key        String?  @map("perfil_key") // → perfiles.key — una ruta puede no estar atada a un perfil v1
+  criterio_de_avance String  @map("criterio_de_avance") // texto con método (ADR-035), jamás un puntaje de corte (ADR-036)
+  fuente_key        String   @map("fuente_key")
+  fuente_url        String?  @map("fuente_url")
+  fecha_corte       String   @map("fecha_corte")
+  ingesta_id        String   @map("ingesta_id") // → ingestas.id (NC-EV-09)
+  created_by_hash   String   @map("created_by_hash")
+  hash              String   @unique @map("hash") // idempotencia (key|fuente|fecha_corte)
+  creado_en         DateTime @default(now()) @map("creado_en")
+
+  ingesta ingestas              @relation(fields: [ingesta_id], references: [id], onDelete: Cascade)
+  perfil  perfiles?             @relation(fields: [perfil_key], references: [key])
+  pasos   learning_path_steps[]
+
+  @@index([perfil_key])
+  @@index([ingesta_id])
+  @@map("learning_paths")
+}
+
+/// Matriz de trazabilidad curricular (ADR-083 propuesta): vínculo N:M
+/// curso↔competencia con peso_declarado TEXTO cualitativo (jamás puntaje —
+/// ADR-036). La procedencia la hereda de sus filas padre (no se duplica).
+/// Nace VACÍA (R15).
+model course_competencies {
+  id             String   @id @default(cuid())
+  course_key     String   @map("course_key") // → courses.key
+  competency_key String   @map("competency_key") // → competencies.key
+  peso_declarado String   @map("peso_declarado") // PesoDeclaradoSchema — texto con método, ADR-035/036
+  created_by_hash String  @map("created_by_hash")
+  hash           String   @unique @map("hash") // idempotencia (course|competency)
+  creado_en      DateTime @default(now()) @map("creado_en")
+
+  course     courses      @relation(fields: [course_key], references: [key], onDelete: Cascade)
+  competency competencies @relation(fields: [competency_key], references: [key], onDelete: Cascade)
+
+  @@index([course_key])
+  @@index([competency_key])
+  @@map("course_competencies")
+}
+
+model learning_path_steps {
+  id             String   @id @default(cuid())
+  path_key       String   @map("path_key") // → learning_paths.key
+  course_key     String   @map("course_key") // → courses.key
+  orden          Int      @map("orden") // posición 1-based DECLARADA en la ruta, jamás una métrica (ADR-036)
+  obligatoriedad String   @map("obligatoriedad") // ObligatoriedadSchema: obligatorio | recomendado | electivo
+  created_by_hash String  @map("created_by_hash")
+  hash           String   @unique @map("hash") // idempotencia (path|course)
+  creado_en      DateTime @default(now()) @map("creado_en")
+
+  path   learning_paths @relation(fields: [path_key], references: [key], onDelete: Cascade)
+  course courses        @relation(fields: [course_key], references: [key], onDelete: Cascade)
+
+  @@index([path_key])
+  @@index([course_key])
+  @@map("learning_path_steps")
 }
