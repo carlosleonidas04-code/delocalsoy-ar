@@ -108,3 +108,21 @@
 - **Contenido:** los fixtures demo quedan CONGELADOS — NO se corrigen en el seed: son `is_synthetic=true` «Ilustrativa · …» (R15: demo declarada, no dato real). El desajuste queda documentado en el propio seed (`packages/db/prisma/seed-vocabulario-vial-iglesia.sql`, § hallazgo) y en `docs/nodes/valle-de-iglesia/VIG-010-VOCABULARIO-VIAL.md`. La corrección del perfil productivo del nodo se hará SOLO con fuente real verificable del catálogo (ADR-035) y decisión DH en un PR con traza.
 - **Conformidad técnica R12:** agent-vibe — hallazgo detectado y documentado en VIG-010 (PR #383, main @ `382568ad`, EV-083); registro ADR-040 aterrizado por mandato DH (este PR).
 - **Nota de registro:** volcado a este registro el 2026-11-06.
+
+## ADR-082 — MVP-1: la matriz curricular es catálogo con procedencia, no gestión académica ✅ RATIFICADO
+- **Estado:** RATIFICADO por Dirección Humana (2026-11-15, orden expresa en la sesión de construcción — «si continuemos», respuesta a la propuesta de la especificación MVP-1)
+- **Origen:** OBJE-000 contraste v0 (PR #528, RFC-020 confirmado como primer slice educativo) + especificación `docs/MVP1_ATLAS_TERRITORIAL_ESPECIFICACION_v0.1.md` (PR #534, issue #532, épica OBJE-CAMPUS #531).
+- **Contenido:** la matriz curricular (courses/competencies/tracks/perfiles/learning_paths) es CATÁLOGO con procedencia por ingesta (patrón DL-9/DL-11, NC-EV-09 — el dato no viaja suelto), NO un sistema de gestión académica: sin inscripción, sin notas, sin evaluación personal, sin persona (Ley 25.326/ADR-027). Única fuente autorizada v1: corpus DLUI-IT (ECO-5 — contenido, jamás actor institucional); cualquier otra fuente requiere resolución DH. El dominio nace VACÍO (R15): declarar la estructura NO es simular datos.
+- **Conformidad técnica R12:** agent-vibe — PR #535 (S1: contratos Zod + schema Prisma de 7 tablas + migración `20261115130000_mvp1_s1_curricular` que nace vacía + suite de 8 tests; CI 7/7 verde).
+
+## ADR-083 — MVP-1: trazabilidad curricular bidireccional, vistas declaradas ✅ RATIFICADO
+- **Estado:** RATIFICADO por Dirección Humana (2026-11-15, orden expresa en la sesión de construcción — ídem ADR-082)
+- **Origen:** RFC-018 + RFC-020/021 vía especificación MVP-1 (PR #534, issue #532).
+- **Contenido:** la trazabilidad curricular se expone en DOS direcciones (curso → competencias que aporta; competencia → cursos que la desarrolla) en la API pública; los tracks, perfiles y learning_paths son VISTAS DECLARADAS sobre esa matriz, jamás cálculos (sin puntajes de corte — el criterio de avance es texto con método, ADR-035; anti-ranking ADR-036).
+- **Conformidad técnica R12:** agent-vibe — PR #535 (S1: `VinculoCursoCompetenciaSchema` con `PesoDeclaradoSchema` que rechaza puntajes numéricos por construcción); exposición de rutas en S2 (#532).
+
+## ADR-084 — MVP-1: el Atlas por nodo es composición solo-lectura de superficies acreditadas ✅ RATIFICADO
+- **Estado:** RATIFICADO por Dirección Humana (2026-11-15, orden expresa en la sesión de construcción — ídem ADR-082)
+- **Origen:** RFC-021 vía especificación MVP-1 (PR #534, issue #532).
+- **Contenido:** el Atlas Territorial por nodo es composición SOLO-LECTURA de superficies públicas ya acreditadas (vocabulario CORE-002, KPIs del observatorio LIC-R1, capas de amenaza LIC-R4, convenios LIC-R9) con estados honestos por bloque (`publicado` / `sin_fuente_ingestada` / `en_custodia` — null ≠ 0, R15): ningún bloque se fabrica; sin nueva escritura territorial; sin ranking entre nodos (R5/ADR-036).
+- **Conformidad técnica R12:** agent-vibe — contratos S1 en PR #535 (`AtlasNodoResponseSchema` con `EstadoBloqueAtlasSchema`); endpoint `GET /api/atlas/:nodo` en S3 (#532).
