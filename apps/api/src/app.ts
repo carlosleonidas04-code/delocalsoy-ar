@@ -7,6 +7,8 @@ import authRouter from './routes/auth.js';
 import comerciosRouter from './routes/comercios.js';
 import comunicacionRouter from './routes/comunicacion.js';
 import conveniosRouter from './routes/convenios.js';
+import curricularRouter from './routes/curricular.js';
+import atlasRouter from './routes/atlas.js';
 import corredoresRouter from './routes/corredores.js';
 import evidenciasRouter from './routes/evidencias.js';
 import eventsRouter from './routes/events.js';
@@ -224,6 +226,28 @@ export function createApp(): Express {
   // se maquilla (R15, precedente not_found); UNSJ-fuera (decisión DH).
   // Idempotencia por hash → 409, sello convenio.declarado con rollback.
   app.use('/api/convenios', conveniosRouter);
+
+  // Dominio: matriz curricular — MVP-1 «Atlas Territorial» (RFC-020/021,
+  // #532, épica OBJE-CAMPUS #531): ADR-082 — catálogo con procedencia por
+  // ingesta (NC-EV-09), NO gestión académica: sin inscripción, sin notas,
+  // sin persona (Ley 25.326/ADR-027); única fuente autorizada v1: corpus
+  // DLUI-IT (ECO-5); nace VACÍO (R15). ADR-083 — trazabilidad bidireccional
+  // curso↔competencia; tracks/perfiles/rutas son vistas declaradas, jamás
+  // cálculos. GET /api/curricular (matriz pública con cobertura «X de N»,
+  // DL-5) + GET /api/curricular/rutas + POST /api/curricular/cursos (solo
+  // admin, R15 estricta patrón salud/convenios: ingesta existente con
+  // fuente_key coincidente, track existente, anti-PII, idempotencia por
+  // hash → 409, sello `curricular.curso_declarado` con rollback).
+  app.use('/api/curricular', curricularRouter);
+
+  // Dominio: Atlas Territorial por nodo — MVP-1 (RFC-021, #532, épica
+  // OBJE-CAMPUS #531): ADR-084 — composición de SOLO-LECTURA de superficies
+  // públicas ya acreditadas (vocabulario CORE-002, KPIs LIC-R1, amenaza
+  // sísmica LIC-R4, convenios LIC-R9, matriz curricular MVP-1), con estado
+  // honesto por bloque (publicado | sin_fuente_ingestada | en_custodia),
+  // sin nueva escritura territorial, sin geometrías de dominios sensibles
+  // (patrón Iglesia) y jamás ranking entre nodos (R5/ADR-036).
+  app.use('/api/atlas', atlasRouter);
 
   // Dominio: AMC — registro de mediadores (NODO-VIG-3 VIG-011, #378 — épica
   // #377): boca única de reporte territorial del nodo. POST /api/mediadores

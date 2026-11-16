@@ -9,6 +9,7 @@ import { GmpQuotaBanner } from './components/GmpQuotaBanner';
 import { HeroBannerSection } from './components/HeroBannerSection';
 import { NodoCapitalDashboard } from './components/NodoCapitalDashboard';
 import { VialidadMovilidadPanel } from './components/VialidadMovilidadPanel';
+import { AtlasTerritorialPanel } from './components/AtlasTerritorialPanel';
 import { StageCapital215Dashboard } from './components/stage-capital/StageCapital215Dashboard';
 import { NodeTransitionNavigator } from './components/stage-vig/NodeTransitionNavigator';
 import { NodoValleDeIglesiaDashboard } from './components/stage-vig/NodoValleDeIglesiaDashboard';
@@ -1158,6 +1159,15 @@ export function App() {
             etiquetada (R15) */}
         {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') && (
           <VialidadMovilidadPanel dataSource={defaultDataSource} />
+        )}
+
+        {/* 6i. Atlas Territorial por nodo (MVP-1 RFC-021 #532, épica OBJE-CAMPUS #531):
+            composición de SOLO-LECTURA de superficies ya acreditadas (ADR-084) con
+            estados honestos por bloque — acople por contrato DataSource (ADR-040).
+            Sin nueva escritura territorial, sin geometrías sensibles (patrón Iglesia)
+            y jamás ranking entre nodos (R5/ADR-036); WCAG 2.2 AA (ADR-061). */}
+        {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') && (
+          <AtlasTerritorialPanel dataSource={defaultDataSource} />
         )}
 
         {/* 6g. STAGE Capital #215 (MONTAR-1 #442, armonizado MONTAR-2 #445): comercios de

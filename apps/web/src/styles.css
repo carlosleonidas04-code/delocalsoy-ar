@@ -2255,3 +2255,91 @@ code {
 
 
 
+
+/* ─── MVP-1 «Atlas Territorial» S4 (RFC-021, #532, ADR-084) ─── */
+/* WCAG 2.2 AA (ADR-061): el estado se comunica con texto visible y contraste
+   AA; el color nunca es el único portador de significado (1.4.1). */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.atlas-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0.75rem 0 1rem;
+  max-width: 22rem;
+}
+
+.atlas-selector label {
+  font-weight: 600;
+  color: var(--text-primary, var(--color-text-primary));
+}
+
+.atlas-selector select {
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--border-subtle, var(--color-border));
+  border-radius: 6px;
+  background: var(--surface-card, var(--color-bg-elevated));
+  color: var(--text-primary, var(--color-text-primary));
+  font: inherit;
+}
+
+.atlas-selector select:focus-visible {
+  outline: 3px solid var(--focus-ring, var(--color-accent));
+  outline-offset: 2px;
+}
+
+.atlas-ayuda {
+  font-size: 0.82rem;
+  color: var(--text-secondary, var(--color-text-secondary));
+}
+
+.atlas-bloques {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.atlas-bloque {
+  border: 1px solid var(--border-subtle, var(--color-border));
+  border-radius: 8px;
+  padding: 0.75rem 0.95rem;
+  background: var(--surface-card-muted, var(--color-bg-elevated));
+}
+
+.atlas-bloque h3 {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+}
+
+.atlas-bloque-descripcion {
+  margin: 0 0 0.5rem;
+  font-size: 0.88rem;
+  color: var(--text-secondary, var(--color-text-secondary));
+}
+
+.atlas-estado {
+  margin: 0;
+  font-size: 0.88rem;
+}
+
+.atlas-estado--publicado strong {
+  color: var(--status-ok, var(--color-text-primary));
+}
+
+.atlas-estado--sin-fuente strong,
+.atlas-estado--en-custodia strong {
+  color: var(--text-primary, var(--color-text-primary));
+  font-style: italic;
+}

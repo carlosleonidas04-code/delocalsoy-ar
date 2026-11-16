@@ -39,6 +39,7 @@ import type {
   ReporteHistorial,
   SubnodoVig,
 } from './vig014';
+import type { AtlasNodoUI } from './atlasTerritorial';
 
 export type SanJuanFocalNodeKey = 'capital' | 'caucete' | 'iglesia';
 export type Core004Role = 'ciudadano' | 'moderador' | 'admin';
@@ -366,6 +367,11 @@ export interface DataSource<TContext = unknown> {
   createReporteAmc?(input: ReporteAmcCreatePayload): Promise<ReporteAmcResultado>;
   listMisReportes?(token: string): Promise<MiReporte[]>;
   getReporteHistorial?(id: string): Promise<ReporteHistorial>;
+  // MVP-1 «Atlas Territorial» (RFC-021, #532, épica #531): composición de
+  // SOLO-LECTURA por nodo (ADR-084) con estados honestos por bloque.
+  // Opcional por contrato (ADR-029): la divergencia del contrato se
+  // propaga (R5) — jamás un bloque fabricado ni una lista vacía silenciosa.
+  getAtlasNodo?(nodoKey: SanJuanFocalNodeKey): Promise<AtlasNodoUI>;
 }
 
 export { ApiDataSource, type ApiDataSourceOptions };
