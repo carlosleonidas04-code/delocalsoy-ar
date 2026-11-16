@@ -80,6 +80,7 @@ import {
   type ReporteHistorial,
   type SubnodoVig,
 } from './vig014';
+import { normalizarAtlasNodo, type AtlasNodoUI } from './atlasTerritorial';
 
 export interface ApiDataSourceOptions {
   fetchImpl?: typeof fetch;
@@ -698,6 +699,33 @@ export class ApiDataSource implements DataSource {
       });
     }
     return normalizarAccesibilidad(payload.data);
+  }
+
+  /**
+   * Consulta GET /api/atlas/:nodo — composición de SOLO-LECTURA por nodo
+   * (MVP-1 «Atlas Territorial» RFC-021 #532, ADR-084): estados honestos por
+   * bloque. Regla R5: la divergencia del contrato se propaga — jamás un
+   * bloque fabricado ni una lista vacía silenciosa (R15).
+   */
+  public async getAtlasNodo(nodoKey: SanJuanFocalNodeKey): Promise<AtlasNodoUI> {
+    const endpoint = '/api/atlas/' + encodeURIComponent(nodoKey);
+    const payload = await this.requestJson<any>(endpoint);
+    if (
+      payload === null ||
+      typeof payload !== 'object' ||
+      Array.isArray(payload) ||
+      typeof payload.data !== 'object' ||
+      Array.isArray(payload.data) ||
+      payload.data === null
+    ) {
+      throw new DataSourceHttpError({
+        status: 500,
+        endpoint,
+        message: 'Respuesta malformada de ' + endpoint + ': se esperaba un objeto en data',
+        details: payload,
+      });
+    }
+    return normalizarAtlasNodo(payload.data, nodoKey);
   }
 
   // ─── NODO-VIG-3 VIG-014 (#380, épica #377): módulo de infraestructura y
