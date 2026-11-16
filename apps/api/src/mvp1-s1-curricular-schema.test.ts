@@ -87,6 +87,16 @@ describe.skipIf(!dbUp)('MVP-1 S1 — schema curricular nace vacío (#532)', () =
     ]);
   });
 
+  it('el catálogo curricular nace en 0 honesto (R15: sin corpus ingestado no hay filas)', async () => {
+    expect(await prisma.courses.count()).toBe(0);
+    expect(await prisma.competencies.count()).toBe(0);
+    expect(await prisma.course_competencies.count()).toBe(0);
+    expect(await prisma.tracks.count()).toBe(0);
+    expect(await prisma.perfiles.count()).toBe(0);
+    expect(await prisma.learning_paths.count()).toBe(0);
+    expect(await prisma.learning_path_steps.count()).toBe(0);
+  });
+
   it('la procedencia cuelga de ingestas: el dato no viaja suelto (NC-EV-09)', async () => {
     const fks = await prisma.$queryRaw<Array<{ conname: string }>>`
       SELECT conname FROM pg_constraint
