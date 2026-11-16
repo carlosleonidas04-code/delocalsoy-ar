@@ -57,7 +57,7 @@ Cada RFC del corpus fundacional se contrasta contra la realidad verificable del 
 | RFC-035 | Estrategia de evaluación de impacto, mejora continua e investigación | Cruce explícito ratificado: Índice de Acogida (M9, ADR-053/066) ↔ RFC-035 ↔ observatorio LIC-R1; SROI rechazado por sustancia (ADR-067) | mapeado |
 | RFC-036 | Compendio final, lecciones aprendidas y cierre fundacional | `docs/EVIDENCIA.md` como registro vivo (EV-001..111) + lecciones por sprint registradas en trazas | mapeado |
 
-**Balance honesto:** 7 mapeados · 17 parciales · 12 futuros. Los «parciales» ya tienen ancla real en main; los «futuros» definen el backlog de la épica OBJE-CAMPUS.
+**Balance honesto:** 7 mapeados · 19 parciales · 10 futuros. Los «parciales» ya tienen ancla real en main; los «futuros» definen el backlog de la épica OBJE-CAMPUS.
 
 ## 4. MVP-1 confirmado — RFC-020/021 «Atlas Territorial»
 
