@@ -236,7 +236,7 @@ export function App() {
     defaultDataSource.mode,
   );
   const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'auto'>('dark');
-  const [showFullPageCockpit, setShowFullPageCockpit] = useState<boolean>(false);
+  const [showFullPageCockpit, setShowFullPageCockpit] = useState<boolean>(true); // Decisión DH #540 (2026-11-17): el producto es visible sin hash (corrige EV-075)
   const [activeDesignLens, setActiveDesignLens] =
     useState<DesignLensKey>('lens_epistemic_contracts');
   const [selectedRecursiveLinkIdx, setSelectedRecursiveLinkIdx] =
@@ -1260,7 +1260,7 @@ export function App() {
             artefacto de la plataforma — superficie real, nodos federados con su montaje
             ratificado, artefactos A1–A4, stages armonizados y acreditación de compilación,
             cada bloque con estado epistémico y fuente (R15). Regla M0: 1 import + 1 mount. */}
-        <MontajePlataforma />
+        {isLabRoute && <MontajePlataforma />}
         <footer>
           <p>
             DELocalSoy.AR · Horizontes 1, 2, 3 y 4 Consolidados · Monorepo Track A v7.2 (Vite + React + Express + PostGIS ST_Intersects + Ed25519 + Offline-First + HITUB)
