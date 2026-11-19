@@ -39,6 +39,7 @@ import {
   type FichaRespuestasV1,
   type ObservatorioNodo,
   type Oportunidad,
+  type PreguntaAsk,
   type ProductoCatalogo,
   type ReporteMio,
   type ReportePublico,
@@ -53,6 +54,29 @@ const ETIQUETA_ESTADO: Record<string, string> = {
   en_rama: 'en rama (PR en cola)',
   propuesto: 'propuesto',
 };
+
+/* PIZ-R3 (#546, épica #543): rótulos humanos sobre rótulos crudos.
+   Los valores (n1, dominio) y el confidence viven tal como los emite la
+   API — A1 no los reescribe (R15), los PRESENTA con su significado y
+   conserva el valor crudo entre paréntesis para trazabilidad. */
+const ETIQUETA_N1: Record<NonNullable<PreguntaAsk['n1']>, string> = {
+  productivo_rural: 'capital productivo rural',
+  turistico: 'capital turística',
+  patrimonial: 'capital patrimonial',
+  civico_social: 'capital cívico social/ambiental',
+};
+
+const ETIQUETA_DOMINIO: Record<string, string> = {
+  productivo_rural: 'productivo rural',
+  turistico: 'turístico',
+  patrimonial: 'patrimonial',
+  territorial: 'estructura territorial y KPIs del nodo',
+};
+
+function etiquetaN1(valor: string): string {
+  if (valor === '') return 'sin filtro';
+  return ETIQUETA_N1[valor as NonNullable<PreguntaAsk['n1']>] ?? valor;
+}
 
 function mensajeDe(e: unknown, porDefecto: string): string {
   return e instanceof ErrorA1 ? e.message : e instanceof Error ? e.message : porDefecto;
@@ -474,19 +498,33 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
   /* ---------- asistente territorial (VIG-006) ---------- */
 
   const [pregunta, setPregunta] = useState('');
+  const [filtroN1, setFiltroN1] = useState('');
   const [respuestaAsk, setRespuestaAsk] = useState<RespuestaAsk | null>(null);
   const [errorAsk, setErrorAsk] = useState<string | null>(null);
 
+  // PIZ-R3 (#546, épica #543): el filtro n1 de la API SIEMPRE existió —
+  // hoy el A1 lo envía (AskPreguntaSchema: productivo_rural | turistico |
+  // patrimonial | civico_social; vacío = sin filtro, como la pizarra pide).
   const preguntar = useCallback(
     (e: FormEvent) => {
       e.preventDefault();
       return conCarga('ask', async () => {
         setErrorAsk(null);
-        setRespuestaAsk(await cliente.ask(nodoKey, { pregunta: pregunta.trim() }));
+        setRespuestaAsk(
+          await cliente.ask(nodoKey, {
+            pregunta: pregunta.trim(),
+            ...(filtroN1 !== '' ? { n1: filtroN1 as PreguntaAsk['n1'] } : {}),
+          })
+        );
       });
     },
-    [cliente, nodoKey, pregunta, conCarga]
+    [cliente, nodoKey, pregunta, filtroN1, conCarga]
   );
+
+  const conFuenteAsk = useMemo(() => {
+    const dato = respuestaAsk?.dato ?? [];
+    return dato.filter((f) => f.fuentes.length > 0).length;
+  }, [respuestaAsk]);
 
   /* ---------- render ---------- */
 
@@ -1054,10 +1092,24 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
           pregunta (3–300 caracteres; solo contenido autorizado)
           <input value={pregunta} onChange={(e) => setPregunta(e.target.value)} maxLength={300} />
         </label>{' '}
+        <label>
+          capital (N1) — acota la búsqueda a activos de esa capital
+          <select value={filtroN1} onChange={(e) => setFiltroN1(e.target.value)}>
+            <option value="">todas las capitales (sin filtro)</option>
+            {(Object.entries(ETIQUETA_N1) as Array<[NonNullable<PreguntaAsk['n1']>, string]>).map(([valor, etiqueta]) => (
+              <option key={valor} value={valor}>
+                {etiqueta}
+              </option>
+            ))}
+          </select>
+        </label>{' '}
         <button type="submit" disabled={cargando === 'ask'}>
           {cargando === 'ask' ? 'consultando…' : 'preguntar'}
         </button>
       </form>
+      {filtroN1 !== '' && (
+        <p><small>filtro de capital aplicado: {etiquetaN1(filtroN1)} — la API recupera solo fragmentos de activos con esa N1 primaria (aprobados, no restricted: ADR-036)</small></p>
+      )}
       {errorAsk !== null && <p role="alert">{errorAsk}</p>}
       {respuestaAsk !== null && (
         <div>
@@ -1065,7 +1117,12 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
             <p>sin fragmentos recuperados: interpretación y sugerencia son null honesto (R15) — probá con otros términos.</p>
           ) : (
             <>
-              <h4>Dato ({respuestaAsk.recovered} fragmento(s), dominio {respuestaAsk.dominio ?? '—'})</h4>
+              <h4>
+                Dato ({respuestaAsk.recovered} fragmento(s)
+                {respuestaAsk.dominio !== null
+                  ? ', dominio ' + (ETIQUETA_DOMINIO[respuestaAsk.dominio] ?? respuestaAsk.dominio)
+                  : ''})
+              </h4>
               <ul>
                 {respuestaAsk.dato.map((f, i) => (
                   <li key={i}>
@@ -1086,7 +1143,12 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
             </>
           )}
           <p>
-            confidence {respuestaAsk.confidence} (derivado de cobertura de fuentes) · human_review: {respuestaAsk.human_review}
+            Cobertura de fuentes: {conFuenteAsk} de {respuestaAsk.recovered} fragmentos con fuente citada ·
+            revisión humana: pendiente
+            <small>
+              {' '}(rótulos crudos de la API, sin reescribir — R15: confidence {respuestaAsk.confidence},
+              derivado de la cobertura de fuentes · human_review {respuestaAsk.human_review})
+            </small>
           </p>
         </div>
       )}
