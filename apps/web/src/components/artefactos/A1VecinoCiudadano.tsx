@@ -31,6 +31,7 @@ import {
   TIPOS_OPORTUNIDAD,
   TIPOS_EVIDENCIA,
   ErrorA1,
+  type ActivoDirectorio,
   type CapacidadesA1,
   type CategoriaNodo,
   type FeatureNodo,
@@ -407,19 +408,29 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
 
   /* ---------- directorio y producción ---------- */
 
+  const [activos, setActivos] = useState<ActivoDirectorio[] | null>(null);
   const [productos, setProductos] = useState<ProductoCatalogo[] | null>(null);
   const [operativaTexto, setOperativaTexto] = useState<string | null>(null);
-  const [activoConsulta, setActivoConsulta] = useState('');
   const [errorDirectorio, setErrorDirectorio] = useState<string | null>(null);
 
-  const consultarActivo = useCallback(() => {
+  // PIZ-R2 (#545): el directorio LISTA (GET /api/activos, lectura anónima)
+  // — nunca pide el id a mano. Una consulta a la API con nodo+estado;
+  // el facetado es presentación sobre lo ya cargado (patrón MK-3c).
+  const cargarDirectorio = useCallback(() => {
     return conCarga('directorio', async () => {
       setErrorDirectorio(null);
-      const id = activoConsulta.trim();
-      if (id === '') {
-        setErrorDirectorio('escribí el id de un activo del catálogo (el montaje R5 provee el listado navegable)');
-        return;
-      }
+      setProductos(null);
+      setOperativaTexto(null);
+      setActivos(await cliente.listarActivos({ nodo: nodoKey, estado: 'aprobado' }));
+    });
+  }, [cliente, nodoKey, conCarga]);
+
+  // Detalle del activo elegido del listado (productos + operativa).
+  // ADR-036: restricted responde 404 SIN ECO — el mensaje jamás repite
+  // el id del activo consultado.
+  const consultarActivo = useCallback((id: string) => {
+    return conCarga('directorio', async () => {
+      setErrorDirectorio(null);
       const [prods, oper] = await Promise.allSettled([cliente.productos(id), cliente.operativa(id)]);
       if (prods.status === 'fulfilled') setProductos(prods.value);
       else setErrorDirectorio('productos: ' + mensajeDe(prods.reason, 'no se pudieron cargar'));
@@ -436,7 +447,19 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
         setErrorDirectorio('operativa: ' + mensajeDe(oper.reason, 'no se pudo cargar'));
       }
     });
-  }, [activoConsulta, cliente, conCarga]);
+  }, [cliente, conCarga]);
+
+  // Facetado por tipo: cuenta y filtrado son presentación sobre la página
+  // ya cargada (patrón MK-3c) — NO dispara otra consulta a la API.
+  const [tipoFaceta, setTipoFaceta] = useState('');
+
+  const conteoTipos = useMemo(() => {
+    const conteos = new Map<string, number>();
+    for (const a of activos ?? []) {
+      conteos.set(a.tipo, (conteos.get(a.tipo) ?? 0) + 1);
+    }
+    return [...conteos.entries()].sort((x, y) => x[0].localeCompare(y[0]));
+  }, [activos]);
 
   /* ---------- Observatorio del nodo (PIZ-R1 #544: LIC-01/LIC-02, épica #543) ---------- */
 
@@ -923,12 +946,35 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
       {vista === 'directorio' && (
         <>
       <h3>Directorio y producción (lectura)</h3>
-      <p>consultá productos y operativa de un activo del catálogo (solo lo aprobado+public; restricted = 404 sin eco).</p>
-      <label>
-        id del activo
-        <input value={activoConsulta} onChange={(e) => setActivoConsulta(e.target.value)} placeholder="activo-id del catálogo" />
-      </label>{' '}
-      <BotonCargar id="directorio" texto="consultar" alCargar={() => void consultarActivo()} />
+      <p>listado real de activos aprobados del nodo (GET /api/activos — lectura anónima); elegí uno para ver sus productos y operativa (solo lo aprobado+public; restricted = 404 sin eco, ADR-036).</p>
+      {activos === null && (
+        <BotonCargar id="directorio" texto="cargar directorio del nodo" alCargar={() => void cargarDirectorio()} />
+      )}
+      {errorDirectorio !== null && <p role="alert">{errorDirectorio}</p>}
+      {activos !== null && activos.length === 0 && (
+        <p>el nodo aún no publica activos aprobados ([] declarado: solo se publica lo verificado, R15)</p>
+      )}
+      {conteoTipos.length > 0 && (
+        <>
+          <p><small>facetado por tipo — presentación sobre lo ya cargado (MK-3c): no vuelve a consultar la API</small></p>
+          <button type="button" aria-pressed={tipoFaceta === ''} onClick={() => setTipoFaceta('')} style={{ minHeight: '24px', minWidth: '24px' }}>todos ({activos?.length ?? 0})</button>{' '}
+          {conteoTipos.map(([tipo, n]) => (
+            <button key={tipo} type="button" aria-pressed={tipoFaceta === tipo} onClick={() => setTipoFaceta(tipo)} style={{ minHeight: '24px', minWidth: '24px' }}>{tipo} ({n})</button>
+          ))}
+        </>
+      )}
+      {activos !== null && activos.length > 0 && (
+        <ul>
+          {activos.filter((a) => tipoFaceta === '' || a.tipo === tipoFaceta).map((a) => (
+            <li key={a.id}>
+              <strong>{a.titulo}</strong> · {a.tipo}
+              {a.subnodo_key !== null ? ' · ' + a.subnodo_key : ''}
+              {a.is_synthetic ? ' ✦ demo sintética declarada (R15)' : ''}
+              <button type="button" onClick={() => void consultarActivo(a.id)} style={{ minHeight: '24px', minWidth: '24px' }}>productos y operativa</button>
+            </li>
+          ))}
+        </ul>
+      )}
       {errorDirectorio !== null && <p role="alert">{errorDirectorio}</p>}
       {productos !== null && productos.length === 0 && <p>el activo no publica productos aún ([] declarado: solo se publica lo verificado)</p>}
       {productos !== null && productos.length > 0 && (

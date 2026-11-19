@@ -632,6 +632,55 @@ describe('PIZ-R1 (#544, épica #543) — observatorio real en ClienteA1', () => 
   });
 });
 
+describe('PIZ-R2 (#545, épica #543) — directorio: listado real de activos', () => {
+  it('GET /api/activos con filtros nodo+estado: parse honesto del listado (lectura anónima)', async () => {
+    const t = crearTransporte();
+    const cliente = crearClienteA1({ transporte: t.transporte, token: () => null });
+    t.programar([
+      {
+        status: 200,
+        cuerpo: {
+          success: true,
+          data: [
+            { id: 'a-1', tipo: 'prestador', titulo: 'Taller del nodo', descripcion: 'taller textil', estado: 'aprobado', nodo_key: 'capital', subnodo_key: null, lat: -31.53, lng: -68.52, is_synthetic: false, created_at: '2026-11-18T10:00:00.000Z' },
+            { id: 'a-2', tipo: 'experiencia', titulo: 'Experiencia demo ✦', descripcion: 'demo declarada', estado: 'aprobado', nodo_key: 'capital', subnodo_key: 'sj_capital_centro', lat: null, lng: null, is_synthetic: true, created_at: '2026-11-18T09:00:00.000Z' },
+          ],
+          count: 2,
+        },
+      },
+    ]);
+    const activos = await cliente.listarActivos({ nodo: 'capital', estado: 'aprobado' });
+    expect(activos.length).toBe(2);
+    expect(activos[0].id).toBe('a-1');
+    expect(activos[0].subnodo_key).toBeNull();
+    expect(activos[1].subnodo_key).toBe('sj_capital_centro');
+    expect(activos[1].lat).toBeNull(); // null ≠ 0 (R15)
+    expect(activos[1].is_synthetic).toBe(true);
+    expect(t.llamadas[0].ruta).toBe('/api/activos?nodo=capital&estado=aprobado');
+    const init = (t.llamadas[0].init ?? {}) as { headers?: Record<string, string> };
+    expect(init.headers?.Authorization).toBeUndefined(); // lectura anónima
+  });
+
+  it('listado 400 filtros inválidos → ErrorA1 datos, nunca [] (R5)', async () => {
+    const t = crearTransporte();
+    const cliente = crearClienteA1({ transporte: t.transporte, token: () => null });
+    t.programar([{ status: 400, cuerpo: { success: false, error: 'subnodo inválido' } }]);
+    await expect(cliente.listarActivos({ nodo: 'capital', subnodo: 'MAL' })).rejects.toMatchObject({ codigo: 'datos' });
+  });
+
+  it('criterio 3 del #545: el mensaje del 404 no repite el id consultado (ADR-036)', async () => {
+    const t = crearTransporte();
+    const cliente = crearClienteA1({ transporte: t.transporte, token: () => null });
+    t.programar([
+      { status: 404, cuerpo: { success: false, error: 'activo no encontrado' } },
+      { status: 404, cuerpo: { success: false, error: 'activo no encontrado' } },
+    ]);
+    const err = await cliente.productos('id-secreto-no-publicar').catch((e) => e);
+    expect(err).toBeInstanceOf(ErrorA1);
+    expect(String(err.message)).not.toContain('id-secreto-no-publicar');
+  });
+});
+
 describe('ART-R1 — red caída (R5: jamás [])', () => {
   it('fallo de red → ErrorA1 no_disponible en cualquier superficie', async () => {
     const roto: TransporteSesion = async () => {
@@ -643,6 +692,7 @@ describe('ART-R1 — red caída (R5: jamás [])', () => {
     await expect(cliente.oportunidades()).rejects.toMatchObject({ codigo: 'no_disponible' });
     await expect(cliente.kpis('capital')).rejects.toMatchObject({ codigo: 'no_disponible' });
     await expect(cliente.observatorio('capital')).rejects.toMatchObject({ codigo: 'no_disponible' });
+    await expect(cliente.listarActivos()).rejects.toMatchObject({ codigo: 'no_disponible' });
     await expect(cliente.ask('capital', { pregunta: 'algo' })).rejects.toMatchObject({ codigo: 'no_disponible' });
   });
 });

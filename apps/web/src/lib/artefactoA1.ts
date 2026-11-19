@@ -15,6 +15,7 @@
  *   GET  /api/nodos/:key/{features,capas,subnodos,categorias,reportes,kpis} (público)
  *   POST /api/nodos/:key/ask          (público) Dato–Interpretación–Sugerencia SIN LLM
  *   GET  /api/activos/:id/productos   (público) propuesto|aprobado (restricted: 404 sin eco)
+ *   GET  /api/activos                 (público) ?estado=&nodo=&tipo=&subnodo=&n1= (PIZ-R2 #545)
  *   GET  /api/operativa/:activoId      (público) horario/temporada/capacidad honesta
  *
  * Reglas vivas: R5 (ningún error HTTP se vuelve []; siempre ErrorA1) · R15
@@ -129,7 +130,7 @@ export const VISTAS_A1: readonly VistaDefA1[] = [
   { id: 'territorio', titulo: 'Territorio', descripcion: 'features y subnodos del vocabulario del nodo (carga perezosa)', escritura: false },
   { id: 'fichas', titulo: 'Fichas de valoración', descripcion: 'testimonios comunitarios de espacio público (7 dimensiones)', escritura: true },
   { id: 'oportunidades', titulo: 'Banco de Potencialidades', descripcion: 'potencialidades del Bloque 9 con evidencia obligatoria', escritura: true },
-  { id: 'directorio', titulo: 'Directorio y producción', descripcion: 'productos y operativa de activos del catálogo (solo lo verificado)', escritura: false },
+  { id: 'directorio', titulo: 'Directorio y producción', descripcion: 'listado real de activos aprobados, con productos y operativa (solo lo verificado)', escritura: false },
   { id: 'kpis', titulo: 'KPIs', descripcion: 'set honesto v1 con count 0 y null ≠ 0', escritura: false },
   { id: 'asistente', titulo: 'Asistente territorial', descripcion: 'RAG sin LLM sobre contenido autorizado del nodo', escritura: false },
 ];
@@ -546,6 +547,24 @@ export interface OperativaActivo {
   procedencia: Record<string, unknown> | null;
 }
 
+/* PIZ-R2 (#545, épica #543): el directorio LISTA — no interroga.       */
+/* Activo del listado público GET /api/activos (lectura anónima;        */
+/* restricted queda excluido, ADR-036). El detalle completo vive en la  */
+/* API; el panel solo presenta.                                          */
+export interface ActivoDirectorio {
+  id: string;
+  tipo: string;
+  titulo: string;
+  descripcion: string;
+  estado: string;
+  nodo_key: string;
+  subnodo_key: string | null;
+  lat: number | null;
+  lng: number | null;
+  is_synthetic: boolean;
+  created_at: string;
+}
+
 /* ------------------------------------------------------------------ */
 /* Cliente HTTP puro (transporte y token inyectables)                  */
 /* ------------------------------------------------------------------ */
@@ -566,6 +585,7 @@ export interface ClienteA1 {
   kpis(nodoKey: string): Promise<KpiSnapshot[]>;
   observatorio(nodoKey: string): Promise<ObservatorioNodo>;
   ask(nodoKey: string, pregunta: PreguntaAsk): Promise<RespuestaAsk>;
+  listarActivos(filtros?: { nodo?: string; estado?: string; tipo?: string; subnodo?: string; n1?: string }): Promise<ActivoDirectorio[]>;
   productos(activoId: string): Promise<ProductoCatalogo[]>;
   operativa(activoId: string): Promise<OperativaActivo>;
 }
@@ -738,6 +758,22 @@ function parseObservatorio(crudo: Record<string, unknown>): ObservatorioNodo {
     },
     fichas_metodologicas: fichasCrudas.map((f) => parseFichaMetodologica(f as Record<string, unknown>)),
     familias_sin_fuente_ingestada: familiasCrudas.map((f) => parseFamiliaSinFuente(f as Record<string, unknown>)),
+  };
+}
+
+function parseActivoDirectorio(crudo: Record<string, unknown>): ActivoDirectorio {
+  return {
+    id: texto(crudo.id),
+    tipo: texto(crudo.tipo),
+    titulo: texto(crudo.titulo),
+    descripcion: texto(crudo.descripcion),
+    estado: texto(crudo.estado),
+    nodo_key: texto(crudo.nodo_key),
+    subnodo_key: crudo.subnodo_key === null || crudo.subnodo_key === undefined ? null : texto(crudo.subnodo_key),
+    lat: numeroOnulo(crudo.lat),
+    lng: numeroOnulo(crudo.lng),
+    is_synthetic: crudo.is_synthetic === true,
+    created_at: fecha(crudo.created_at),
   };
 }
 
@@ -1084,6 +1120,17 @@ export function crearClienteA1(opts: OpcionesClienteA1): ClienteA1 {
 
   /* ---------------- directorio y producción (VIG-005) ---------------- */
 
+  // PIZ-R2 (#545, épica #543): el directorio LISTA — consulta real a
+  // GET /api/activos con los filtros que la API ya soporta (nodo, estado,
+  // tipo, subnodo, n1). El facetado del panel es presentación (MK-3c).
+  const listarActivos = async (filtros?: { nodo?: string; estado?: string; tipo?: string; subnodo?: string; n1?: string }): Promise<ActivoDirectorio[]> => {
+    const cuerpo = await lectura(
+      baseActivos + '/activos' + query({ nodo: filtros?.nodo, estado: filtros?.estado, tipo: filtros?.tipo, subnodo: filtros?.subnodo, n1: filtros?.n1 }),
+      () => new ErrorA1('datos', 'filtros inválidos')
+    );
+    return lista(cuerpo, 200).map((a) => parseActivoDirectorio(a as Record<string, unknown>));
+  };
+
   const productos = async (activoId: string): Promise<ProductoCatalogo[]> => {
     // restricted: 404 SIN ECO (ADR-036) — el cliente no confirma existencia.
     const cuerpo = await lectura(baseActivos + '/activos/' + encodeURIComponent(activoId) + '/productos', () => new ErrorA1('no_encontrado', 'activo no encontrado'));
@@ -1128,6 +1175,7 @@ export function crearClienteA1(opts: OpcionesClienteA1): ClienteA1 {
     kpis,
     observatorio,
     ask,
+    listarActivos,
     productos,
     operativa,
   };
