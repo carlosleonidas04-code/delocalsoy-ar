@@ -578,6 +578,60 @@ describe('ART-R1 — directorio y producción (VIG-005)', () => {
   });
 });
 
+
+describe('PIZ-R1 (#544, épica #543) — observatorio real en ClienteA1', () => {
+  it('observatorio público GET /api/nodos/:key/observatorio: parse honesto de kpis + fichas + familias', async () => {
+    const t = crearTransporte();
+    const cliente = crearClienteA1({ transporte: t.transporte, token: () => null });
+    t.programar([
+      {
+        status: 200,
+        cuerpo: {
+          success: true,
+          data: {
+            nodo_key: 'capital',
+            generado_en: '2026-11-18T12:00:00.000Z',
+            regla: 'Conteos con cobertura y fecha — jamás puntajes globales (R5/ADR-036)',
+            kpis: {
+              total: 2,
+              snapshots: [
+                { kpi_key: 'lic01a', valor: 4, detalles: { aprobado: 3 }, computed_at: '2026-11-18T06:00:00.000Z' },
+                { kpi_key: 'tramos_con_relevamiento', valor: null, detalles: {}, computed_at: '2026-11-18T06:00:00.000Z' },
+              ],
+              fecha_corte: '2026-11-18',
+              nota: 'materializados por el consumidor vig003-kpi',
+            },
+            fichas_metodologicas: [
+              { clave: 'lic01a', nombre: 'KPI de prueba', formula: 'COUNT(*)', fuente: 'tabla demo', cobertura: 'nodo capital' },
+            ],
+            familias_sin_fuente_ingestada: [
+              { familia: 'género y cuidados', estado: 'sin_fuente_ingestada', valor: null, cautela: 'sin ingesta no se computa' },
+            ],
+          },
+        },
+      },
+    ]);
+    const obs = await cliente.observatorio('capital');
+    expect(obs.nodo_key).toBe('capital');
+    expect(obs.kpis.total).toBe(2);
+    expect(obs.kpis.snapshots[0].valor).toBe(4);
+    expect(obs.kpis.snapshots[1].valor).toBeNull(); // null ≠ 0 (R15)
+    expect(obs.kpis.fecha_corte).toBe('2026-11-18');
+    expect(obs.fichas_metodologicas[0].formula).toBe('COUNT(*)');
+    expect(obs.familias_sin_fuente_ingestada[0].familia).toBe('género y cuidados');
+    expect(t.llamadas[0].ruta).toBe('/api/nodos/capital/observatorio');
+    const init = (t.llamadas[0].init ?? {}) as { headers?: Record<string, string> };
+    expect(init.headers?.Authorization).toBeUndefined();
+  });
+
+  it('observatorio 404 nodo → ErrorA1 nodo, nunca [] (R5)', async () => {
+    const t = crearTransporte();
+    const cliente = crearClienteA1({ transporte: t.transporte, token: () => null });
+    t.programar([{ status: 404, cuerpo: { success: false, error: 'Nodo no encontrado' } }]);
+    await expect(cliente.observatorio('noexiste')).rejects.toMatchObject({ codigo: 'nodo' });
+  });
+});
+
 describe('ART-R1 — red caída (R5: jamás [])', () => {
   it('fallo de red → ErrorA1 no_disponible en cualquier superficie', async () => {
     const roto: TransporteSesion = async () => {
@@ -588,6 +642,7 @@ describe('ART-R1 — red caída (R5: jamás [])', () => {
     await expect(cliente.fichas()).rejects.toMatchObject({ codigo: 'no_disponible' });
     await expect(cliente.oportunidades()).rejects.toMatchObject({ codigo: 'no_disponible' });
     await expect(cliente.kpis('capital')).rejects.toMatchObject({ codigo: 'no_disponible' });
+    await expect(cliente.observatorio('capital')).rejects.toMatchObject({ codigo: 'no_disponible' });
     await expect(cliente.ask('capital', { pregunta: 'algo' })).rejects.toMatchObject({ codigo: 'no_disponible' });
   });
 });

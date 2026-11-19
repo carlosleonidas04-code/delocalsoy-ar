@@ -36,7 +36,7 @@ import {
   type FeatureNodo,
   type FichaPublica,
   type FichaRespuestasV1,
-  type KpiSnapshot,
+  type ObservatorioNodo,
   type Oportunidad,
   type ProductoCatalogo,
   type ReporteMio,
@@ -438,13 +438,13 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
     });
   }, [activoConsulta, cliente, conCarga]);
 
-  /* ---------- KPIs públicos ---------- */
+  /* ---------- Observatorio del nodo (PIZ-R1 #544: LIC-01/LIC-02, épica #543) ---------- */
 
-  const [kpis, setKpis] = useState<KpiSnapshot[] | null>(null);
+  const [observatorio, setObservatorio] = useState<ObservatorioNodo | null>(null);
 
-  const cargarKpis = useCallback(() => {
-    return conCarga('kpis', async () => {
-      setKpis(await cliente.kpis(nodoKey));
+  const cargarObservatorio = useCallback(() => {
+    return conCarga('observatorio', async () => {
+      setObservatorio(await cliente.observatorio(nodoKey));
     });
   }, [cliente, nodoKey, conCarga]);
 
@@ -947,21 +947,55 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
       )}
       {vista === 'kpis' && (
         <>
-      <h3>KPIs públicos (set honesto v1)</h3>
-      {kpis === null && <BotonCargar id="kpis" texto="cargar KPIs del nodo" alCargar={() => void cargarKpis()} />}
-      {kpis !== null && kpis.length === 0 && <p>el nodo aún no tiene snapshots — count 0 honesto (R15)</p>}
-      {kpis !== null && kpis.length > 0 && (
-        <ul>
-          {kpis.map((k) => (
-            <li key={k.kpi_key}>
-              <strong>{k.kpi_key}</strong> ={' '}
-              {k.valor === null ? 'null (sin métrica computada en v1 — null ≠ 0, R15)' : String(k.valor)}
-              {Object.keys(k.detalles).length > 0
-                ? ' · ' + Object.entries(k.detalles).map(([clave, valor]) => clave + ': ' + valor).join(', ')
-                : ''}
-            </li>
-          ))}
-        </ul>
+      <h3>Observatorio del nodo (LIC-01/LIC-02 — conteo con cobertura y fecha, jamás puntaje global: R5/ADR-036)</h3>
+      {observatorio === null && (
+        <BotonCargar id="observatorio" texto="cargar observatorio del nodo" alCargar={() => void cargarObservatorio()} />
+      )}
+      {observatorio !== null && (
+        <>
+          {observatorio.kpis.total === 0 ? (
+            <p>
+              el nodo aún no tiene snapshots — no es un cero: el cálculo aún no corrió, count 0 honesto (R15, null ≠ 0).
+            </p>
+          ) : (
+            <p>
+              {observatorio.kpis.total} KPIs con snapshot · fecha de corte:{' '}
+              {observatorio.kpis.fecha_corte ?? 'sin fecha aún (null honesto, R15)'}
+            </p>
+          )}
+          <ul>
+            {observatorio.kpis.snapshots.map((k) => (
+              <li key={k.kpi_key}>
+                <strong>{k.kpi_key}</strong> ={' '}
+                {k.valor === null ? 'null (sin métrica computada — null ≠ 0, R15)' : String(k.valor)}
+                {Object.keys(k.detalles).length > 0
+                  ? ' · ' + Object.entries(k.detalles).map(([clave, valor]) => clave + ': ' + valor).join(', ')
+                  : ''}
+              </li>
+            ))}
+          </ul>
+          {observatorio.kpis.nota !== '' && <p><small>{observatorio.kpis.nota}</small></p>}
+          <h4>Fichas metodológicas (DL-1: fórmula + fuente + cobertura — patrón IDERA v2.0)</h4>
+          <ul>
+            {observatorio.fichas_metodologicas.map((f) => (
+              <li key={f.clave}>
+                <strong>{f.nombre}</strong> ({f.clave}) · fórmula: {f.formula} · fuente: {f.fuente} · cobertura: {f.cobertura}
+              </li>
+            ))}
+          </ul>
+          {observatorio.familias_sin_fuente_ingestada.length > 0 && (
+            <>
+              <h4>Familias del temario sin fuente ingestado (null ≠ 0, R15)</h4>
+              <ul>
+                {observatorio.familias_sin_fuente_ingestada.map((f) => (
+                  <li key={f.familia}>
+                    <strong>{f.familia}</strong> · {f.estado} · valor: {f.valor === null ? 'null honesto' : String(f.valor)} · {f.cautela}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </>
       )}
 
         </>
