@@ -24,7 +24,9 @@ describe('fichas v1.1 — no_sabe declarado (PIZ-R4 #547, decisión DH)', () => 
     for (const [schema, campos] of escalas) {
       for (const campo of campos) {
         expect((schema as any).shape[campo].safeParse('no_sabe').success, campo).toBe(true);
-        expect((schema as any).shape[campo].safeParse('desconocido').success, campo).toBe(true);
+        // v1 preservado: «desconocido» ya era estado v1 de las escalas 2–6;
+        // en tipo_acuerdo (d7) la v1 nunca lo tuvo — v1.1 agrega SOLO no_sabe.
+        expect((schema as any).shape[campo].safeParse('desconocido').success, campo).toBe(campo !== 'tipo_acuerdo');
       }
     }
   });
