@@ -342,7 +342,13 @@ export const ActivoEstadoCambioSchema = z.object({
 
 // Versión del instrumento: el checklist evoluciona con los talleres; cada
 // respuesta queda registrada con la versión con la que fue relevada.
-export const FichaVersionSchema = z.enum(["v1"]);
+// PIZ-R4 (#547, épica #543; decisión DH 2026-11-18, comment 6993007143):
+// ratificada la opción (a): el instrumento evoluciona a v1.1 — las escalas
+// de las dimensiones 2–7 agregan `no_sabe` como estado DECLARADO del
+// relevador («No lo sé», R15: la omisión se declara, no se maquilla como
+// null ni se disfraza). Conservador: ningún valor de v1 cambia de
+// significado y una ficha relevada en v1 sigue leyéndose igual.
+export const FichaVersionSchema = z.enum(["v1", "v1.1"]);
 
 // Estados del testimonio revisable (ADR-036): la ficha nace 'testimonio';
 // la moderación la corrobora o descarta. 'descartada' no se publica.
@@ -365,27 +371,29 @@ export const FichaRespuestasV1Schema = z.object({
     nivel_actividad: z.enum(["baja", "media", "alta"]),
     observaciones: z.string().trim().max(300).optional(),
   }),
+  // PIZ-R4 #547: «no_sabe» en las escalas = estado declarado del relevador
+  // (R15) — distinto de `desconocido`, que describe el estado del ESPACIO.
   accesibilidad: z.object({
-    rampa_acceso: z.enum(["si", "parcial", "no", "desconocido"]),
-    estado_vereda: z.enum(["bueno", "regular", "malo", "desconocido"]),
+    rampa_acceso: z.enum(["si", "parcial", "no", "desconocido", "no_sabe"]),
+    estado_vereda: z.enum(["bueno", "regular", "malo", "desconocido", "no_sabe"]),
     obstaculos: z.boolean(),
   }),
   sombra_arbolado: z.object({
     arbolado_presente: z.boolean(),
-    sombra_horario_central: z.enum(["abundante", "parcial", "escasa", "nula", "desconocido"]),
+    sombra_horario_central: z.enum(["abundante", "parcial", "escasa", "nula", "desconocido", "no_sabe"]),
     lectura_3_30_300: z.string().trim().max(200).optional(), // interpretación con método (R5), no dato oficial
   }),
   agua_xerojardin: z.object({
-    riego: z.enum(["si", "no", "desconocido"]),
+    riego: z.enum(["si", "no", "desconocido", "no_sabe"]),
     perdidas_visibles: z.boolean(),
-    especies_apto_clima: z.enum(["si", "no", "desconocido"]),
+    especies_apto_clima: z.enum(["si", "no", "desconocido", "no_sabe"]),
   }),
   // CPTED + género: observables del ESPACIO — nunca vigilancia de personas
   // ni etiquetas de "zona insegura" (ADR-036).
   seguridad_disenio: z.object({
-    iluminacion: z.enum(["buena", "regular", "mala", "desconocido"]),
-    visibilidad: z.enum(["buena", "regular", "mala", "desconocido"]),
-    mantenimiento: z.enum(["bueno", "regular", "malo", "desconocido"]),
+    iluminacion: z.enum(["buena", "regular", "mala", "desconocido", "no_sabe"]),
+    visibilidad: z.enum(["buena", "regular", "mala", "desconocido", "no_sabe"]),
+    mantenimiento: z.enum(["bueno", "regular", "malo", "desconocido", "no_sabe"]),
     destinos_activos_cercanos: z.boolean(),
   }),
   equipamiento: z.object({
@@ -398,7 +406,7 @@ export const FichaRespuestasV1Schema = z.object({
   }),
   custodia: z.object({
     custodia_presente: z.boolean(),
-    tipo_acuerdo: z.enum(["vecinal", "escolar", "club", "otro", "ninguno"]), // anclado al espacio — sin nombres (decisión R9)
+    tipo_acuerdo: z.enum(["vecinal", "escolar", "club", "otro", "ninguno", "no_sabe"]), // anclado al espacio — sin nombres (decisión R9)
   }),
   notas: z.string().trim().max(500).optional(),
 });
