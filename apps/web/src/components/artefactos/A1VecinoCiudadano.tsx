@@ -100,6 +100,58 @@ const USOS_POSIBLES = ['recreo', 'deporte', 'reunion', 'descanso', 'feria', 'cul
 
 type CampoEquipamiento = 'bancos' | 'juegos_infantiles' | 'canchas' | 'basureros' | 'bebedero';
 
+/* PIZ-R4 (#547, épica #543): el detalle de ficha muestra las 7 dimensiones
+   del contrato con sus estados honestos. La lista de campos casta el
+   universo del contrato ((v1|v1.1); un campo del contrato sin relevar se
+   anuncia como tal, nunca desaparece (R15). */
+const DIMENSIONES_FICHA: ReadonlyArray<{ clave: string; titulo: string; campos: readonly string[] }> = [
+  { clave: 'usos_vitalidad', titulo: '1. Usos y vitalidad', campos: ['usos_detectados', 'nivel_actividad', 'observaciones'] },
+  { clave: 'accesibilidad', titulo: '2. Accesibilidad', campos: ['rampa_acceso', 'estado_vereda', 'obstaculos'] },
+  { clave: 'sombra_arbolado', titulo: '3. Sombra y arbolado', campos: ['arbolado_presente', 'sombra_horario_central', 'lectura_3_30_300'] },
+  { clave: 'agua_xerojardin', titulo: '4. Agua y xerojardin', campos: ['riego', 'perdidas_visibles', 'especies_apto_clima'] },
+  { clave: 'seguridad_disenio', titulo: '5. Seguridad de diseño', campos: ['iluminacion', 'visibilidad', 'mantenimiento', 'destinos_activos_cercanos'] },
+  { clave: 'equipamiento', titulo: '6. Equipamiento', campos: ['bancos', 'juegos_infantiles', 'canchas', 'basureros', 'bebedero', 'otro'] },
+  { clave: 'custodia', titulo: '7. Custodia', campos: ['custodia_presente', 'tipo_acuerdo'] },
+];
+
+const ETIQUETAS_CAMPO_FICHA: Record<string, string> = {
+  usos_detectados: 'usos detectados',
+  nivel_actividad: 'nivel de actividad',
+  observaciones: 'observaciones',
+  rampa_acceso: 'rampa de acceso',
+  estado_vereda: 'estado de la vereda',
+  obstaculos: 'obstáculos',
+  arbolado_presente: 'arbolado presente',
+  sombra_horario_central: 'sombra al mediodía',
+  lectura_3_30_300: 'lectura 3-30-300 (texto con método, R5)',
+  riego: 'riego',
+  perdidas_visibles: 'pérdidas de agua visibles',
+  especies_apto_clima: 'especies aptas al clima',
+  iluminacion: 'iluminación',
+  visibilidad: 'visibilidad',
+  mantenimiento: 'mantenimiento',
+  destinos_activos_cercanos: 'destinos activos cercanos',
+  bancos: 'bancos',
+  juegos_infantiles: 'juegos infantiles',
+  canchas: 'canchas',
+  basureros: 'basureros',
+  bebedero: 'bebedero',
+  otro: 'otro',
+  custodia_presente: 'custodia presente',
+  tipo_acuerdo: 'tipo de acuerdo',
+};
+
+/* Presentación del valor relevado, R15: los strings de la API se muestran
+   TAL CUAL (desconocido, no_sabe, buenos, …); los booleanos se leen sí|no;
+   un array vacío o un texto vacío se declara [vacío declarado]. */
+function valorFichaLegible(valor: unknown): string {
+  if (Array.isArray(valor)) return valor.length > 0 ? valor.map(String).join(', ') : '[vacío declarado]';
+  if (typeof valor === 'boolean') return valor ? 'sí' : 'no';
+  if (valor === null || valor === undefined) return 'sin dato (null honesto, R15)';
+  const s = String(valor).trim();
+  return s === '' ? '[vacío declarado]' : s;
+}
+
 
 /** Detalle navegable (PROT-A1 R3, #420): historial/ficha/oportunidad abiertos. */
 type DetalleA1 =
@@ -313,6 +365,17 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
     });
   }, [cliente, nodoKey, conCarga]);
 
+  // PIZ-R4 #547 (criterio 2): la lista de fichas y espacios se carga AL
+  // ABRIR la vista, no tras un clic extra. Un solo intento automático por
+  // montaje: si falla, queda el botón como reintento honesto (R5/R15).
+  const fichasIntentadas = useRef(false);
+  useEffect(() => {
+    if (vista === 'fichas' && fichas === null && !fichasIntentadas.current) {
+      fichasIntentadas.current = true;
+      void cargarFichas();
+    }
+  }, [vista, fichas, cargarFichas]);
+
   const [fichaFeature, setFichaFeature] = useState('');
   const [respuestas, setRespuestas] = useState<FichaRespuestasV1>(RESPUESTAS_INICIALES);
   const [exitoFicha, setExitoFicha] = useState<{ id: string; idempotente: boolean } | null>(null);
@@ -340,7 +403,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
         const { ficha, idempotente } = await cliente.crearFicha({
           nodo_key: nodoKey,
           feature_id: fichaFeature,
-          version: 'v1',
+          version: 'v1.1', // PIZ-R4 #547: el instrumento v1.1 registra el no_sabe declarado (R15)
           respuestas,
         });
         setExitoFicha({ id: ficha.id, idempotente });
@@ -812,6 +875,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
               <option value="parcial">parcial</option>
               <option value="no">no</option>
               <option value="desconocido">desconocido</option>
+              <option value="no_sabe">No lo sé (no_sabe)</option>
             </select>
           </label>{' '}
           <label>
@@ -821,6 +885,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
               <option value="regular">regular</option>
               <option value="malo">malo</option>
               <option value="desconocido">desconocido</option>
+              <option value="no_sabe">No lo sé (no_sabe)</option>
             </select>
           </label>{' '}
           <label>
@@ -840,6 +905,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
               <option value="escasa">escasa</option>
               <option value="nula">nula</option>
               <option value="desconocido">desconocido</option>
+              <option value="no_sabe">No lo sé (no_sabe)</option>
             </select>
           </label>{' '}
           <label>
@@ -848,11 +914,51 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
               <option value="si">sí</option>
               <option value="no">no</option>
               <option value="desconocido">desconocido</option>
+              <option value="no_sabe">No lo sé (no_sabe)</option>
             </select>
           </label>{' '}
           <label>
             <input type="checkbox" checked={respuestas.agua_xerojardin.perdidas_visibles} onChange={(e) => setRespuestas((r) => ({ ...r, agua_xerojardin: { ...r.agua_xerojardin, perdidas_visibles: e.target.checked } }))} disabled={!caps.puedeEscribir} />{' '}
             pérdidas de agua visibles
+          </label>{' '}
+<label>
+            especies aptas al clima
+            <select value={respuestas.agua_xerojardin.especies_apto_clima} onChange={(e) => setRespuestas((r) => ({ ...r, agua_xerojardin: { ...r.agua_xerojardin, especies_apto_clima: e.target.value as FichaRespuestasV1[('agua_xerojardin')]['especies_apto_clima'] } }))} disabled={!caps.puedeEscribir}>
+              <option value="si">sí</option>
+              <option value="no">no</option>
+              <option value="desconocido">desconocido</option>
+              <option value="no_sabe">No lo sé (no_sabe)</option>
+            </select>
+          </label>{' '}
+          <label>
+            iluminación
+            <select value={respuestas.seguridad_disenio.iluminacion} onChange={(e) => setRespuestas((r) => ({ ...r, seguridad_disenio: { ...r.seguridad_disenio, iluminacion: e.target.value as FichaRespuestasV1['seguridad_disenio']['iluminacion'] } }))} disabled={!caps.puedeEscribir}>
+              <option value="buena">buena</option>
+              <option value="regular">regular</option>
+              <option value="mala">mala</option>
+              <option value="desconocido">desconocido</option>
+              <option value="no_sabe">No lo sé (no_sabe)</option>
+            </select>
+          </label>{' '}
+          <label>
+            visibilidad
+            <select value={respuestas.seguridad_disenio.visibilidad} onChange={(e) => setRespuestas((r) => ({ ...r, seguridad_disenio: { ...r.seguridad_disenio, visibilidad: e.target.value as FichaRespuestasV1['seguridad_disenio']['visibilidad'] } }))} disabled={!caps.puedeEscribir}>
+              <option value="buena">buena</option>
+              <option value="regular">regular</option>
+              <option value="mala">mala</option>
+              <option value="desconocido">desconocido</option>
+              <option value="no_sabe">No lo sé (no_sabe)</option>
+            </select>
+          </label>{' '}
+          <label>
+            mantenimiento
+            <select value={respuestas.seguridad_disenio.mantenimiento} onChange={(e) => setRespuestas((r) => ({ ...r, seguridad_disenio: { ...r.seguridad_disenio, mantenimiento: e.target.value as FichaRespuestasV1['seguridad_disenio']['mantenimiento'] } }))} disabled={!caps.puedeEscribir}>
+              <option value="buena">buena</option>
+              <option value="regular">regular</option>
+              <option value="mala">mala</option>
+              <option value="desconocido">desconocido</option>
+              <option value="no_sabe">No lo sé (no_sabe)</option>
+            </select>
           </label>{' '}
           <label>
             <input type="checkbox" checked={respuestas.seguridad_disenio.destinos_activos_cercanos} onChange={(e) => setRespuestas((r) => ({ ...r, seguridad_disenio: { ...r.seguridad_disenio, destinos_activos_cercanos: e.target.checked } }))} disabled={!caps.puedeEscribir} />{' '}
@@ -878,6 +984,24 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
               {campo.replace('_', ' ')}
             </label>
           ))}
+        </fieldset>
+        <fieldset>
+          <legend>custodia del espacio (anclada al espacio, sin nombres — R9)</legend>
+          <label>
+            <input type="checkbox" checked={respuestas.custodia.custodia_presente} onChange={(e) => setRespuestas((r) => ({ ...r, custodia: { ...r.custodia, custodia_presente: e.target.checked } }))} disabled={!caps.puedeEscribir} />{" "}
+            custodia presente
+          </label>{' '}
+          <label>
+            tipo de acuerdo
+            <select value={respuestas.custodia.tipo_acuerdo} onChange={(e) => setRespuestas((r) => ({ ...r, custodia: { ...r.custodia, tipo_acuerdo: e.target.value as FichaRespuestasV1['custodia']['tipo_acuerdo'] } }))} disabled={!caps.puedeEscribir}>
+              <option value="vecinal">vecinal</option>
+              <option value="escolar">escolar</option>
+              <option value="club">club</option>
+              <option value="otro">otro</option>
+              <option value="ninguno">ninguno</option>
+              <option value="no_sabe">No lo sé (no_sabe)</option>
+            </select>
+          </label>
         </fieldset>
         <br />
         <button type="submit" disabled={!caps.puedeEscribir || enviandoFicha}>
@@ -1192,7 +1316,38 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
                       <p>
                         id: {f.id} · estado público: {f.estado_publico}
                         {f.corroboracion !== null ? ' · corroboración: ' + f.corroboracion : ''} · versión {f.version}
+                        {' '}· nodo {f.nodo_key} · relevada: {f.created_at} · autor pseudónimo: {f.created_by_hash.slice(0, 8)}…
                       </p>
+                      <p><small>
+                        Las 7 dimensiones se muestran tal como quedaron relevadas (R15: valores crudos sin reescribir).
+                        «no_sabe» = «No lo sé» declarado por quien relevó; «desconocido» = estado del espacio no observado;
+                        un campo del contrato no relevado se anuncia como tal, nunca se maquilla.
+                      </small></p>
+                      {DIMENSIONES_FICHA.map((d) => {
+                        const bloque = (f.respuestas as Record<string, unknown>)[d.clave];
+                        const campos = (bloque !== null && bloque !== undefined && typeof bloque === 'object' ? bloque : {}) as Record<string, unknown>;
+                        const presentes = d.campos.filter((c2) => campos[c2] !== undefined);
+                        const ausentes = d.campos.filter((c2) => campos[c2] === undefined);
+                        return (
+                          <section key={d.clave}>
+                            <h4>{d.titulo}</h4>
+                            <ul>
+                              {presentes.map((c2) => (
+                                <li key={c2}>
+                                  <strong>{ETIQUETAS_CAMPO_FICHA[c2] ?? c2}</strong>: {valorFichaLegible(campos[c2])}
+                                </li>
+                              ))}
+                              {presentes.length === 0 && <li>sin campos relevados en esta dimensión (honesto, R15)</li>}
+                            </ul>
+                            {ausentes.length > 0 && (
+                              <small>campos del contrato no relevados: {ausentes.map((c2) => ETIQUETAS_CAMPO_FICHA[c2] ?? c2).join(", ")}</small>
+                            )}
+                          </section>
+                        );
+                      })}
+                      {typeof (f.respuestas as Record<string, unknown>).notas === 'string' && String((f.respuestas as Record<string, unknown>).notas).trim() !== '' && (
+                        <p><strong>notas:</strong> {String((f.respuestas as Record<string, unknown>).notas)}</p>
+                      )}
                     </div>
                   );
                 })()}
