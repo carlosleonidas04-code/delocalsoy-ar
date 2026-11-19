@@ -10,6 +10,8 @@
  *   GET  /api/reportes/:id/historial (público) ciclo del reporte (ADR-038)
  *   POST /api/fichas-valoracion      (JWT) 201 nace 'testimonio' anclada a public_space
  *   GET  /api/fichas-valoracion      (público) ?estado=&nodo= ('descartada' nunca)
+//   PIZ-R4 #547 (épica #543): contrato fichas v1|v1.1 — las escalas de las
+//   dimensiones 2-7 agregan 'no_sabe' como estado declarado (decisión DH).
  *   POST /api/oportunidades          (JWT) 201 nace 'detected' con evidencia OBLIGATORIA
  *   GET  /api/oportunidades[/:id]    (público) ?estado=&nodo=&tipo=&subnodo= (sin 'discarded')
  *   GET  /api/nodos/:key/{features,capas,subnodos,categorias,reportes,kpis} (público)
@@ -269,7 +271,8 @@ export interface SubnodoNodo {
   [extra: string]: unknown;
 }
 
-/** 7 dimensiones ratificadas (#149) — FichaRespuestasV1Schema exacto. */
+/** 7 dimensiones ratificadas (#149) — FichaRespuestasV1Schema exacto, v1|v1.1
+ * (PIZ-R4 #547: `no_sabe` declarado en las escalas de las dimensiones 2-7). */
 export interface FichaRespuestasV1 {
   usos_vitalidad: {
     usos_detectados: Array<'recreo' | 'deporte' | 'reunion' | 'descanso' | 'feria' | 'cultura' | 'transito'>;
@@ -277,24 +280,24 @@ export interface FichaRespuestasV1 {
     observaciones?: string;
   };
   accesibilidad: {
-    rampa_acceso: 'si' | 'parcial' | 'no' | 'desconocido';
-    estado_vereda: 'bueno' | 'regular' | 'malo' | 'desconocido';
+    rampa_acceso: 'si' | 'parcial' | 'no' | 'desconocido' | 'no_sabe';
+    estado_vereda: 'bueno' | 'regular' | 'malo' | 'desconocido' | 'no_sabe';
     obstaculos: boolean;
   };
   sombra_arbolado: {
     arbolado_presente: boolean;
-    sombra_horario_central: 'abundante' | 'parcial' | 'escasa' | 'nula' | 'desconocido';
+    sombra_horario_central: 'abundante' | 'parcial' | 'escasa' | 'nula' | 'desconocido' | 'no_sabe';
     lectura_3_30_300?: string;
   };
   agua_xerojardin: {
-    riego: 'si' | 'no' | 'desconocido';
+    riego: 'si' | 'no' | 'desconocido' | 'no_sabe';
     perdidas_visibles: boolean;
-    especies_apto_clima: 'si' | 'no' | 'desconocido';
+    especies_apto_clima: 'si' | 'no' | 'desconocido' | 'no_sabe';
   };
   seguridad_disenio: {
-    iluminacion: 'buena' | 'regular' | 'mala' | 'desconocido';
-    visibilidad: 'buena' | 'regular' | 'mala' | 'desconocido';
-    mantenimiento: 'bueno' | 'regular' | 'malo' | 'desconocido';
+    iluminacion: 'buena' | 'regular' | 'mala' | 'desconocido' | 'no_sabe';
+    visibilidad: 'buena' | 'regular' | 'mala' | 'desconocido' | 'no_sabe';
+    mantenimiento: 'bueno' | 'regular' | 'malo' | 'desconocido' | 'no_sabe';
     destinos_activos_cercanos: boolean;
   };
   equipamiento: {
@@ -307,7 +310,7 @@ export interface FichaRespuestasV1 {
   };
   custodia: {
     custodia_presente: boolean;
-    tipo_acuerdo: 'vecinal' | 'escolar' | 'club' | 'otro' | 'ninguno';
+    tipo_acuerdo: 'vecinal' | 'escolar' | 'club' | 'otro' | 'ninguno' | 'no_sabe';
   };
   notas?: string;
 }
@@ -315,7 +318,7 @@ export interface FichaRespuestasV1 {
 export interface NuevaFicha {
   nodo_key: string;
   feature_id: string;
-  version: 'v1';
+  version: 'v1' | 'v1.1';
   respuestas: FichaRespuestasV1;
 }
 
