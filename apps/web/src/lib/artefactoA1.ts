@@ -442,6 +442,51 @@ export interface KpiSnapshot {
   computed_at: string;
 }
 
+
+/**
+ * Observatorio de indicadores (PIZ-R1 #544, épica #543 — LIC-R1 #457 /
+ * LIC-R2 #453): espejo EXACTO de GET /api/nodos/:key/observatorio
+ * (apps/api/src/routes/nodos.ts) sobre los catálogos de
+ * @delocalsoy/contracts. null ≠ 0 (R15): sin fuente ingestado el
+ * indicador NO se computa, jamás se estima.
+ */
+export interface SnapshotObservatorio {
+  kpi_key: string;
+  valor: number | null;
+  detalles: Record<string, number>;
+  computed_at: string;
+}
+
+export interface KpisObservatorio {
+  total: number;
+  snapshots: SnapshotObservatorio[];
+  fecha_corte: string | null;
+  nota: string;
+}
+
+export interface FichaMetodologica {
+  clave: string;
+  nombre: string;
+  formula: string;
+  fuente: string;
+  cobertura: string;
+}
+
+export interface FamiliaSinFuente {
+  familia: string;
+  estado: string;
+  valor: number | null;
+  cautela: string;
+}
+
+export interface ObservatorioNodo {
+  nodo_key: string;
+  generado_en: string;
+  regla: string;
+  kpis: KpisObservatorio;
+  fichas_metodologicas: FichaMetodologica[];
+  familias_sin_fuente_ingestada: FamiliaSinFuente[];
+}
 export interface FuenteAsk {
   fuente: string;
   fecha?: string;
@@ -519,6 +564,7 @@ export interface ClienteA1 {
   oportunidades(filtros?: { nodo?: string; tipo?: string; estado?: string; subnodo?: string }): Promise<Oportunidad[]>;
   postularOportunidad(nueva: NuevaOportunidad): Promise<{ oportunidad: Oportunidad; idempotente: boolean }>;
   kpis(nodoKey: string): Promise<KpiSnapshot[]>;
+  observatorio(nodoKey: string): Promise<ObservatorioNodo>;
   ask(nodoKey: string, pregunta: PreguntaAsk): Promise<RespuestaAsk>;
   productos(activoId: string): Promise<ProductoCatalogo[]>;
   operativa(activoId: string): Promise<OperativaActivo>;
@@ -631,6 +677,67 @@ function parseKpi(crudo: Record<string, unknown>): KpiSnapshot {
     valor: crudo.valor === null ? null : numeroOnulo(crudo.valor),
     detalles,
     computed_at: fecha(crudo.computed_at),
+  };
+}
+
+function parseSnapshotObservatorio(crudo: Record<string, unknown>): SnapshotObservatorio {
+  const detallesCrudos = crudo.detalles;
+  const detalles: Record<string, number> = {};
+  if (detallesCrudos !== null && detallesCrudos !== undefined && typeof detallesCrudos === 'object') {
+    for (const [clave, valor] of Object.entries(detallesCrudos as Record<string, unknown>)) {
+      if (typeof valor === 'number') {
+        detalles[clave] = valor;
+      }
+    }
+  }
+  return {
+    kpi_key: texto(crudo.kpi_key),
+    valor: crudo.valor === null ? null : numeroOnulo(crudo.valor),
+    detalles,
+    computed_at: fecha(crudo.computed_at),
+  };
+}
+
+function parseFichaMetodologica(crudo: Record<string, unknown>): FichaMetodologica {
+  return {
+    clave: texto(crudo.clave),
+    nombre: texto(crudo.nombre),
+    formula: texto(crudo.formula),
+    fuente: texto(crudo.fuente),
+    cobertura: texto(crudo.cobertura),
+  };
+}
+
+function parseFamiliaSinFuente(crudo: Record<string, unknown>): FamiliaSinFuente {
+  return {
+    familia: texto(crudo.familia),
+    estado: texto(crudo.estado),
+    valor: numeroOnulo(crudo.valor),
+    cautela: texto(crudo.cautela),
+  };
+}
+
+function textOnulo(crudo: unknown): string | null {
+  return typeof crudo === 'string' && crudo !== '' ? crudo : null;
+}
+
+function parseObservatorio(crudo: Record<string, unknown>): ObservatorioNodo {
+  const kpis = (crudo.kpis ?? {}) as Record<string, unknown>;
+  const snapshotsCrudos = Array.isArray(kpis.snapshots) ? kpis.snapshots : [];
+  const fichasCrudas = Array.isArray(crudo.fichas_metodologicas) ? crudo.fichas_metodologicas : [];
+  const familiasCrudas = Array.isArray(crudo.familias_sin_fuente_ingestada) ? crudo.familias_sin_fuente_ingestada : [];
+  return {
+    nodo_key: texto(crudo.nodo_key),
+    generado_en: fecha(crudo.generado_en),
+    regla: texto(crudo.regla),
+    kpis: {
+      total: typeof kpis.total === 'number' ? kpis.total : snapshotsCrudos.length,
+      snapshots: snapshotsCrudos.map((s) => parseSnapshotObservatorio(s as Record<string, unknown>)),
+      fecha_corte: textOnulo(kpis.fecha_corte),
+      nota: texto(kpis.nota),
+    },
+    fichas_metodologicas: fichasCrudas.map((f) => parseFichaMetodologica(f as Record<string, unknown>)),
+    familias_sin_fuente_ingestada: familiasCrudas.map((f) => parseFamiliaSinFuente(f as Record<string, unknown>)),
   };
 }
 
@@ -813,6 +920,16 @@ export function crearClienteA1(opts: OpcionesClienteA1): ClienteA1 {
   const kpis = async (nodoKey: string): Promise<KpiSnapshot[]> => {
     const cuerpo = await lectura(baseNodos + '/' + encodeURIComponent(nodoKey) + '/kpis', () => new ErrorA1('nodo', 'nodo no encontrado'));
     return lista(cuerpo, 200).map((k) => parseKpi(k as Record<string, unknown>));
+  };
+
+  /* ---------------- observatorio de indicadores (PIZ-R1 #544) ---------------- */
+
+  const observatorio = async (nodoKey: string): Promise<ObservatorioNodo> => {
+    const cuerpo = await lectura(baseNodos + '/' + encodeURIComponent(nodoKey) + '/observatorio', () => new ErrorA1('nodo', 'nodo no encontrado'));
+    if (!cuerpo.data) {
+      throw new ErrorA1('no_disponible', 'respuesta malformada del observatorio');
+    }
+    return parseObservatorio(cuerpo.data as Record<string, unknown>);
   };
 
   /* ---------------- reporte ciudadano (JWT) ---------------- */
@@ -1009,6 +1126,7 @@ export function crearClienteA1(opts: OpcionesClienteA1): ClienteA1 {
     oportunidades,
     postularOportunidad,
     kpis,
+    observatorio,
     ask,
     productos,
     operativa,
