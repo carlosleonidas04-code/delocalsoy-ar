@@ -1,4 +1,4 @@
-successfully downloaded text file (SHA: 1a353305055ee19dcfcb1dc73f4ddcf1246fb110)/**
+/**
  * DELocalSoy.AR — Panel del Artefacto A1: vecino, ciudadano y visitante
  * (ART-R1 cableado exhaustivo, #270, épica #268). Consume useSesion
  * (ART-R0) y el cliente puro lib/artefactoA1.ts contra las superficies
