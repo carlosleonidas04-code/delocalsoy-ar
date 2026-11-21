@@ -681,6 +681,72 @@ describe('PIZ-R2 (#545, épica #543) — directorio: listado real de activos', (
   });
 });
 
+describe('PIZ-R5 (#548, épica #543) — Banco: paginación + detalle público', () => {
+  const opFila = (id: string) => ({
+    id,
+    tipo: 'human_capacity',
+    titulo: 'Taller de riego ' + id,
+    descripcion: 'vecinos con oficio de riego',
+    estado: 'detected',
+    nodo_key: 'capital',
+    subnodo_key: null,
+    evidencia: { evidence_type: 'community_input', descripcion: 'asamblea vecinal' },
+    actores: [],
+    tags: ['riego'],
+    created_by_hash: 'abc123',
+    created_at: '2026-11-19T10:00:00.000Z',
+    updated_at: '2026-11-19T10:00:00.000Z',
+  });
+
+  it('oportunidadesPagina: limit/offset viajan en la query y el total viene del body (header como respaldo)', async () => {
+    const t = crearTransporte();
+    const cliente = crearClienteA1({ transporte: t.transporte, token: () => null });
+    t.programar([
+      { status: 200, cuerpo: { success: true, count: 2, total: 41, data: [opFila("op-21"), opFila("op-22")] } },
+      { status: 200, cuerpo: { success: true, count: 1, total: 41, data: [opFila("op-41")] } },
+      { status: 400, cuerpo: { success: false, error: "paginación inválida (limit 1-100, offset ≥ 0)" } },
+    ]);
+    const pagina = await cliente.oportunidadesPagina({ nodo: "capital", limit: 20, offset: 20 });
+    expect(pagina.items.length).toBe(2);
+    expect(pagina.count).toBe(2);
+    expect(pagina.total).toBe(41);
+    expect(pagina.offset).toBe(20);
+    expect(t.llamadas[0].ruta).toBe("/api/oportunidades?nodo=capital&limit=20&offset=20");
+    const ultima = await cliente.oportunidadesPagina({ nodo: "capital", offset: 40 });
+    expect(ultima.items.length).toBe(1);
+    expect(ultima.count).toBe(1);
+    await expect(cliente.oportunidadesPagina({ offset: -1 })).rejects.toMatchObject({ codigo: "datos" });
+  });
+
+  it('por defecto NO envía limit ni offset: el default de 20 es de la API (NCAP-R6-ext)', async () => {
+    const t = crearTransporte();
+    const cliente = crearClienteA1({ transporte: t.transporte, token: () => null });
+    t.programar([{ status: 200, cuerpo: { success: true, count: 0, total: 0, data: [] } }]);
+    const pagina = await cliente.oportunidadesPagina({ nodo: "caucete" });
+    expect(pagina.items).toEqual([]);
+    expect(pagina.total).toBe(0);
+    expect(pagina.offset).toBe(0);
+    expect(t.llamadas[0].ruta).toBe("/api/oportunidades?nodo=caucete");
+  });
+
+  it('oportunidadDetalle público: evidencia + etapa + etiquetas completas; 404 discarded → no_encontrado (R15)', async () => {
+    const t = crearTransporte();
+    const cliente = crearClienteA1({ transporte: t.transporte, token: () => null });
+    t.programar([
+      { status: 200, cuerpo: { success: true, data: { ...opFila("op1"), estado: "under_review", evidencia: { evidence_type: "field_observation", descripcion: "observación de campo", reference_url: "https://example.test/acta", validationStatus: "pending" }, tags: ["riego", "taller"] } } },
+      { status: 404, cuerpo: { success: false, error: "oportunidad no encontrada" } },
+    ]);
+    const o = await cliente.oportunidadDetalle("op1");
+    expect(o.estado).toBe("under_review");
+    expect(o.evidencia.evidence_type as string).toBe("field_observation");
+    expect(o.evidencia.reference_url as string).toBe("https://example.test/acta");
+    expect(o.evidencia.validationStatus as string).toBe('pending');
+    expect(o.tags).toEqual(["riego", "taller"]);
+    expect(t.llamadas[0].ruta).toBe("/api/oportunidades/op1");
+    await expect(cliente.oportunidadDetalle("op-descartada")).rejects.toMatchObject({ codigo: "no_encontrado" });
+  });
+});
+
 describe('ART-R1 — red caída (R5: jamás [])', () => {
   it('fallo de red → ErrorA1 no_disponible en cualquier superficie', async () => {
     const roto: TransporteSesion = async () => {
@@ -690,6 +756,8 @@ describe('ART-R1 — red caída (R5: jamás [])', () => {
     await expect(cliente.mios()).rejects.toBeInstanceOf(ErrorA1);
     await expect(cliente.fichas()).rejects.toMatchObject({ codigo: 'no_disponible' });
     await expect(cliente.oportunidades()).rejects.toMatchObject({ codigo: 'no_disponible' });
+    await expect(cliente.oportunidadesPagina()).rejects.toMatchObject({ codigo: 'no_disponible' });
+    await expect(cliente.oportunidadDetalle('op1')).rejects.toMatchObject({ codigo: 'no_disponible' });
     await expect(cliente.kpis('capital')).rejects.toMatchObject({ codigo: 'no_disponible' });
     await expect(cliente.observatorio('capital')).rejects.toMatchObject({ codigo: 'no_disponible' });
     await expect(cliente.listarActivos()).rejects.toMatchObject({ codigo: 'no_disponible' });

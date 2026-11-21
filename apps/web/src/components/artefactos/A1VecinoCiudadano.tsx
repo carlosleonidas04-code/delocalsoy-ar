@@ -39,6 +39,7 @@ import {
   type FichaRespuestasV1,
   type ObservatorioNodo,
   type Oportunidad,
+  type PaginaOportunidades,
   type PreguntaAsk,
   type ProductoCatalogo,
   type ReporteMio,
@@ -420,13 +421,44 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
 
   /* ---------- Banco de Potencialidades (Bloque 9) ---------- */
 
-  const [oportunidades, setOportunidades] = useState<Oportunidad[] | null>(null);
+  /* PIZ-R5 (#548, épica #543): el Banco PAGINA — API default 20 (limit
+     1-100 / offset ≥ 0, EV-076) con total del servidor. Lo que no entró
+     en la página se declara y se pagina: nada se asume completo. */
+  const [paginaOp, setPaginaOp] = useState<PaginaOportunidades | null>(null);
+  const [offsetOp, setOffsetOp] = useState(0);
 
-  const cargarOportunidades = useCallback(() => {
+  const cargarOportunidades = useCallback((desde = 0) => {
     return conCarga('oportunidades', async () => {
-      setOportunidades(await cliente.oportunidades({ nodo: nodoKey }));
+      setPaginaOp(await cliente.oportunidadesPagina({ nodo: nodoKey, offset: desde }));
+      setOffsetOp(desde);
     });
   }, [cliente, nodoKey, conCarga]);
+
+  /* Detalle por id (GET /api/oportunidades/:id, PIZ-R5): evidencia, etapa
+     y etiquetas tal como la API las devuelve — el A1 presenta, no
+     reescribe (R15). Sin eco del id en el 404 (ADR-036/R15). */
+  const [detalleOp, setDetalleOp] = useState<Oportunidad | null>(null);
+  const [errorDetalleOp, setErrorDetalleOp] = useState<string | null>(null);
+  const [cargandoDetalleOp, setCargandoDetalleOp] = useState(false);
+
+  const abrirDetalleOp = useCallback(
+    (id: string) => {
+      verDetalle({ tipo: 'oportunidad', id });
+      setDetalleOp(null);
+      setErrorDetalleOp(null);
+      setCargandoDetalleOp(true);
+      void (async () => {
+        try {
+          setDetalleOp(await cliente.oportunidadDetalle(id));
+        } catch (err) {
+          setErrorDetalleOp(mensajeDe(err, 'no se pudo cargar el detalle'));
+        } finally {
+          setCargandoDetalleOp(false);
+        }
+      })();
+    },
+    [cliente, verDetalle]
+  );
 
   const [opTipo, setOpTipo] = useState('human_capacity');
   const [opTitulo, setOpTitulo] = useState('');
@@ -1021,21 +1053,34 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
       {vista === 'oportunidades' && (
         <>
       <h3>Banco de Potencialidades (Bloque 9)</h3>
-      {oportunidades === null && (
+      {paginaOp === null && (
         <BotonCargar id="oportunidades" texto="cargar oportunidades del nodo" alCargar={() => void cargarOportunidades()} />
       )}
-      {oportunidades !== null && oportunidades.length === 0 && (
+      {paginaOp !== null && paginaOp.items.length === 0 && (
         <p>sin oportunidades publicadas aún — «discarded» nunca se publica (R15)</p>
       )}
-      {oportunidades !== null && oportunidades.length > 0 && (
+      {paginaOp !== null && paginaOp.items.length > 0 && (
         <ul>
-          {oportunidades.map((o) => (
+          {paginaOp.items.map((o) => (
             <li key={o.id}>
-              <strong>{o.titulo}</strong> · {o.tipo} · estado: {o.estado} · {o.descripcion}{' '}
-              <button type="button" onClick={() => verDetalle({ tipo: 'oportunidad', id: o.id })} style={{ minHeight: '24px', minWidth: '24px' }}>ver detalle</button>
+              <strong>{o.titulo}</strong> · {o.tipo} · etapa: {o.estado} · {o.descripcion}{' '}
+              <button type="button" onClick={() => abrirDetalleOp(o.id)} style={{ minHeight: '24px', minWidth: '24px' }}>ver detalle</button>
             </li>
           ))}
         </ul>
+      )}
+      {paginaOp !== null && (
+        <p>
+          <small>
+            {'página del Banco: ' + paginaOp.items.length + ' en esta página · ' + (paginaOp.total !== null ? paginaOp.total + ' publicadas en total (header X-DELocalSoy-Total-Count: ' + paginaOp.total + ')' : 'total: sin dato en la respuesta (honesto, R15)') + ' · offset: ' + paginaOp.offset}
+          </small>
+        </p>
+      )}
+      {paginaOp !== null && paginaOp.items.length > 0 && (
+        <p>
+          <button type="button" onClick={() => void cargarOportunidades(Math.max(0, offsetOp - 20))} disabled={offsetOp === 0} style={{ minHeight: '24px', minWidth: '24px' }}>← anteriores 20</button>{' '}
+          <button type="button" onClick={() => void cargarOportunidades(offsetOp + 20)} disabled={paginaOp.items.length < 20 || (paginaOp.total !== null && offsetOp + 20 >= paginaOp.total)} style={{ minHeight: '24px', minWidth: '24px' }}>siguientes 20 →</button>
+        </p>
       )}
       <h4>Postular una oportunidad (evidencia OBLIGATORIA)</h4>
       {!caps.puedeEscribir && <p role="note">la postulación exige sesión iniciada — nace «detected», nunca validada por autodeclaración.</p>}
@@ -1356,19 +1401,47 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
             {detalle.tipo === 'oportunidad' && (
               <div>
                 <button type="button" onClick={volverDeDetalle} style={{ minHeight: '24px', minWidth: '24px' }}>← volver al Banco de Potencialidades</button>
-                {(() => {
-                  const o = (oportunidades ?? []).find((x) => x.id === detalle.id);
-                  if (o === undefined) {
-                    return <p>la oportunidad {detalle.id} no está en la lista cargada — volvé y cargá de nuevo (R15).</p>;
-                  }
-                  return (
-                    <div>
-                      <h3>{o.titulo}</h3>
-                      <p>tipo: {o.tipo} · estado: {o.estado}</p>
-                      <p>{o.descripcion}</p>
-                    </div>
-                  );
-                })()}
+                {cargandoDetalleOp && <p>cargando detalle de la oportunidad…</p>}
+                {errorDetalleOp !== null && <p role="alert">{errorDetalleOp}</p>}
+                {detalleOp !== null && (
+                  <div>
+                    <h3>{detalleOp.titulo}</h3>
+                    <p>tipo: {detalleOp.tipo} · etapa del ciclo de vida: {detalleOp.estado}</p>
+                    <p>{detalleOp.descripcion}</p>
+                    {/* PIZ-R5 (#548): evidencia, etapa y etiquetas tal como la
+                        API las devuelve — el A1 presenta, no reescribe (R15). */}
+                    {(() => {
+                      const ev = (detalleOp.evidencia ?? {}) as Record<string, unknown>;
+                      const evTipo = typeof ev.evidence_type === 'string' ? ev.evidence_type as string : '';
+                      const evEtiqueta = TIPOS_EVIDENCIA.find((t) => t.valor === evTipo)?.etiqueta ?? evTipo;
+                      const evDesc = typeof ev.descripcion === 'string' ? ev.descripcion as string : '';
+                      const evUrl = typeof ev.reference_url === 'string' && (ev.reference_url as string) !== '' ? ev.reference_url as string : null;
+                      const evEstado = typeof ev.validationStatus === 'string' ? ev.validationStatus as string : null;
+                      return (
+                        <div>
+                          <p>
+                            <strong>evidencia:</strong>{' '}
+                            {evTipo === ''
+                              ? 'sin evidencia declarada en la respuesta (honesto, R15)'
+                              : evEtiqueta + " (crudo: " + evTipo + ") — " + (evDesc !== "" ? evDesc : "[vacío declarado]")}
+                          </p>
+                          {evUrl !== null && <p><small>referencia declarada de la evidencia: {evUrl}</small></p>}
+                          {evEstado !== null && <p><small>validación de la evidencia (moderación): {evEstado} — el autor nunca auto-corrobora (R15)</small></p>}
+                        </div>
+                      );
+                    })()}
+                    <p>
+                      <strong>etiquetas:</strong>{' '}
+                      {detalleOp.tags.length > 0 ? detalleOp.tags.join(', ') : 'sin etiquetas declaradas'}
+                    </p>
+                    <p>
+                      <strong>actores declarados:</strong>{' '}
+                      {detalleOp.actores.length > 0
+                        ? detalleOp.actores.length + ' (roles y consentimiento; los nombres no se repiten acá — Ley 25.326)'
+                        : 'sin actores nombrados'}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </>
