@@ -438,6 +438,17 @@ export interface Oportunidad {
   updated_at: string;
 }
 
+/* PIZ-R5 (#548, épica #543): página del listado del Banco. La API pagina
+   de a 20 por contrato (NCAP-R6-ext #165: limit 1-100, offset ≥ 0) y
+   reporta el total en el body y en el header X-DELocalSoy-Total-Count
+   (EV-076). total null = respuesta sin número (honesto, R15). */
+export interface PaginaOportunidades {
+  items: Oportunidad[];
+  count: number;
+  total: number | null;
+  offset: number;
+}
+
 export interface KpiSnapshot {
   nodo_key: string;
   kpi_key: string;
@@ -583,7 +594,11 @@ export interface ClienteA1 {
   subnodos(nodoKey: string): Promise<SubnodoNodo[]>;
   fichas(filtros?: { nodo?: string; estado?: 'corroborada' | 'testimonio' }): Promise<FichaPublica[]>;
   crearFicha(nueva: NuevaFicha): Promise<{ ficha: FichaPublica; idempotente: boolean }>;
-  oportunidades(filtros?: { nodo?: string; tipo?: string; estado?: string; subnodo?: string }): Promise<Oportunidad[]>;
+  oportunidades(filtros?: { nodo?: string; tipo?: string; estado?: string; subnodo?: string; limit?: number; offset?: number }): Promise<Oportunidad[]>;
+  /** PIZ-R5 (#548): página del Banco con el total del servidor (body + header). */
+  oportunidadesPagina(filtros?: { nodo?: string; tipo?: string; estado?: string; subnodo?: string; limit?: number; offset?: number }): Promise<PaginaOportunidades>;
+  /** PIZ-R5 (#548): detalle público GET /api/oportunidades/:id (discarded = 404 sin eco). */
+  oportunidadDetalle(id: string): Promise<Oportunidad>;
   postularOportunidad(nueva: NuevaOportunidad): Promise<{ oportunidad: Oportunidad; idempotente: boolean }>;
   kpis(nodoKey: string): Promise<KpiSnapshot[]>;
   observatorio(nodoKey: string): Promise<ObservatorioNodo>;
@@ -792,6 +807,22 @@ function parseProducto(crudo: Record<string, unknown>): ProductoCatalogo {
     created_by_hash: texto(crudo.created_by_hash),
     created_at: fecha(crudo.created_at),
   };
+}
+
+/** PIZ-R5 (#548): total del encabezado X-DELocalSoy-Total-Count (EV-076).
+ * El transporte de pruebas no expone headers: devuelve null y el caller
+ * cae al total del body — honesto, nunca inventado (R15). */
+function totalDelHeader(res: unknown): number | null {
+  const headers = (res as { headers?: { get?: (k: string) => string | null } }).headers;
+  if (!headers || typeof headers.get !== 'function') {
+    return null;
+  }
+  const bruto = headers.get('X-DELocalSoy-Total-Count');
+  if (bruto === null || bruto === undefined) {
+    return null;
+  }
+  const n = Number(bruto);
+  return Number.isFinite(n) ? n : null;
 }
 
 function query(params: Record<string, string | undefined>): string {
@@ -1041,9 +1072,44 @@ export function crearClienteA1(opts: OpcionesClienteA1): ClienteA1 {
 
   /* ---------------- Banco de Potencialidades (Bloque 9) ---------------- */
 
-  const oportunidades = async (filtros?: { nodo?: string; tipo?: string; estado?: string; subnodo?: string }): Promise<Oportunidad[]> => {
-    const cuerpo = await lectura(baseOportunidades + query({ nodo: filtros?.nodo, tipo: filtros?.tipo, estado: filtros?.estado, subnodo: filtros?.subnodo }), () => new ErrorA1('datos', 'filtros inválidos (discarded no es publicable)'));
+  const oportunidades = async (filtros?: { nodo?: string; tipo?: string; estado?: string; subnodo?: string; limit?: number; offset?: number }): Promise<Oportunidad[]> => {
+    const cuerpo = await lectura(baseOportunidades + query({ nodo: filtros?.nodo, tipo: filtros?.tipo, estado: filtros?.estado, subnodo: filtros?.subnodo, limit: filtros?.limit !== undefined ? String(filtros.limit) : undefined, offset: filtros?.offset !== undefined ? String(filtros.offset) : undefined }), () => new ErrorA1('datos', 'filtros inválidos (discarded no es publicable)'));
     return lista(cuerpo, 200).map((o) => parseOportunidad(o as Record<string, unknown>));
+  };
+
+  /* PIZ-R5 (#548, épica #543): página del Banco — el listado respeta el
+     default de la API (20) y declara el total con total del body o el
+     header X-DELocalSoy-Total-Count (EV-076). 400 → ErrorA1 datos (R5). */
+  const oportunidadesPagina = async (filtros?: { nodo?: string; tipo?: string; estado?: string; subnodo?: string; limit?: number; offset?: number }): Promise<PaginaOportunidades> => {
+    const ruta = baseOportunidades + query({ nodo: filtros?.nodo, tipo: filtros?.tipo, estado: filtros?.estado, subnodo: filtros?.subnodo, limit: filtros?.limit !== undefined ? String(filtros.limit) : undefined, offset: filtros?.offset !== undefined ? String(filtros.offset) : undefined });
+    const res = await llamar(ruta);
+    const cuerpo = await leerJson(res);
+    if (res.status === 400) {
+      throw new ErrorA1('datos', texto(cuerpo.error) || 'paginación inválida (limit 1-100, offset ≥ 0)');
+    }
+    if (res.status !== 200) {
+      throw new ErrorA1('no_disponible', texto(cuerpo.error) || 'HTTP ' + res.status);
+    }
+    const filas = lista(cuerpo, 200).map((o) => parseOportunidad(o as Record<string, unknown>));
+    const fila = cuerpo as Record<string, unknown>;
+    const totalBody = typeof fila.total === 'number' ? (fila.total as number) : null;
+    const total = totalBody ?? totalDelHeader(res);
+    return {
+      items: filas,
+      count: typeof fila.count === 'number' ? (fila.count as number) : filas.length,
+      total,
+      offset: filtros?.offset ?? 0,
+    };
+  };
+
+  /* PIZ-R5 (#548): detalle público GET /api/oportunidades/:id — el
+     'discarded' no existe para la lectura (404 sin eco, R15/ADR-038). */
+  const oportunidadDetalle = async (id: string): Promise<Oportunidad> => {
+    const cuerpo = await lectura(baseOportunidades + '/' + encodeURIComponent(id), () => new ErrorA1('no_encontrado', 'oportunidad no encontrada o no publicable'));
+    if (!cuerpo.data) {
+      throw new ErrorA1('no_disponible', 'respuesta malformada del detalle');
+    }
+    return parseOportunidad(cuerpo.data as Record<string, unknown>);
   };
 
   const postularOportunidad = async (nueva: NuevaOportunidad) => {
@@ -1174,6 +1240,8 @@ export function crearClienteA1(opts: OpcionesClienteA1): ClienteA1 {
     fichas,
     crearFicha,
     oportunidades,
+    oportunidadesPagina,
+    oportunidadDetalle,
     postularOportunidad,
     kpis,
     observatorio,
