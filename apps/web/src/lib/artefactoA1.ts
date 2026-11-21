@@ -61,7 +61,7 @@ export interface ComponenteA1 {
  */
 export const COMPONENTES_A1: readonly ComponenteA1[] = [
   { id: 'mapa_territorio', titulo: 'Mapa y territorio', estado: 'en_main', detalle: 'nodos, subnodos, capas y features con estado honesto (GET públicos, CORE-003)' },
-  { id: 'reporte_ciudadano', titulo: 'Reporte ciudadano', estado: 'en_main', detalle: "POST nace 'received'; sugeridos por proximidad aún en rama (#219/#220)" },
+  { id: 'reporte_ciudadano', titulo: 'Reporte ciudadano', estado: 'en_main', detalle: "POST nace 'received'; duplicados sugeridos ADR-039 en la UI (pre-chequeo + respuesta del alta) y «usar mi ubicación» (PIZ-R6 #549)" },
   { id: 'ficha_valoracion', titulo: 'Ficha de valoración de espacio público', estado: 'en_main', detalle: '7 dimensiones ratificadas (#149), testimonio → corroborada | descartada (EV-038)' },
   { id: 'banco_potencialidades', titulo: 'Banco de Potencialidades (Bloque 9)', estado: 'en_main', detalle: 'oportunidades con evidencia obligatoria y consentimiento (#160, EV-039)' },
   { id: 'observaciones_patrimoniales', titulo: 'Observaciones patrimoniales', estado: 'en_rama', detalle: 'PR #253 (VIG-009) en cola — sin merge aún, sin cableado (R15)' },
@@ -232,6 +232,43 @@ export interface ReporteMio extends ReportePublico {
 }
 
 /**
+ * ReporteDuplicadoSugerido (contrato CORE-005 R5 / ADR-039 / PIZ-R6 #549):
+ * fila de duplicados_sugeridos de la respuesta del alta — SUGERENCIA de
+ * lectura: NADA se fusiona, persiste o sella; corroborar ≠ duplicar.
+ */
+export interface DuplicadoSugerido {
+  id: string;
+  categoria: string;
+  estado: string;
+  lat: number | null;
+  lng: number | null;
+  distancia_m: number | null;
+  created_at: string;
+}
+
+/** PIZ-R6 (#549): estados abiertos sugeribles — espejo del SQL de la API
+ * (received | evaluating | in_progress; resolved y descartado dejan de
+ * ser sugeribles). */
+export const ESTADOS_ABIERTOS_REPORTE: ReadonlyArray<string> = ['received', 'evaluating', 'in_progress'];
+
+/** PIZ-R6 (#549): radio del pre-chequeo local de duplicados — el MISMO
+ * default declarado por la API (REPORTES_DUPLICADOS_RADIO_M = 100 m,
+ * ADR-039). Es ayuda para decidir, no autoridad: la sugerencia real
+ * llega en la respuesta del alta via PostGIS (ST_DWithin geography). */
+export const RADIO_PRE_CHEQUEO_M = 100;
+
+/** Distancia haversine en metros (PIZ-R6): cálculo presentacional puro
+ * para el pre-chequeo local sobre la bandeja pública ya cargada (MK-3c).
+ * La distancia AUTORITATIVA es la del servidor (ST_Distance geography). */
+export function distanciaMetrosLatLon(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const rad = Math.PI / 180;
+  const dLat = (lat2 - lat1) * rad;
+  const dLng = (lng2 - lng1) * rad;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  return 2 * 6371000 * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+
+/**
  * ReporteAltaSchema (contracts): lat/lng son NÚMEROS EXIGIDOS con rango
  * SRID=4326 — un reporte sin punto propio no es cartografiable (R2, #206).
  */
@@ -241,6 +278,17 @@ export interface NuevoReporte {
   descripcion: string;
   lat: number;
   lng: number;
+}
+
+/** PIZ-R6 (#549): respuesta del alta ciudadana ENRIQUECIDA por la API (ADR-039):
+ * duplicados sugeridos + flag honesto de verificación. duplicados_verificados
+ * false = el servidor no pudo correr la búsqueda (fail-open honesto) — NUNCA
+ * se lee como «sin duplicados» (R15). */
+export interface AltaReporte {
+  reporte: ReportePublico;
+  idempotente: boolean;
+  duplicados_sugeridos: DuplicadoSugerido[];
+  duplicados_verificados: boolean;
 }
 
 export interface FeatureNodo {
@@ -586,7 +634,10 @@ export interface ActivoDirectorio {
 export interface ClienteA1 {
   categorias(nodoKey: string): Promise<CategoriaNodo[]>;
   reportesPublicos(nodoKey: string): Promise<ReportePublico[]>;
-  crearReporte(nuevo: NuevoReporte): Promise<{ reporte: ReportePublico; idempotente: boolean }>;
+  crearReporte(nuevo: NuevoReporte): Promise<AltaReporte>;
+  /** PIZ-R6 (#549): corroboración (POST /api/reportes/:id/corroboracion) —
+   * corroborar ≠ duplicar (ADR-039); JWT; el autor no corrobora el propio. */
+  corroborar(reporteId: string, opts?: { nota?: string }): Promise<{ peso: boolean; idempotente: boolean }>;
   mios(): Promise<ReporteMio[]>;
   historial(reporteId: string): Promise<TransicionReporte[]>;
   features(nodoKey: string): Promise<FeatureNodo[]>;
@@ -658,6 +709,24 @@ function parseTransicion(crudo: Record<string, unknown>): TransicionReporte {
     moderador_hash: texto(crudo.moderador_hash),
     occurred_at: fecha(crudo.occurred_at),
   };
+}
+
+function parseDuplicado(crudo: Record<string, unknown>): DuplicadoSugerido {
+  return {
+    id: texto(crudo.id),
+    categoria: texto(crudo.categoria),
+    estado: texto(crudo.estado),
+    lat: numeroOnulo(crudo.lat),
+    lng: numeroOnulo(crudo.lng),
+    distancia_m: numeroOnulo(crudo.distancia_m),
+    created_at: fecha(crudo.created_at),
+  };
+}
+
+/** PIZ-R6 (#549): duplicados_sugeridos del alta — array ausente/malformado → [];
+ * honesto: el fallo de la búsqueda ya viene declarado en duplicados_verificados. */
+function parseDuplicados(crudo: unknown): DuplicadoSugerido[] {
+  return Array.isArray(crudo) ? crudo.map((d) => parseDuplicado(d as Record<string, unknown>)) : [];
 }
 
 function parseFicha(crudo: Record<string, unknown>): FichaPublica {
@@ -1004,7 +1073,12 @@ export function crearClienteA1(opts: OpcionesClienteA1): ClienteA1 {
 
   /* ---------------- reporte ciudadano (JWT) ---------------- */
 
-  const crearReporte = async (nuevo: NuevoReporte) => {
+  /* PIZ-R6 (#549, ADR-039): la respuesta del alta incluye duplicados_
+     sugeridos y su flag honesto duplicados_verificados — el panel los
+     presenta para que el vecino corrobore EN LUGAR de duplicar.
+     duplicados_verificados ausente → false (fail-open honesto, R15:
+     nunca «sin duplicados» no verificado). */
+  const crearReporte = async (nuevo: NuevoReporte): Promise<AltaReporte> => {
     const { cuerpo, idempotente } = await alta(baseReportes, {
       nodo_key: nuevo.nodo_key,
       categoria: nuevo.categoria,
@@ -1013,7 +1087,13 @@ export function crearClienteA1(opts: OpcionesClienteA1): ClienteA1 {
       lng: nuevo.lng,
     });
     const reporte = parseReporte(cuerpo.data as Record<string, unknown>);
-    return { reporte, idempotente };
+    const fila = cuerpo as Record<string, unknown>;
+    return {
+      reporte,
+      idempotente,
+      duplicados_sugeridos: parseDuplicados(fila.duplicados_sugeridos),
+      duplicados_verificados: fila.duplicados_verificados === true,
+    };
   };
 
   const mios = async (): Promise<ReporteMio[]> => {
@@ -1050,6 +1130,48 @@ export function crearClienteA1(opts: OpcionesClienteA1): ClienteA1 {
       throw new ErrorA1('no_encontrado', 'reporte no encontrado o no publicable');
     }
     throw new ErrorA1('no_disponible', texto(cuerpo.error) || 'HTTP ' + res.status);
+  };
+
+  /* PIZ-R6 (#549, épica #543 — ADR-039): corroboración ciudadana del
+     reporte existente EN VEZ de duplicarlo: POST /api/reportes/:id/
+     corroboracion (JWT). La comunidad corrobora, NUNCA verifica (R15):
+     un reportante distinto = un peso. La nota opcional pasa el anti-PII
+     del servidor (el cliente nunca exige identidad, ADR-027). 400/409 →
+     datos (p. ej. el autor no corrobora el propio reporte), 404 →
+     no_encontrado sin eco (ADR-036). */
+  const corroborar = async (reporteId: string, opts?: { nota?: string }): Promise<{ peso: boolean; idempotente: boolean }> => {
+    const body: Record<string, unknown> = {};
+    const nota = opts?.nota;
+    if (nota !== undefined && nota.trim() !== '') {
+      body.nota = nota.trim();
+    }
+    const res = await llamar(baseReportes + '/' + encodeURIComponent(reporteId) + '/corroboracion', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...headersToken() },
+      body: JSON.stringify(body),
+    });
+    const cuerpo = await leerJson(res);
+    if (res.status === 200 || res.status === 201) {
+      const data = (cuerpo.data ?? {}) as Record<string, unknown>;
+      return { peso: data.peso === true, idempotente: res.status === 200 || cuerpo.idempotente === true };
+    }
+    const mensaje = texto(cuerpo.error);
+    if (res.status === 400 || res.status === 409) {
+      if (mensaje.includes('datos personales identificables')) {
+        throw new ErrorA1('pii', mensaje);
+      }
+      throw new ErrorA1('datos', mensaje || 'corroboración rechazada');
+    }
+    if (res.status === 401) {
+      throw new ErrorA1('credenciales', 'sesión no válida — iniciá sesión de nuevo');
+    }
+    if (res.status === 404) {
+      throw new ErrorA1('no_encontrado', 'reporte no encontrado o cerrado');
+    }
+    if (res.status === 429) {
+      throw new ErrorA1('no_disponible', 'demasiados intentos — esperá un momento (techo por rol)');
+    }
+    throw new ErrorA1('no_disponible', mensaje || 'HTTP ' + res.status);
   };
 
   /* ---------------- fichas de valoración (#149) ---------------- */
@@ -1234,6 +1356,7 @@ export function crearClienteA1(opts: OpcionesClienteA1): ClienteA1 {
     crearReporte,
     mios,
     historial,
+    corroborar,
     features,
     capas,
     subnodos,
