@@ -296,7 +296,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
      = un peso, R15) o declara su hecho nuevo. «usar mi ubicación» rellena
      lat/lng SIN enviar nada por sí solo: geolocalización sensible,
      ADR-036 — punto público del hecho, NUNCA el domicilio. */
-  const [sugeridosPrevios, setSugeridosPrevios] = useState<DuplicadoSugerido[] | null>(null);
+  const [sugeridosPrevios, setSugeridosPrevios] = useState<Array<DuplicadoSugerido & { distancia_m: number }> | null>(null);
   const [errorSugeridosPrevios, setErrorSugeridosPrevios] = useState<string | null>(null);
   const [corroborando, setCorroborando] = useState<string | null>(null);
   const [exitoCorroborar, setExitoCorroborar] = useState<{ id: string; peso: boolean; idempotente: boolean } | null>(null);
