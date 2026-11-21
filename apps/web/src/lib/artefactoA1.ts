@@ -1,4 +1,4 @@
-successfully downloaded text file (SHA: 4c2076c1e05df6bade64dc78300704e5675e11f9)/**
+/**
  * DELocalSoy.AR — Artefacto A1 (vecino, ciudadano y visitante): matriz de
  * permisos v0.1, capacidades por sesión y cliente HTTP puro para las
  * superficies REALES (ART-R1 cableado exhaustivo, #270, épica #268).
