@@ -1,4 +1,4 @@
-/**
+successfully downloaded text file (SHA: 1a353305055ee19dcfcb1dc73f4ddcf1246fb110)/**
  * DELocalSoy.AR — Panel del Artefacto A1: vecino, ciudadano y visitante
  * (ART-R1 cableado exhaustivo, #270, épica #268). Consume useSesion
  * (ART-R0) y el cliente puro lib/artefactoA1.ts contra las superficies
@@ -31,9 +31,13 @@ import {
   TIPOS_OPORTUNIDAD,
   TIPOS_EVIDENCIA,
   ErrorA1,
+  ESTADOS_ABIERTOS_REPORTE,
+  RADIO_PRE_CHEQUEO_M,
+  distanciaMetrosLatLon,
   type ActivoDirectorio,
   type CapacidadesA1,
   type CategoriaNodo,
+  type DuplicadoSugerido,
   type FeatureNodo,
   type FichaPublica,
   type FichaRespuestasV1,
@@ -274,9 +278,107 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
   const [descripcion, setDescripcion] = useState('');
   const [lat, setLat] = useState('');
   const [lng, setLng] = useState('');
-  const [exitoReporte, setExitoReporte] = useState<{ id: string; idempotente: boolean } | null>(null);
+  const [exitoReporte, setExitoReporte] = useState<{
+    id: string;
+    idempotente: boolean;
+    duplicados_sugeridos: DuplicadoSugerido[];
+    duplicados_verificados: boolean;
+  } | null>(null);
   const [errorReporte, setErrorReporte] = useState<string | null>(null);
   const [enviandoReporte, setEnviandoReporte] = useState(false);
+
+  /* PIZ-R6 (#549, épica #543): duplicados como corroboración (ADR-039).
+     PRE-chequeo de LECTURA: compara el punto declarado contra los reportes
+     públicos YA cargados (haversine local, misma regla del radio default
+     100 m y tope de 5 de la API — presentación sobre lo ya cargado, MK-3c;
+     la sugerencia AUTORITATIVA llega en la respuesta del alta vía PostGIS).
+     El vecino elige: corrobora un reporte abierto (un reportante distinto
+     = un peso, R15) o declara su hecho nuevo. «usar mi ubicación» rellena
+     lat/lng SIN enviar nada por sí solo: geolocalización sensible,
+     ADR-036 — punto público del hecho, NUNCA el domicilio. */
+  const [sugeridosPrevios, setSugeridosPrevios] = useState<DuplicadoSugerido[] | null>(null);
+  const [errorSugeridosPrevios, setErrorSugeridosPrevios] = useState<string | null>(null);
+  const [corroborando, setCorroborando] = useState<string | null>(null);
+  const [exitoCorroborar, setExitoCorroborar] = useState<{ id: string; peso: boolean; idempotente: boolean } | null>(null);
+  const [errorCorroborar, setErrorCorroborar] = useState<string | null>(null);
+  const [geoCargando, setGeoCargando] = useState(false);
+  const [geoAviso, setGeoAviso] = useState<string | null>(null);
+
+  const usarMiUbicacion = useCallback(() => {
+    setGeoAviso(null);
+    if (!caps.puedeEscribir) {
+      setGeoAviso('la escritura exige sesión iniciada');
+      return;
+    }
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setGeoAviso('este navegador no expone geolocalización — declará el punto a mano (lat/lng)');
+      return;
+    }
+    setGeoCargando(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLat(pos.coords.latitude.toFixed(6));
+        setLng(pos.coords.longitude.toFixed(6));
+        setGeoCargando(false);
+        setGeoAviso(
+          'punto tomado del navegador (precisión ≈ ' + Math.round(pos.coords.accuracy) + ' m): ajustalo al LUGAR público del hecho — el punto que enviás es del hecho observable, jamás tu domicilio (ADR-036); nada se envió todavía.'
+        );
+      },
+      (err) => {
+        setGeoCargando(false);
+        setGeoAviso('geolocalización no disponible (' + err.message + '): declará el punto a mano — lat/lng siguen EXIGIDOS (R5).');
+      },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+    );
+  }, [caps.puedeEscribir]);
+
+  const buscarDuplicadosPrevios = useCallback(() => {
+    setErrorSugeridosPrevios(null);
+    setExitoCorroborar(null);
+    setErrorCorroborar(null);
+    const latNum = Number(lat.trim());
+    const lngNum = Number(lng.trim());
+    if (lat.trim() === '' || lng.trim() === '' || !Number.isFinite(latNum) || !Number.isFinite(lngNum)) {
+      setErrorSugeridosPrevios('declará un punto (lat/lng) válido para buscar duplicados sugeridos');
+      return;
+    }
+    const base = reportes ?? [];
+    const candidatos = base
+      .filter((r) => !r.is_synthetic && ESTADOS_ABIERTOS_REPORTE.includes(r.estado) && r.lat !== null && r.lng !== null)
+      .map((r) => ({
+        id: r.id,
+        categoria: r.categoria,
+        estado: r.estado,
+        lat: r.lat as number,
+        lng: r.lng as number,
+        distancia_m: distanciaMetrosLatLon(latNum, lngNum, r.lat as number, r.lng as number),
+        created_at: r.created_at,
+      }));
+    const sugeridos = candidatos
+      .filter((s) => s.distancia_m <= RADIO_PRE_CHEQUEO_M)
+      .sort((a, b) => a.distancia_m - b.distancia_m)
+      .slice(0, 5);
+    setSugeridosPrevios(sugeridos);
+  }, [lat, lng, reportes]);
+
+  const corroborarReporte = useCallback(
+    (id: string) => {
+      setErrorCorroborar(null);
+      setExitoCorroborar(null);
+      setCorroborando(id);
+      void (async () => {
+        try {
+          const r = await cliente.corroborar(id);
+          setExitoCorroborar({ id, peso: r.peso, idempotente: r.idempotente });
+        } catch (err) {
+          setErrorCorroborar(mensajeDe(err, 'no se pudo corroborar'));
+        } finally {
+          setCorroborando(null);
+        }
+      })();
+    },
+    [cliente]
+  );
 
   const enviarReporte = useCallback(
     async (e: FormEvent) => {
@@ -293,15 +395,21 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
       }
       setEnviandoReporte(true);
       try {
-        const { reporte, idempotente } = await cliente.crearReporte({
+        const respuesta = await cliente.crearReporte({
           nodo_key: nodoKey,
           categoria,
           descripcion: descripcion.trim(),
           lat: Number(lat),
           lng: Number(lng),
         });
-        setExitoReporte({ id: reporte.id, idempotente });
+        setExitoReporte({
+          id: respuesta.reporte.id,
+          idempotente: respuesta.idempotente,
+          duplicados_sugeridos: respuesta.duplicados_sugeridos,
+          duplicados_verificados: respuesta.duplicados_verificados,
+        });
         setDescripcion('');
+        setSugeridosPrevios([]); // ya se creó el reporte: el pre-chequeo pierde sentido
         void cargarLecturaReportes();
       } catch (err) {
         setErrorReporte(mensajeDe(err, 'no se pudo enviar el reporte'));
@@ -756,7 +864,47 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
         <label>
           lng (EXIGIDA)
           <input value={lng} onChange={(e) => setLng(e.target.value)} disabled={!caps.puedeEscribir} inputMode="decimal" placeholder="-68.5374" />
-        </label>
+        </label>{' '}
+        <button type="button" onClick={usarMiUbicacion} disabled={!caps.puedeEscribir || geoCargando} style={{ minHeight: "24px", minWidth: "24px" }}>
+          {geoCargando ? 'buscando punto…' : 'usar mi ubicación'}
+        </button>
+        <br />
+        <small>
+          ADR-036 (geolocalización sensible): el punto que enviás es el del hecho observable en un LUGAR público —
+          nunca tu domicilio. El botón solo rellena los campos: no envía nada. Sin permiso, se avisa y se declara a mano (R5).
+        </small>
+        {geoAviso !== null && <p><small>{geoAviso}</small></p>}
+        <br />
+        <button type="button" onClick={buscarDuplicadosPrevios} disabled={enviandoReporte} style={{ minHeight: "24px", minWidth: "24px" }}>
+          chequear duplicados sugeridos antes de confirmar
+        </button>{' '}
+        <small>ADR-039: corroborar ≠ duplicar — la decisión es tuya, nada se fusiona</small>
+        {errorSugeridosPrevios !== null && <p role="alert">{errorSugeridosPrevios}</p>}
+        {sugeridosPrevios !== null &&
+          (sugeridosPrevios.length === 0 ? (
+            <p>sin reportes abiertos públicos dentro de {RADIO_PRE_CHEQUEO_M} m en la bandeja ya cargada (pre-chequeo local — la sugerencia autoritativa llega con la respuesta del alta)</p>
+          ) : (
+            <ul>
+              {sugeridosPrevios.map((s) => (
+                <li key={s.id}>
+                  <strong>{s.categoria}</strong> · estado: {s.estado} · a {Math.round(s.distancia_m)} m del punto declarado{' '}
+                  <button type="button" onClick={() => corroborarReporte(s.id)} disabled={!caps.puedeEscribir || corroborando !== null} style={{ minHeight: "24px", minWidth: "24px" }}>
+                    {corroborando === s.id ? 'corroborando…' : 'corroboro este (no duplico)'}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ))}
+        {exitoCorroborar !== null && (
+          <p role="status">
+            corroboración registrada ({exitoCorroborar.id}):{' '}
+            {exitoCorroborar.peso
+              ? 'tu peso quedó sellado — un reportante distinto = un peso (R15)'
+              : 'sin peso nuevo'}
+            {exitoCorroborar.idempotente ? ' · ya habías corroborado este reporte (idempotente)' : ''}
+          </p>
+        )}
+        {errorCorroborar !== null && <p role="alert">{errorCorroborar}</p>}
         <br />
         <button type="submit" disabled={!caps.puedeEscribir || enviandoReporte}>
           {enviandoReporte ? 'enviando…' : 'enviar reporte'}
@@ -769,6 +917,31 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
             ? 'ya lo habías enviado (idempotente, sin duplicar).'
             : 'la moderación comunitaria decidirá su ciclo con justificación pública.'}
         </p>
+      )}
+      {exitoReporte !== null && !exitoReporte.duplicados_verificados && (
+        <p>
+          el servidor NO pudo verificar la búsqueda de duplicados (duplicados_verificados: false — fail-open honesto,
+          R15): no se declara «sin duplicados»; la moderación los revisará.
+        </p>
+      )}
+      {exitoReporte !== null && exitoReporte.duplicados_verificados && exitoReporte.duplicados_sugeridos.length === 0 && (
+        <p>búsqueda de duplicados verificada por la API: sin reportes abiertos públicos cercanos al punto declarado</p>
+      )}
+      {exitoReporte !== null && exitoReporte.duplicados_verificados && exitoReporte.duplicados_sugeridos.length > 0 && (
+        <div>
+          <p role="status">duplicados sugeridos por la API (ADR-039 — SUGERENCIA de lectura: NADA se fusiona; corroborar ≠ duplicar):</p>
+          <ul>
+            {exitoReporte.duplicados_sugeridos.map((s) => (
+              <li key={s.id}>
+                <strong>{s.categoria}</strong> · estado: {s.estado}
+                {s.distancia_m !== null ? ' · a ' + Math.round(s.distancia_m) + ' m' : ''}{' '}
+                <button type="button" onClick={() => corroborarReporte(s.id)} disabled={corroborando !== null} style={{ minHeight: "24px", minWidth: "24px" }}>
+                  {corroborando === s.id ? 'corroborando…' : 'corroboro este (no duplico)'}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
       {errorReporte !== null && <p role="alert">{errorReporte}</p>}
 

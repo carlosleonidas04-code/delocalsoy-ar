@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+successfully downloaded text file (SHA: 5b21aa5969d6a668f540164de5eab119162107a8)import { describe, it, expect } from 'vitest';
 import {
   COMPONENTES_A1,
   MATRIZ_PERMISOS_A1,
@@ -7,6 +7,7 @@ import {
   permisoVisible,
   crearClienteA1,
   validarActorA1,
+  distanciaMetrosLatLon,
   ErrorA1,
   TIPOS_OPORTUNIDAD,
   TIPOS_EVIDENCIA,
@@ -747,6 +748,80 @@ describe('PIZ-R5 (#548, épica #543) — Banco: paginación + detalle público',
   });
 });
 
+describe('PIZ-R6 (#549, épica #543) — reportes: duplicados ADR-039 + corroboración', () => {
+  it('crearReporte parsea duplicados_sugeridos + duplicados_verificados de la respuesta del alta', async () => {
+    const t = crearTransporte();
+    const cliente = crearClienteA1({ transporte: t.transporte, token: () => 'jwt-1' });
+    t.programar([
+      {
+        status: 201,
+        cuerpo: {
+          success: true,
+          data: { id: 'r-nuevo', categoria: 'arbolado', descripcion: 'rama caida', estado: 'received', lat: -31.5376, lng: -68.5285, created_at: '2026-11-21T12:00:00.000Z', is_synthetic: false },
+          duplicados_sugeridos: [
+            { id: 'r-1', categoria: 'arbolado', estado: 'received', lat: -31.5376, lng: -68.5285, distancia_m: 12.34, created_at: '2026-11-20T12:00:00.000Z' },
+          ],
+          duplicados_verificados: true,
+        },
+      },
+    ]);
+    const alta = await cliente.crearReporte({ nodo_key: 'capital', categoria: 'arbolado', descripcion: 'rama caida', lat: -31.5376, lng: -68.5285 });
+    expect(alta.idempotente).toBe(false);
+    expect(alta.duplicados_verificados).toBe(true);
+    expect(alta.duplicados_sugeridos.length).toBe(1);
+    expect(alta.duplicados_sugeridos[0]).toMatchObject({ id: 'r-1', distancia_m: 12.34, estado: 'received' });
+  });
+
+  it('duplicados_verificados ausente → false honesto y [] — nunca «sin duplicados» no verificado (R15)', async () => {
+    const t = crearTransporte();
+    const cliente = crearClienteA1({ transporte: t.transporte, token: () => 'jwt-1' });
+    t.programar([
+      { status: 200, cuerpo: { success: true, data: { id: 'r-1', estado: 'received', lat: 1, lng: 1 }, idempotente: true } },
+    ]);
+    const alta = await cliente.crearReporte({ nodo_key: 'capital', categoria: 'a', descripcion: 'b', lat: 1, lng: 1 });
+    expect(alta.duplicados_verificados).toBe(false);
+    expect(alta.duplicados_sugeridos).toEqual([]);
+    expect(alta.idempotente).toBe(true);
+  });
+
+  it('corroborar: POST /api/reportes/:id/corroboracion; nota opcional viaja en el body; idempotencia 200', async () => {
+    const t = crearTransporte();
+    const cliente = crearClienteA1({ transporte: t.transporte, token: () => 'jwt-2' });
+    t.programar([
+      { status: 201, cuerpo: { success: true, data: { reporte_id: 'r-1', peso: true } } },
+      { status: 200, cuerpo: { success: true, data: { reporte_id: 'r-1', peso: false }, idempotente: true } },
+    ]);
+    const primera = await cliente.corroborar('r-1', { nota: 'lo vi ayer en la misma esquina' });
+    expect(primera.peso).toBe(true);
+    expect(primera.idempotente).toBe(false);
+    const revisita = await cliente.corroborar('r-1');
+    expect(revisita.idempotente).toBe(true);
+    expect(t.llamadas[0].ruta).toBe('/api/reportes/r-1/corroboracion');
+    const init1 = t.llamadas[0].init as { method: string; body: string };
+    expect(init1.method).toBe('POST');
+    expect(JSON.parse(init1.body)).toEqual({ nota: 'lo vi ayer en la misma esquina' });
+    expect(JSON.parse((t.llamadas[1].init as { body: string }).body)).toEqual({});
+  });
+
+  it('corroborar: 400 (autor no corrobora el propio) y 409 (cerrado) → datos; 404 → no_encontrado', async () => {
+    const t = crearTransporte();
+    const cliente = crearClienteA1({ transporte: t.transporte, token: () => 'jwt-1' });
+    t.programar([
+      { status: 400, cuerpo: { success: false, error: 'el autor no corrobora su propio reporte (un reportante distinto = un peso)' } },
+      { status: 409, cuerpo: { success: false, error: "el reporte está cerrado ('resolved') — no hay nada que corroborar" } },
+      { status: 404, cuerpo: { success: false, error: 'reporte no encontrado' } },
+    ]);
+    await expect(cliente.corroborar('r-propio')).rejects.toMatchObject({ codigo: 'datos' });
+    await expect(cliente.corroborar('r-cerrado')).rejects.toMatchObject({ codigo: 'datos' });
+    await expect(cliente.corroborar('r-inexistente')).rejects.toMatchObject({ codigo: 'no_encontrado' });
+  });
+
+  it('distanciaMetrosLatLon: 0 en el mismo punto y ≈111 m por 0.001 grados de latitud', () => {
+    expect(distanciaMetrosLatLon(-31.5376, -68.5285, -31.5376, -68.5285)).toBe(0);
+    expect(distanciaMetrosLatLon(-32.0, -68.5, -32.001, -68.5)).toBeCloseTo(111.19, 1);
+  });
+});
+
 describe('ART-R1 — red caída (R5: jamás [])', () => {
   it('fallo de red → ErrorA1 no_disponible en cualquier superficie', async () => {
     const roto: TransporteSesion = async () => {
@@ -758,6 +833,7 @@ describe('ART-R1 — red caída (R5: jamás [])', () => {
     await expect(cliente.oportunidades()).rejects.toMatchObject({ codigo: 'no_disponible' });
     await expect(cliente.oportunidadesPagina()).rejects.toMatchObject({ codigo: 'no_disponible' });
     await expect(cliente.oportunidadDetalle('op1')).rejects.toMatchObject({ codigo: 'no_disponible' });
+    await expect(cliente.corroborar('r1')).rejects.toMatchObject({ codigo: 'no_disponible' });
     await expect(cliente.kpis('capital')).rejects.toMatchObject({ codigo: 'no_disponible' });
     await expect(cliente.observatorio('capital')).rejects.toMatchObject({ codigo: 'no_disponible' });
     await expect(cliente.listarActivos()).rejects.toMatchObject({ codigo: 'no_disponible' });
