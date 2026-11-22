@@ -758,7 +758,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
                 type="button"
                 onClick={() => irA(v.id)}
                 aria-current={vista === v.id ? 'page' : undefined}
-                style={{ minHeight: '24px', minWidth: '24px' }}
+                style={{ minHeight: 'var(--touch-target-min)', minWidth: 'var(--touch-target-min)' }}
               >
                 {v.titulo}
               </button>
@@ -766,7 +766,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
           ))}
         </ul>
       </nav>
-      <p role="status">
+      <p role="status" aria-live="polite">
         vista: {VISTAS_A1.find((v) => v.id === vista)?.titulo ?? vista}
         {detalle !== null ? ' · detalle abierto' : ''}
       </p>
@@ -812,8 +812,8 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
       {vista === 'reportes' && (
         <>
       <h3>Reportes del nodo (lectura pública)</h3>
-      {error !== null && <p role="alert">{error}</p>}
-      {reportes === null && cargando === 'reportes' && <p>cargando…</p>}
+      {error !== null && <p role="alert" aria-live="polite">{error}</p>}
+      {reportes === null && cargando === 'reportes' && <p role="status" aria-live="polite">cargando…</p>}
       {categorias !== null && categorias.length === 0 && (
         <p>el nodo aún no publica categorías en su vocabulario (count 0 honesto)</p>
       )}
@@ -826,7 +826,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
             <li key={r.id}>
               <strong>{r.categoria}</strong> · estado: {r.estado}
               {r.is_synthetic ? ' · SINTÉTICO' : ''} · {r.descripcion}{' '}
-              <button type="button" onClick={() => { void verHistorial(r.id); verDetalle({ tipo: 'historial' }); }} style={{ minHeight: '24px', minWidth: '24px' }}>ver historial</button>
+              <button type="button" onClick={() => { void verHistorial(r.id); verDetalle({ tipo: 'historial' }); }} style={{ minHeight: 'var(--touch-target-min)', minWidth: 'var(--touch-target-min)' }}>ver historial</button>
             </li>
           ))}
         </ul>
@@ -865,7 +865,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
           lng (EXIGIDA)
           <input value={lng} onChange={(e) => setLng(e.target.value)} disabled={!caps.puedeEscribir} inputMode="decimal" placeholder="-68.5374" />
         </label>{' '}
-        <button type="button" onClick={usarMiUbicacion} disabled={!caps.puedeEscribir || geoCargando} style={{ minHeight: "24px", minWidth: "24px" }}>
+        <button type="button" onClick={usarMiUbicacion} disabled={!caps.puedeEscribir || geoCargando} style={{ minHeight: 'var(--touch-target-min)', minWidth: 'var(--touch-target-min)' }}>
           {geoCargando ? 'buscando punto…' : 'usar mi ubicación'}
         </button>
         <br />
@@ -875,11 +875,11 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
         </small>
         {geoAviso !== null && <p><small>{geoAviso}</small></p>}
         <br />
-        <button type="button" onClick={buscarDuplicadosPrevios} disabled={enviandoReporte} style={{ minHeight: "24px", minWidth: "24px" }}>
+        <button type="button" onClick={buscarDuplicadosPrevios} disabled={enviandoReporte} style={{ minHeight: 'var(--touch-target-min)', minWidth: 'var(--touch-target-min)' }}>
           chequear duplicados sugeridos antes de confirmar
         </button>{' '}
         <small>ADR-039: corroborar ≠ duplicar — la decisión es tuya, nada se fusiona</small>
-        {errorSugeridosPrevios !== null && <p role="alert">{errorSugeridosPrevios}</p>}
+        {errorSugeridosPrevios !== null && <p role="alert" aria-live="polite">{errorSugeridosPrevios}</p>}
         {sugeridosPrevios !== null &&
           (sugeridosPrevios.length === 0 ? (
             <p>sin reportes abiertos públicos dentro de {RADIO_PRE_CHEQUEO_M} m en la bandeja ya cargada (pre-chequeo local — la sugerencia autoritativa llega con la respuesta del alta)</p>
@@ -888,7 +888,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
               {sugeridosPrevios.map((s) => (
                 <li key={s.id}>
                   <strong>{s.categoria}</strong> · estado: {s.estado} · a {Math.round(s.distancia_m)} m del punto declarado{' '}
-                  <button type="button" onClick={() => corroborarReporte(s.id)} disabled={!caps.puedeEscribir || corroborando !== null} style={{ minHeight: "24px", minWidth: "24px" }}>
+                  <button type="button" onClick={() => corroborarReporte(s.id)} disabled={!caps.puedeEscribir || corroborando !== null} style={{ minHeight: 'var(--touch-target-min)', minWidth: 'var(--touch-target-min)' }}>
                     {corroborando === s.id ? 'corroborando…' : 'corroboro este (no duplico)'}
                   </button>
                 </li>
@@ -896,7 +896,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
             </ul>
           ))}
         {exitoCorroborar !== null && (
-          <p role="status">
+          <p role="status" aria-live="polite">
             corroboración registrada ({exitoCorroborar.id}):{' '}
             {exitoCorroborar.peso
               ? 'tu peso quedó sellado — un reportante distinto = un peso (R15)'
@@ -904,7 +904,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
             {exitoCorroborar.idempotente ? ' · ya habías corroborado este reporte (idempotente)' : ''}
           </p>
         )}
-        {errorCorroborar !== null && <p role="alert">{errorCorroborar}</p>}
+        {errorCorroborar !== null && <p role="alert" aria-live="polite">{errorCorroborar}</p>}
         <br />
         <button type="submit" disabled={!caps.puedeEscribir || enviandoReporte}>
           {enviandoReporte ? 'enviando…' : 'enviar reporte'}
@@ -929,13 +929,13 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
       )}
       {exitoReporte !== null && exitoReporte.duplicados_verificados && exitoReporte.duplicados_sugeridos.length > 0 && (
         <div>
-          <p role="status">duplicados sugeridos por la API (ADR-039 — SUGERENCIA de lectura: NADA se fusiona; corroborar ≠ duplicar):</p>
+          <p role="status" aria-live="polite">duplicados sugeridos por la API (ADR-039 — SUGERENCIA de lectura: NADA se fusiona; corroborar ≠ duplicar):</p>
           <ul>
             {exitoReporte.duplicados_sugeridos.map((s) => (
               <li key={s.id}>
                 <strong>{s.categoria}</strong> · estado: {s.estado}
                 {s.distancia_m !== null ? ' · a ' + Math.round(s.distancia_m) + ' m' : ''}{' '}
-                <button type="button" onClick={() => corroborarReporte(s.id)} disabled={corroborando !== null} style={{ minHeight: "24px", minWidth: "24px" }}>
+                <button type="button" onClick={() => corroborarReporte(s.id)} disabled={corroborando !== null} style={{ minHeight: 'var(--touch-target-min)', minWidth: 'var(--touch-target-min)' }}>
                   {corroborando === s.id ? 'corroborando…' : 'corroboro este (no duplico)'}
                 </button>
               </li>
@@ -943,7 +943,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
           </ul>
         </div>
       )}
-      {errorReporte !== null && <p role="alert">{errorReporte}</p>}
+      {errorReporte !== null && <p role="alert" aria-live="polite">{errorReporte}</p>}
 
       <h3>Mis reportes</h3>
       {!caps.puedeVerMios ? (
@@ -951,7 +951,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
       ) : (
         <>
           <BotonCargar id="mios" texto="cargar mis reportes" alCargar={() => void cargarMios()} />
-          {errorMios !== null && <p role="alert">{errorMios}</p>}
+          {errorMios !== null && <p role="alert" aria-live="polite">{errorMios}</p>}
           {mios !== null && mios.length === 0 && <p>no enviaste reportes aún (count 0 honesto)</p>}
           {mios !== null && mios.length > 0 && (
             <ul>
@@ -1015,7 +1015,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
             <li key={f.id}>
               {f.feature_titulo ?? 'espacio ' + f.feature_id} · {f.estado_publico}
               {f.corroboracion !== null ? ' (' + f.corroboracion + ')' : ''} · versión {f.version}{' '}
-              <button type="button" onClick={() => verDetalle({ tipo: 'ficha', id: f.id })} style={{ minHeight: '24px', minWidth: '24px' }}>ver detalle</button>
+              <button type="button" onClick={() => verDetalle({ tipo: 'ficha', id: f.id })} style={{ minHeight: 'var(--touch-target-min)', minWidth: 'var(--touch-target-min)' }}>ver detalle</button>
             </li>
           ))}
         </ul>
@@ -1219,7 +1219,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
           {exitoFicha.idempotente ? 'ya la habías enviado (idempotente).' : 'la moderación la corroborará o descartará con justificación.'}
         </p>
       )}
-      {errorFicha !== null && <p role="alert">{errorFicha}</p>}
+      {errorFicha !== null && <p role="alert" aria-live="polite">{errorFicha}</p>}
 
         </>
       )}
@@ -1237,7 +1237,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
           {paginaOp.items.map((o) => (
             <li key={o.id}>
               <strong>{o.titulo}</strong> · {o.tipo} · etapa: {o.estado} · {o.descripcion}{' '}
-              <button type="button" onClick={() => abrirDetalleOp(o.id)} style={{ minHeight: '24px', minWidth: '24px' }}>ver detalle</button>
+              <button type="button" onClick={() => abrirDetalleOp(o.id)} style={{ minHeight: 'var(--touch-target-min)', minWidth: 'var(--touch-target-min)' }}>ver detalle</button>
             </li>
           ))}
         </ul>
@@ -1251,8 +1251,8 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
       )}
       {paginaOp !== null && paginaOp.items.length > 0 && (
         <p>
-          <button type="button" onClick={() => void cargarOportunidades(Math.max(0, offsetOp - 20))} disabled={offsetOp === 0} style={{ minHeight: '24px', minWidth: '24px' }}>← anteriores 20</button>{' '}
-          <button type="button" onClick={() => void cargarOportunidades(offsetOp + 20)} disabled={paginaOp.items.length < 20 || (paginaOp.total !== null && offsetOp + 20 >= paginaOp.total)} style={{ minHeight: '24px', minWidth: '24px' }}>siguientes 20 →</button>
+          <button type="button" onClick={() => void cargarOportunidades(Math.max(0, offsetOp - 20))} disabled={offsetOp === 0} style={{ minHeight: 'var(--touch-target-min)', minWidth: 'var(--touch-target-min)' }}>← anteriores 20</button>{' '}
+          <button type="button" onClick={() => void cargarOportunidades(offsetOp + 20)} disabled={paginaOp.items.length < 20 || (paginaOp.total !== null && offsetOp + 20 >= paginaOp.total)} style={{ minHeight: 'var(--touch-target-min)', minWidth: 'var(--touch-target-min)' }}>siguientes 20 →</button>
         </p>
       )}
       <h4>Postular una oportunidad (evidencia OBLIGATORIA)</h4>
@@ -1319,7 +1319,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
           {exitoOp.idempotente ? 'ya la habías postulado (idempotente).' : 'la moderación recorre su ciclo de vida (detected → … → implemented).'}
         </p>
       )}
-      {errorOp !== null && <p role="alert">{errorOp}</p>}
+      {errorOp !== null && <p role="alert" aria-live="polite">{errorOp}</p>}
 
         </>
       )}
@@ -1330,16 +1330,16 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
       {activos === null && (
         <BotonCargar id="directorio" texto="cargar directorio del nodo" alCargar={() => void cargarDirectorio()} />
       )}
-      {errorDirectorio !== null && <p role="alert">{errorDirectorio}</p>}
+      {errorDirectorio !== null && <p role="alert" aria-live="polite">{errorDirectorio}</p>}
       {activos !== null && activos.length === 0 && (
         <p>el nodo aún no publica activos aprobados ([] declarado: solo se publica lo verificado, R15)</p>
       )}
       {conteoTipos.length > 0 && (
         <>
           <p><small>facetado por tipo — presentación sobre lo ya cargado (MK-3c): no vuelve a consultar la API</small></p>
-          <button type="button" aria-pressed={tipoFaceta === ''} onClick={() => setTipoFaceta('')} style={{ minHeight: '24px', minWidth: '24px' }}>todos ({activos?.length ?? 0})</button>{' '}
+          <button type="button" aria-pressed={tipoFaceta === ''} onClick={() => setTipoFaceta('')} style={{ minHeight: 'var(--touch-target-min)', minWidth: 'var(--touch-target-min)' }}>todos ({activos?.length ?? 0})</button>{' '}
           {conteoTipos.map(([tipo, n]) => (
-            <button key={tipo} type="button" aria-pressed={tipoFaceta === tipo} onClick={() => setTipoFaceta(tipo)} style={{ minHeight: '24px', minWidth: '24px' }}>{tipo} ({n})</button>
+            <button key={tipo} type="button" aria-pressed={tipoFaceta === tipo} onClick={() => setTipoFaceta(tipo)} style={{ minHeight: 'var(--touch-target-min)', minWidth: 'var(--touch-target-min)' }}>{tipo} ({n})</button>
           ))}
         </>
       )}
@@ -1350,12 +1350,12 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
               <strong>{a.titulo}</strong> · {a.tipo}
               {a.subnodo_key !== null ? ' · ' + a.subnodo_key : ''}
               {a.is_synthetic ? ' ✦ demo sintética declarada (R15)' : ''}
-              <button type="button" onClick={() => void consultarActivo(a.id)} style={{ minHeight: '24px', minWidth: '24px' }}>productos y operativa</button>
+              <button type="button" onClick={() => void consultarActivo(a.id)} style={{ minHeight: 'var(--touch-target-min)', minWidth: 'var(--touch-target-min)' }}>productos y operativa</button>
             </li>
           ))}
         </ul>
       )}
-      {errorDirectorio !== null && <p role="alert">{errorDirectorio}</p>}
+      {errorDirectorio !== null && <p role="alert" aria-live="polite">{errorDirectorio}</p>}
       {productos !== null && productos.length === 0 && <p>el activo no publica productos aún ([] declarado: solo se publica lo verificado)</p>}
       {productos !== null && productos.length > 0 && (
         <ul>
@@ -1452,7 +1452,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
       {filtroN1 !== '' && (
         <p><small>filtro de capital aplicado: {etiquetaN1(filtroN1)} — la API recupera solo fragmentos de activos con esa N1 primaria (aprobados, no restricted: ADR-036)</small></p>
       )}
-      {errorAsk !== null && <p role="alert">{errorAsk}</p>}
+      {errorAsk !== null && <p role="alert" aria-live="polite">{errorAsk}</p>}
       {respuestaAsk !== null && (
         <div>
           {respuestaAsk.recovered === 0 ? (
@@ -1502,10 +1502,10 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
           <>
             {detalle.tipo === 'historial' && (
               <div>
-                <button type="button" onClick={volverDeDetalle} style={{ minHeight: '24px', minWidth: '24px' }}>← volver a reportes</button>
+                <button type="button" onClick={volverDeDetalle} style={{ minHeight: 'var(--touch-target-min)', minWidth: 'var(--touch-target-min)' }}>← volver a reportes</button>
                 <h3>Historial público del reporte {historial !== null ? historial.id : '…'}</h3>
                 {historial === null ? (
-                  <p>cargando historial…</p>
+                  <p role="status" aria-live="polite">cargando historial…</p>
                 ) : historial.transiciones.length === 0 ? (
                   <p>sin transiciones aún — nació recibido y nadie lo movió: honesto (R15)</p>
                 ) : (
@@ -1517,12 +1517,12 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
                     ))}
                   </ul>
                 )}
-                {errorHistorial !== null && <p role="alert">{errorHistorial}</p>}
+                {errorHistorial !== null && <p role="alert" aria-live="polite">{errorHistorial}</p>}
               </div>
             )}
             {detalle.tipo === 'ficha' && (
               <div>
-                <button type="button" onClick={volverDeDetalle} style={{ minHeight: '24px', minWidth: '24px' }}>← volver a fichas</button>
+                <button type="button" onClick={volverDeDetalle} style={{ minHeight: 'var(--touch-target-min)', minWidth: 'var(--touch-target-min)' }}>← volver a fichas</button>
                 {(() => {
                   const f = (fichas ?? []).find((x) => x.id === detalle.id);
                   if (f === undefined) {
@@ -1573,9 +1573,9 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
             )}
             {detalle.tipo === 'oportunidad' && (
               <div>
-                <button type="button" onClick={volverDeDetalle} style={{ minHeight: '24px', minWidth: '24px' }}>← volver al Banco de Potencialidades</button>
-                {cargandoDetalleOp && <p>cargando detalle de la oportunidad…</p>}
-                {errorDetalleOp !== null && <p role="alert">{errorDetalleOp}</p>}
+                <button type="button" onClick={volverDeDetalle} style={{ minHeight: 'var(--touch-target-min)', minWidth: 'var(--touch-target-min)' }}>← volver al Banco de Potencialidades</button>
+                {cargandoDetalleOp && <p role="status" aria-live="polite">cargando detalle de la oportunidad…</p>}
+                {errorDetalleOp !== null && <p role="alert" aria-live="polite">{errorDetalleOp}</p>}
                 {detalleOp !== null && (
                   <div>
                     <h3>{detalleOp.titulo}</h3>

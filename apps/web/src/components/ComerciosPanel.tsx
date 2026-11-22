@@ -200,20 +200,20 @@ export function ComerciosPanel({ dataSource }: { dataSource: DataSource }) {
             marginLeft: '0.4rem',
             fontSize: '0.68rem',
             padding: '0.05rem 0.45rem',
-            // MK-3c (#426): WCAG 2.2 SC 2.5.8 — target size mínimo 24x24px
-            minHeight: '24px',
-            minWidth: '24px',
+            // MK-3c (#426, PIZ-R8 #551): target size mínimo 44px vía token --touch-target-min (SC 2.5.8)
+            minHeight: 'var(--touch-target-min)',
+            minWidth: 'var(--touch-target-min)',
           }}
         >
           {h === undefined ? 'Ver bitácora pública (F-3)' : 'Ocultar bitácora F-3'}
         </button>
         {h?.status === 'loading' && (
-          <span role="status" style={{ display: 'block', fontSize: '0.7rem' }}>
+          <span role="status" aria-live="polite" style={{ display: 'block', fontSize: '0.7rem' }}>
             Cargando la bitácora pública del comercio…
           </span>
         )}
         {h?.status === 'error' && (
-          <span role="alert" style={{ display: 'block', fontSize: '0.7rem' }}>
+          <span role="alert" aria-live="polite" style={{ display: 'block', fontSize: '0.7rem' }}>
             Error al obtener la bitácora F-3: {h.message} (R5: el error se muestra, no se traga)
           </span>
         )}
@@ -303,12 +303,12 @@ export function ComerciosPanel({ dataSource }: { dataSource: DataSource }) {
         de plataforma (Ley 25.326) — sin datos de contacto expuestos.
       </p>
       {state.status === 'loading' && (
-        <p role="status" className="territory-meta">
+        <p role="status" aria-live="polite" className="territory-meta">
           Cargando el directorio del Mercado de Proximidad…
         </p>
       )}
       {state.status === 'error' && (
-        <p role="alert" className="territory-meta">
+        <p role="alert" aria-live="polite" className="territory-meta">
           Error al obtener el Mercado de Proximidad: {state.message}
         </p>
       )}
@@ -332,7 +332,7 @@ export function ComerciosPanel({ dataSource }: { dataSource: DataSource }) {
           <h4 style={{ fontSize: '0.85rem', margin: '0.75rem 0 0.3rem' }}>
             Comercios reales publicados ({String(comerciosReales.length)})
           </h4>
-          <p role="status" className="territory-meta" style={{ fontSize: '0.78rem' }}>
+          <p role="status" aria-live="polite" className="territory-meta" style={{ fontSize: '0.78rem' }}>
             {notaComercios(comerciosReales.length)}
           </p>
           {comerciosReales.length === 0 ? (

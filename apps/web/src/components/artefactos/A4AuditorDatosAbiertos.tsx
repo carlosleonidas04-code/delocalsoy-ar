@@ -172,7 +172,7 @@ function SaludSistema({ cliente }: PropsSeccion) {
           {cargando ? 'consultando…' : 'ver estado honesto'}
         </button>
       </p>
-      {error !== null && <p role="alert">{error}</p>}
+      {error !== null && <p role="alert" aria-live="polite">{error}</p>}
       {salud !== null && (
         <ul>
           <li>
@@ -233,7 +233,7 @@ function CadenaAcreditacion({ cliente }: PropsSeccion) {
           {cargando ? 'consultando…' : 'ver registro de evidencias'}
         </button>
       </p>
-      {error !== null && <p role="alert">{error}</p>}
+      {error !== null && <p role="alert" aria-live="polite">{error}</p>}
       {registro !== null &&
         (registro.count === 0 ? (
           <p>sin evidencias registradas (count 0 honesto).</p>
@@ -323,7 +323,7 @@ function HistorialesPublicos({ cliente }: PropsSeccion) {
           ver historial sellado
         </button>
       </p>
-      {error !== null && <p role="alert">{error}</p>}
+      {error !== null && <p role="alert" aria-live="polite">{error}</p>}
       {reportes !== null &&
         (reportes.length === 0 ? (
           <p>sin reportes visibles en {nodo} (los descartados no se listan).</p>
@@ -406,7 +406,7 @@ function FuentesEIngestas({ cliente }: PropsSeccion) {
           {cargando ? 'consultando…' : 'ver procedencia publicada'}
         </button>
       </p>
-      {error !== null && <p role="alert">{error}</p>}
+      {error !== null && <p role="alert" aria-live="polite">{error}</p>}
       {fuentes !== null &&
         (fuentes.length === 0 ? (
           <p>catálogo vacío (honesto).</p>
@@ -472,7 +472,7 @@ function KpisPublicos({ cliente }: PropsSeccion) {
           {cargando ? 'consultando…' : 'ver KPIs'}
         </button>
       </p>
-      {error !== null && <p role="alert">{error}</p>}
+      {error !== null && <p role="alert" aria-live="polite">{error}</p>}
       {kpis !== null &&
         (kpis.length === 0 ? (
           <p>sin KPIs para {nodo} (honesto).</p>
@@ -533,7 +533,7 @@ function FichaPatrimonial({ cliente }: PropsSeccion) {
           {cargando ? 'consultando…' : 'ver ficha pública'}
         </button>
       </p>
-      {error !== null && <p role="alert">{error}</p>}
+      {error !== null && <p role="alert" aria-live="polite">{error}</p>}
       {ficha !== null && (
         <ul>
           <li>
@@ -593,7 +593,7 @@ function VerificacionHuella({ cliente }: PropsSeccion) {
           {cargando ? 'calculando…' : 'sellar snapshot de salud con huella'}
         </button>
       </p>
-      {error !== null && <p role="alert">{error}</p>}
+      {error !== null && <p role="alert" aria-live="polite">{error}</p>}
       {salud !== null && huella !== null && (
         <p>
           snapshot del {salud.timestamp} (modo {salud.mode}, dataSource {salud.dataSource}) ·
@@ -664,7 +664,7 @@ function LibroContable({ cliente }: PropsSeccion) {
           {cargando ? 'cargando…' : 'cargar sellos (limit 50)'}
         </button>
       </p>
-      {error !== null && <p role="alert">{error}</p>}
+      {error !== null && <p role="alert" aria-live="polite">{error}</p>}
       {sellos !== null && (
         <p>
           {sellos.length} sello(s) en esta página · total con estos filtros:{' '}
@@ -722,7 +722,7 @@ function CoberturaMatriz({ cliente }: PropsSeccion) {
           {cargando ? 'cargando…' : 'calcular cobertura (GET /api/sellos/tipos)'}
         </button>
       </p>
-      {error !== null && <p role="alert">{error}</p>}
+      {error !== null && <p role="alert" aria-live="polite">{error}</p>}
       {cobertura !== null && (
         <>
           <p>

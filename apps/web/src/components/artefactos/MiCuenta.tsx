@@ -200,7 +200,7 @@ export function MiCuenta() {
               : 'sin sesión — podés crear una cuenta ligera visitante'}
           {modo === 'jwt' ? ' · origen: API real' : ' · origen: API sintética'}
         </p>
-        {aviso !== null && <p role="status">{aviso}</p>}
+        {aviso !== null && <p role="status" aria-live="polite">{aviso}</p>}
       </header>
 
       <h4>Perfiles de cuenta (AR1)</h4>
@@ -278,7 +278,7 @@ export function MiCuenta() {
               sella de nuevo.
             </small>
           </p>
-          {errorResidencia !== null && <p role="alert">{errorResidencia}</p>}
+          {errorResidencia !== null && <p role="alert" aria-live="polite">{errorResidencia}</p>}
         </div>
       )}
 
@@ -311,7 +311,7 @@ export function MiCuenta() {
               R15)
             </p>
           )}
-          {errorTablero !== null && <p role="alert">{errorTablero}</p>}
+          {errorTablero !== null && <p role="alert" aria-live="polite">{errorTablero}</p>}
         </div>
       )}
 
@@ -386,7 +386,7 @@ export function MiCuenta() {
               {enviandoVis ? 'creando…' : 'crear cuenta visitante'}
             </button>
           </form>
-          {errorVis !== null && <p role="alert">{errorVis}</p>}
+          {errorVis !== null && <p role="alert" aria-live="polite">{errorVis}</p>}
           <p>
             <small>
               la cuenta visitante es SOLO LECTURA en v0.2: para escribir como vecino creá una
