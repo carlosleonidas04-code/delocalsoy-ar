@@ -18,6 +18,13 @@
  *   decisión DH 2026-11-06) se DERIVA en el cliente desde esos campos reales.
  * El visitante es un rol REAL solo lectura v0.2: la API es la compuerta.
  *
+ * PIZ-R7 (#550, épica #543) mapea el atributo de práctica acreditada:
+ *   GET /api/auth/me devuelve practica_acreditada / practica_acreditada_en
+ *   (LIC-R3, EV-105 PR #465 — atributo sobre la cuenta, patrón AR1; el
+ *   mandato jamás vive en la fila, solo su hash). El login NO lo expone:
+ *   sin el campo, el mapeo queda honestamente «sin dato» (null), jamás
+ *   false simulada (R15).
+ *
  * El alta publica solo crea rol 'ciudadano' (ADR-031); la promocion a
  * moderador/admin es operacion de sistema (guard R8) — este modulo JAMAS
  * la simula (R15). En modo synthetic no hay sesion: las escrituras de los
@@ -73,6 +80,15 @@ export interface UsuarioSesion {
    */
   residencia_subnodo_key?: string | null;
   transito_subnodo_key?: string | null;
+  /**
+   * PIZ-R7 (#550, épica #543): atributo de práctica acreditada (LIC-R3,
+   * EV-105 PR #465 — patrón AR1). Opcional para no romper los literales
+   * existentes; boolean | null: solo /api/auth/me lo expone (el login no
+   * lo trae) y null es «sin dato» honesto, sin fondo itálico (R15).
+   */
+  practica_acreditada?: boolean | null;
+  /** PIZ-R7 (#550): timestamp ISO de la acreditación (mismas reglas). */
+  practica_acreditada_en?: string | null;
 }
 
 export type EstadoSesion =
@@ -127,6 +143,10 @@ interface RespuestaAuth {
   residencia_subnodo_key?: string | null;
   residencia_declarada_en?: string | null;
   transito_subnodo_key?: string | null;
+
+  // PIZ-R7 (#550, LIC-R3 EV-105 PR #465): atributo de práctica acreditada.
+  practica_acreditada?: boolean;
+  practica_acreditada_en?: string | null;
 }
 
 interface RespuestaLogin {
@@ -145,6 +165,10 @@ function parseUsuario(crudo: RespuestaAuth): UsuarioSesion {
     // declara del lado del cliente (R15).
     residencia_subnodo_key: crudo.residencia_subnodo_key ?? null,
     transito_subnodo_key: crudo.transito_subnodo_key ?? null,
+    // PIZ-R7 (#550, LIC-R3 EV-105 PR #465): atributo de práctica acreditada.
+    // El login no lo devuelve; undefined → null «sin dato» (honesto, R15).
+    practica_acreditada: typeof crudo.practica_acreditada === "boolean" ? crudo.practica_acreditada : null,
+    practica_acreditada_en: typeof crudo.practica_acreditada_en === "string" ? crudo.practica_acreditada_en : null,
   };
 }
 

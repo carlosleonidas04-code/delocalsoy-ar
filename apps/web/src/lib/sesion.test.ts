@@ -242,3 +242,36 @@ describe('sesion AR1 — registro visitante (#400, épica #399)', () => {
     expect(RATE_LIMIT_POR_ROL.visitante).toBe(10);
   });
 });
+
+describe('sesion PIZ-R7 — practica_acreditada (#550, épica #543)', () => {
+  it('quienSoy mapea practica_acreditada y su timestamp desde /me (LIC-R3, EV-105)', async () => {
+    const e = crearEntorno();
+    const sesion = crearSesion({ transporte: e.transporte, almacen: e.almacen });
+    e.almacenMap.set(CLAVE_TOKEN_SESION, "jwt-123");
+    e.programar([{ status: 200, cuerpo: { success: true, data: { ...usuarioDemo, practica_acreditada: true, practica_acreditada_en: "2026-11-11T12:00:00.000Z" } } }]);
+    const estado = await sesion.quienSoy();
+    expect(estado.tipo).toBe('sesion');
+    if (estado.tipo !== 'sesion') return;
+    expect(estado.usuario.practica_acreditada).toBe(true);
+    expect(estado.usuario.practica_acreditada_en).toBe("2026-11-11T12:00:00.000Z");
+  });
+
+  it('el login no expone practica_acreditada: el mapeo queda «sin dato» (null), jamás false simulada (R15)', async () => {
+    const e = crearEntorno();
+    const sesion = crearSesion({ transporte: e.transporte, almacen: e.almacen });
+    e.programar([{ status: 200, cuerpo: { success: true, data: { token: "jwt-9", usuario: usuarioDemo } } }]);
+    const u = await sesion.iniciar('vecina@ejemplo.test', 'clave-segura');
+    expect(u.practica_acreditada).toBeNull();
+    expect(u.practica_acreditada_en).toBeNull();
+  });
+
+  it('practica_acreditada: false llega real desde /me y se mapea sin fondo (atributo declarado, R15)', async () => {
+    const e = crearEntorno();
+    const sesion = crearSesion({ transporte: e.transporte, almacen: e.almacen });
+    e.almacenMap.set(CLAVE_TOKEN_SESION, "jwt-123");
+    e.programar([{ status: 200, cuerpo: { success: true, data: { ...usuarioDemo, practica_acreditada: false } } }]);
+    const estado = await sesion.quienSoy();
+    if (estado.tipo !== 'sesion') throw new Error('estado inesperado');
+    expect(estado.usuario.practica_acreditada).toBe(false);
+  });
+});
