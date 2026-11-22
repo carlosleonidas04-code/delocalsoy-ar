@@ -94,11 +94,16 @@
   --node-caucete-border: rgba(117, 170, 219, 0.42);
   --node-caucete-text: #75aadb;
 
-  /* Iglesia (Red Valle Andino · Celeste #75AADB / Ámbar #F2A71B) */
-  --node-iglesia-accent: #75aadb;
-  --node-iglesia-bg: rgba(117, 170, 219, 0.16);
-  --node-iglesia-border: rgba(117, 170, 219, 0.45);
-  --node-iglesia-text: #75aadb;
+  /* Iglesia (Red Valle Andino · Ocre #F2A71B) — PIZ-R9 #552, decisión DH
+     #552#issuecomment-6993008470: color propio del monograma, distinto del
+     celeste #75AADB de Caucete y del dorado #FFC72C de Capital. El exacto
+     es el ámbar/ocre de la paleta base, AA sobre #0D0B08. Dominio del
+     token (identidad de nodo) independiente del dominio de estados—
+     --status-pendiente-* — y el color nunca es la única señal (1.4.1). */
+  --node-iglesia-accent: #f2a71b;
+  --node-iglesia-bg: rgba(242, 167, 27, 0.14);
+  --node-iglesia-border: rgba(242, 167, 27, 0.45);
+  --node-iglesia-text: #f2a71b;
 
   /* ==========================================================================
      3. ESTADOS DE REPORTES Y ACTIVOS TERRITORIALES (Recibido · Evaluación · Gestión · Resuelto)

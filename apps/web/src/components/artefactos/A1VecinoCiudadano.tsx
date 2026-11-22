@@ -517,14 +517,22 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
         });
         setExitoFicha({ id: ficha.id, idempotente });
         setRespuestas(RESPUESTAS_INICIALES);
-        void cargarFichas();
+        /* PIZ-R9 (#552): 0 consultas al enviar — la ficha creada entra a la
+           lista ya cargada (lo más reciente al tope); la recarga completa
+           (fichas + features: 2 consultas extra al techo del rol) ya no
+           corre. idempotente (HTTP 200): la ficha ya estaba en la lista —
+           no se duplica (key de React). Si la lista nunca se cargó, no hay
+           nada donde insertar: queda el mensaje de éxito declarado (R5). */
+        if (!idempotente) {
+          setFichas((fs) => (fs === null ? fs : [ficha, ...fs]));
+        }
       } catch (err) {
         setErrorFicha(mensajeDe(err, 'no se pudo enviar la ficha'));
       } finally {
         setEnviandoFicha(false);
       }
     },
-    [caps.puedeEscribir, cliente, fichaFeature, nodoKey, respuestas, cargarFichas]
+    [caps.puedeEscribir, cliente, fichaFeature, nodoKey, respuestas]
   );
 
   /* ---------- Banco de Potencialidades (Bloque 9) ---------- */
@@ -623,14 +631,27 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
         setOpActorNombre('');
         setOpActorConsent(false);
         setOpTags('');
-        void cargarOportunidades();
+        /* PIZ-R9 (#552): 0 consultas al enviar — en la primera página la
+           oportunidad creada entra a la lista ya cargada (lo más reciente
+           al tope) con el total del servidor +1 si lo trajo (total null
+           queda null, R15); en páginas posteriores (offset > 0) NO se
+           toca: la oportunidad figura en la página 1 y la nota honesta lo
+           declara — sin recarga completa (techo del rol). idempotente
+           (HTTP 200): la oportunidad ya estaba en la lista — no se duplica. */
+        if (!idempotente && paginaOp !== null && offsetOp === 0) {
+          setPaginaOp((p) => {
+            if (p === null) return p;
+            const items = [oportunidad, ...p.items];
+            return { items, count: items.length, total: p.total !== null ? p.total + 1 : null, offset: p.offset };
+          });
+        }
       } catch (err) {
         setErrorOp(mensajeDe(err, 'no se pudo postular la oportunidad'));
       } finally {
         setEnviandoOp(false);
       }
     },
-    [caps.puedeEscribir, cliente, nodoKey, opTipo, opTitulo, opDescripcion, opEvidenciaTipo, opEvidenciaDesc, opActorNombre, opActorConsent, opTags, cargarOportunidades]
+    [caps.puedeEscribir, cliente, nodoKey, opTipo, opTitulo, opDescripcion, opEvidenciaTipo, opEvidenciaDesc, opActorNombre, opActorConsent, opTags, paginaOp, offsetOp]
   );
 
   /* ---------- directorio y producción ---------- */
@@ -1317,6 +1338,13 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
         <p>
           oportunidad {exitoOp.id} registrada — nace «detected»:{' '}
           {exitoOp.idempotente ? 'ya la habías postulado (idempotente).' : 'la moderación recorre su ciclo de vida (detected → … → implemented).'}
+        </p>
+      )}
+      {exitoOp !== null && !exitoOp.idempotente && offsetOp !== 0 && (
+        <p role="status" aria-live="polite">
+          envío sin recarga (0 consultas: PIZ-R9): la oportunidad creada figura en la primera
+          página del Banco (offset 0) — esta vista muestra la página {offsetOp}; «← anteriores 20»
+          te acerca a ella. La lista NO se recargó al enviar (techo del rol).
         </p>
       )}
       {errorOp !== null && <p role="alert" aria-live="polite">{errorOp}</p>}
