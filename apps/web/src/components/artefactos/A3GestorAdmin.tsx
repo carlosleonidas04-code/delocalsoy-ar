@@ -534,8 +534,8 @@ function ColaPendientes({ cliente, caps }: PropsSeccion) {
         productos), comercios propuestos (por id arriba), ingestas en curso (GET público solo expone
         publicado).
       </p>
-      {exito !== null && <p role="status">{exito}</p>}
-      {errorAccion !== null && <p role="alert">{errorAccion}</p>}
+      {exito !== null && <p role="status" aria-live="polite">{exito}</p>}
+      {errorAccion !== null && <p role="alert" aria-live="polite">{errorAccion}</p>}
     </section>
   );
 }
@@ -645,8 +645,8 @@ function FilaReporte({
           </p>
         )
       )}
-      {exito !== null && <p role="status">{exito}</p>}
-      {error !== null && <p role="alert">{error}</p>}
+      {exito !== null && <p role="status" aria-live="polite">{exito}</p>}
+      {error !== null && <p role="alert" aria-live="polite">{error}</p>}
       {historial !== null && (
         <details>
           <summary>historial ({historial.length} transición(es))</summary>
@@ -701,7 +701,7 @@ function BandejaReportes({ cliente, caps }: PropsSeccion) {
           {cargando ? 'cargando…' : 'cargar bandeja'}
         </button>
       </p>
-      {error !== null && <p role="alert">{error}</p>}
+      {error !== null && <p role="alert" aria-live="polite">{error}</p>}
       {reportes !== null &&
         (reportes.length === 0 ? (
           <p>sin reportes visibles en {nodo} (count 0 honesto — y los descartados no se listan).</p>
@@ -784,8 +784,8 @@ function ModeracionProductos({ cliente, caps }: PropsSeccion) {
           {cargando ? 'cargando…' : 'ver productos propuestos'}
         </button>
       </p>
-      {exito !== null && <p role="status">{exito}</p>}
-      {error !== null && <p role="alert">{error}</p>}
+      {exito !== null && <p role="status" aria-live="polite">{exito}</p>}
+      {error !== null && <p role="alert" aria-live="polite">{error}</p>}
       {productos !== null &&
         (productos.length === 0 ? (
           <p>sin productos visibles para ese activo (propuesto|aprobado; restricted → 404 sin eco).</p>
@@ -893,8 +893,8 @@ function CorroboracionFichas({ cliente, caps }: PropsSeccion) {
           {cargando ? 'cargando…' : 'cargar fichas'}
         </button>
       </p>
-      {exito !== null && <p role="status">{exito}</p>}
-      {error !== null && <p role="alert">{error}</p>}
+      {exito !== null && <p role="status" aria-live="polite">{exito}</p>}
+      {error !== null && <p role="alert" aria-live="polite">{error}</p>}
       {fichas !== null &&
         (fichas.length === 0 ? (
           <p>sin fichas visibles con esos filtros (las descartadas no se listan).</p>
@@ -1020,8 +1020,8 @@ function FilaOportunidad({
           </p>
         )
       )}
-      {exito !== null && <p role="status">{exito}</p>}
-      {error !== null && <p role="alert">{error}</p>}
+      {exito !== null && <p role="status" aria-live="polite">{exito}</p>}
+      {error !== null && <p role="alert" aria-live="polite">{error}</p>}
     </li>
   );
 }
@@ -1061,7 +1061,7 @@ function ModeracionOportunidades({ cliente, caps }: PropsSeccion) {
           {cargando ? 'cargando…' : 'cargar oportunidades'}
         </button>
       </p>
-      {error !== null && <p role="alert">{error}</p>}
+      {error !== null && <p role="alert" aria-live="polite">{error}</p>}
       {oportunidades !== null &&
         (oportunidades.length === 0 ? (
           <p>sin oportunidades visibles (las discarded no se listan).</p>
@@ -1254,8 +1254,8 @@ function CustodiaPatrimonial({ cliente, caps }: PropsSeccion) {
       ) : (
         <p>la escritura de custodia exige sesión de moderador/admin (la lectura es pública).</p>
       )}
-      {exito !== null && <p role="status">{exito}</p>}
-      {error !== null && <p role="alert">{error}</p>}
+      {exito !== null && <p role="status" aria-live="polite">{exito}</p>}
+      {error !== null && <p role="alert" aria-live="polite">{error}</p>}
     </section>
   );
 }
@@ -1505,8 +1505,8 @@ function FuentesEIngestas({ cliente, caps }: PropsSeccion) {
       ) : (
         <p>alta y avance del pipeline de ingestas: SOLO admin (decisión DH 2026-10-15).</p>
       )}
-      {exito !== null && <p role="status">{exito}</p>}
-      {error !== null && <p role="alert">{error}</p>}
+      {exito !== null && <p role="status" aria-live="polite">{exito}</p>}
+      {error !== null && <p role="alert" aria-live="polite">{error}</p>}
     </section>
   );
 }
@@ -1548,7 +1548,7 @@ function KpisNodo({ cliente }: { cliente: ClienteA3 }) {
           {cargando ? 'cargando…' : 'cargar KPIs'}
         </button>
       </p>
-      {error !== null && <p role="alert">{error}</p>}
+      {error !== null && <p role="alert" aria-live="polite">{error}</p>}
       {kpis !== null &&
         (kpis.length === 0 ? (
           <p>sin KPIs para {nodo} (honesto).</p>
