@@ -67,4 +67,4 @@ Cada RFC del corpus fundacional se contrasta contra la realidad verificable del 
 
 ## 5. Próximo paso (regla #460)
 
-Crear la **épica OBJE-CAMPUS** con sub-issues derivados de esta tabla (los 12 «futuros» + los vacíos de los «parciales»), SOLO por orden expresa de la DH al ratificar este contraste.
+Crear la **épica OBJE-CAMPUS** con sub-issues derivados de esta tabla (los 10 «futuros» + los vacíos de los «parciales»), SOLO por orden expresa de la DH al ratificar este contraste.
