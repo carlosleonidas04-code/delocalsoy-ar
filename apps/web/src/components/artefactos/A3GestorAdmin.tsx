@@ -359,7 +359,7 @@ function ColaPendientes({ cliente, caps }: PropsSeccion) {
       </details>
 
       {errores.length > 0 && (
-        <ul role="alert">
+        <ul role="alert" aria-live="polite">
           {errores.map((e, i) => (
             <li key={i}>{e}</li>
           ))}

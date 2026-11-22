@@ -200,15 +200,15 @@ export function ComerciosPanel({ dataSource }: { dataSource: DataSource }) {
             marginLeft: '0.4rem',
             fontSize: '0.68rem',
             padding: '0.05rem 0.45rem',
-            // MK-3c (#426): WCAG 2.2 SC 2.5.8 — target size mínimo 24x24px
-            minHeight: '24px',
-            minWidth: '24px',
+            // MK-3c (#426, PIZ-R8 #551): target size mínimo 44px vía token --touch-target-min (SC 2.5.8)
+            minHeight: 'var(--touch-target-min)',
+            minWidth: 'var(--touch-target-min)',
           }}
         >
           {h === undefined ? 'Ver bitácora pública (F-3)' : 'Ocultar bitácora F-3'}
         </button>
         {h?.status === 'loading' && (
-          <span role="status" style={{ display: 'block', fontSize: '0.7rem' }}>
+          <span role="status" aria-live="polite" style={{ display: 'block', fontSize: '0.7rem' }}>
             Cargando la bitácora pública del comercio…
           </span>
         )}
