@@ -3,8 +3,11 @@ import type { DataSource } from '../lib/dataSource';
 import {
   descripcionAccesibleBloque,
   etiquetaEstadoBloque,
+  enlaceSuperficie,
   METADATOS_BLOQUE,
   NODOS_ATLAS,
+  procedenciaBloque,
+  SUPERFICIES_BLOQUE,
   type AtlasNodoUI,
   type NodoAtlasKey,
 } from '../lib/atlasTerritorial';
@@ -20,6 +23,11 @@ import {
  * solo color (WCAG 2.2 AA, ADR-061); nada se fabrica y el error se muestra,
  * no se traga (R5). Anti-ranking (R5/ADR-036): el panel no compara nodos ni
  * puntúa — la selección de nodo es navegación, jamás competición.
+ *
+ * OBJE-RFC-021-IMPL (#604, épica #531): cada bloque declara PROCEDENCIA (superficie
+ * pública emisora + custodia, DL-13) y ENLACE textual a la superficie
+ * acreditada que lo emite (endpoints reales del openapi v7.54.0 — enlazar,
+ * no crear rutas: diseño EV-125).
  */
 
 type PanelState =
@@ -92,11 +100,11 @@ export function AtlasTerritorialPanel({ dataSource }: { dataSource: DataSource }
       </div>
 
       {state.status === 'loading' && (
-        <p role="status">Cargando el atlas del nodo {nodoNombre}…</p>
+        <p role="status" aria-live="polite">Cargando el atlas del nodo {nodoNombre}…</p>
       )}
 
       {state.status === 'error' && (
-        <p role="alert" data-state="error">
+        <p role="alert" aria-live="polite" data-state="error">
           No se pudo armar el atlas del nodo {nodoNombre}: {state.message}
         </p>
       )}
@@ -106,13 +114,22 @@ export function AtlasTerritorialPanel({ dataSource }: { dataSource: DataSource }
           {state.atlas.bloques.map((b) => {
             const meta = METADATOS_BLOQUE[b.bloque];
             return (
-              <li key={b.bloque} className="atlas-bloque" data-estado={b.estado}>
+              <li key={b.bloque} className="atlas-bloque" data-estado={b.estado} id={'atlas-bloque-' + b.bloque}>
                 <h3>{meta.titulo}</h3>
                 <p className="atlas-bloque-descripcion">{meta.descripcion}</p>
                 <p className={CLASE_ESTADO[b.estado]}>
                   <strong>Estado: {etiquetaEstadoBloque(b.estado)}</strong>
                   {b.detalle ? <span> — {b.detalle}</span> : null}
                 </p>
+                <p className="atlas-bloque-procedencia">
+                  <strong>Procedencia:</strong> {procedenciaBloque(b)}
+                </p>
+                <a
+                  className="atlas-bloque-enlace"
+                  href={enlaceSuperficie(b.bloque, atlas.nodo_key)}
+                >
+                  Ver la superficie pública que emite este bloque: {SUPERFICIES_BLOQUE[b.bloque].superficie}
+                </a>
                 <span className="sr-only">{descripcionAccesibleBloque(b)}</span>
               </li>
             );
