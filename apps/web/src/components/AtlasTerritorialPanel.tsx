@@ -124,9 +124,12 @@ export function AtlasTerritorialPanel({ dataSource }: { dataSource: DataSource }
                 <p className="atlas-bloque-procedencia">
                   <strong>Procedencia:</strong> {procedenciaBloque(b)}
                 </p>
+                {/* nodoKey del componente es igual a la clave del atlas en estado ok
+                   por el invariante R5 del normalizador: si no coinciden, lanza y el
+                   panel nunca llegan a renderizar bloques. */}
                 <a
                   className="atlas-bloque-enlace"
-                  href={enlaceSuperficie(b.bloque, atlas.nodo_key)}
+                  href={enlaceSuperficie(b.bloque, nodoKey)}
                 >
                   Ver la superficie pública que emite este bloque: {SUPERFICIES_BLOQUE[b.bloque].superficie}
                 </a>
