@@ -8,12 +8,15 @@ import { describe, expect, it } from 'vitest';
 
 import {
   descripcionAccesibleBloque,
+  enlaceSuperficie,
   ETIQUETAS_ESTADO_BLOQUE,
   etiquetaEstadoBloque,
   METADATOS_BLOQUE,
   NODOS_ATLAS,
   normalizarAtlasNodo,
   ORDEN_BLOQUES_ATLAS,
+  procedenciaBloque,
+  SUPERFICIES_BLOQUE,
   type AtlasNodoUI,
 } from './atlasTerritorial';
 
@@ -152,5 +155,34 @@ describe('estados y accesibilidad del atlas (WCAG 2.2 AA — ADR-061)', () => {
   it('el selector de nodos usa el vocabulario canónico de los 3 nodos', () => {
     expect(NODOS_ATLAS.map((n) => n.key)).toEqual(['capital', 'caucete', 'iglesia']);
     expect(NODOS_ATLAS.every((n) => n.nombre.length >= 3)).toBe(true);
+  });
+});
+
+describe('OBJE-RFC-021-IMPL (#604, épica #531) — detalle con procedencia y enlaces reales', () => {
+  it('F2: los 5 bloques exponen enlace a superficie pública REAL (/api/…) — 0 rutas nuevas', () => {
+    for (const id of ORDEN_BLOQUES_ATLAS) {
+      expect(SUPERFICIES_BLOQUE[id].endpoint.startsWith('/api/')).toBe(true);
+      expect(SUPERFICIES_BLOQUE[id].superficie.length).toBeGreaterThanOrEqual(10);
+    }
+    expect(enlaceSuperficie('vocabulario', 'capital')).toBe('/api/nodos');
+    expect(enlaceSuperficie('kpis', 'iglesia')).toBe('/api/nodos/iglesia/observatorio');
+    expect(enlaceSuperficie('amenazas', 'caucete')).toBe('/api/amenazas');
+    expect(enlaceSuperficie('convenios', 'capital')).toBe('/api/convenios');
+    expect(enlaceSuperficie('curricular', 'iglesia')).toBe('/api/curricular/rutas');
+  });
+
+  it('F3: la procedencia declara superficie emisora + custodia en TEXTO (DL-13/R15, nada fabricado)', () => {
+    const atlas: AtlasNodoUI = normalizarAtlasNodo(PAYLOAD_OK.data, 'iglesia');
+    const textos = atlas.bloques.map((b) => procedenciaBloque(b));
+    expect(textos[0]).toContain('Emitido por');
+    expect(textos[0]).toContain(METADATOS_BLOQUE.vocabulario.titulo);
+    expect(textos[0]).toContain('Publicado');
+    expect(textos[2]).toContain('LIC-R4');
+    expect(textos[2]).toContain('En custodia del pipeline');
+  });
+
+  it('anti-ranking extendido: las superficies no puntúan ni comparan nodos (R5/ADR-036)', () => {
+    const serializado = JSON.stringify(SUPERFICIES_BLOQUE).toLowerCase();
+    expect(serializado).not.toMatch(/puntaje|ranking|score|posicion|mejor|peor/);
   });
 });
