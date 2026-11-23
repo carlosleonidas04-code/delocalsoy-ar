@@ -183,3 +183,41 @@ export function procedenciaBloque(bloque: BloqueAtlasUI): string {
   return 'Emitido por ' + SUPERFICIES_BLOQUE[bloque.bloque].superficie + ' · custodia: ' + etiquetaEstadoBloque(bloque.estado);
 }
 
+// INTER-TERR IT-R2 (#611, épica #607): ancla territorial por bloque — la capa
+// PostGIS del mapa (TerritoriosMap) que respalda al bloque CUANDO su
+// superficie emite geometría acreditada; si no, capa null + nota honesta
+// (R15: ni capa vacía ni respaldo inventado; el respaldo se declara, no se
+// sugiere). Anti-ranking R5/ADR-036: el ancla nunca puntúa ni compara nodos.
+export type CapaTerritorialKey = 'assets' | 'problems' | 'public_space';
+
+export interface AnclaTerritorial {
+  capa: CapaTerritorialKey | null;
+  nota: string;
+}
+
+export const ANCLA_TERRITORIAL_BLOQUE: Record<BloqueAtlasId, AnclaTerritorial> = {
+  vocabulario: {
+    capa: null,
+    nota: 'el vocabulario declara capas y features del catálogo federado, sin geometría propia en el mapa',
+  },
+  kpis: {
+    capa: 'assets',
+    nota: 'substrato: la capa Assets del mapa muestra los activos verificados que los conteos del observatorio relevan; la cobertura exacta la declara el observatorio',
+  },
+  amenazas: {
+    capa: null,
+    nota: 'la capa sísmica viva por ingesta DL-9 (LIC-R4) no se traza en el mapa: estados y conteos, jamás geometrías sensibles (patrón Iglesia)',
+  },
+  convenios: {
+    capa: null,
+    nota: 'los convenios son declaraciones con fuente oficial y fecha de corte, sin geometría territorial',
+  },
+  curricular: {
+    capa: null,
+    nota: 'la matriz curricular no emite geometría territorial (ADR-082: procedencia por ingesta)',
+  },
+};
+
+export function anclaTerritorial(bloque: BloqueAtlasId): AnclaTerritorial {
+  return ANCLA_TERRITORIAL_BLOQUE[bloque];
+}
