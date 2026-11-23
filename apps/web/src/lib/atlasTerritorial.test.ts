@@ -11,10 +11,12 @@ import {
   enlaceSuperficie,
   ETIQUETAS_ESTADO_BLOQUE,
   etiquetaEstadoBloque,
+  ANCLA_TERRITORIAL_BLOQUE,
   METADATOS_BLOQUE,
   NODOS_ATLAS,
   normalizarAtlasNodo,
   ORDEN_BLOQUES_ATLAS,
+  anclaTerritorial,
   procedenciaBloque,
   SUPERFICIES_BLOQUE,
   type AtlasNodoUI,
@@ -183,6 +185,36 @@ describe('OBJE-RFC-021-IMPL (#604, épica #531) — detalle con procedencia y en
 
   it('anti-ranking extendido: las superficies no puntúan ni comparan nodos (R5/ADR-036)', () => {
     const serializado = JSON.stringify(SUPERFICIES_BLOQUE).toLowerCase();
+    expect(serializado).not.toMatch(/puntaje|ranking|score|posicion|mejor|peor/);
+  });
+});
+
+
+describe('IT-R2 (#611, épica #607) — ancla territorial por bloque', () => {
+  const CAPAS_MAPA = ['assets', 'problems', 'public_space'] as const;
+
+  it('cada bloque declara ancla: capa real del mapa o null honesto con nota (R15)', () => {
+    for (const id of ORDEN_BLOQUES_ATLAS) {
+      const a = anclaTerritorial(id);
+      expect(a).toBeDefined();
+      if (a.capa !== null) {
+        expect(CAPAS_MAPA).toContain(a.capa);
+      }
+      expect(a.nota.length).toBeGreaterThanOrEqual(10);
+    }
+  });
+
+  it('kpis ancla a la capa de activos verificados (substrato declarado); los otros 4 bloques sin capa', () => {
+    expect(anclaTerritorial('kpis').capa).toBe('assets');
+    expect(anclaTerritorial('kpis').nota).toContain('substrato');
+    expect(anclaTerritorial('vocabulario').capa).toBeNull();
+    expect(anclaTerritorial('amenazas').capa).toBeNull();
+    expect(anclaTerritorial('convenios').capa).toBeNull();
+    expect(anclaTerritorial('curricular').capa).toBeNull();
+  });
+
+  it('anti-ranking extendido: las anclas no puntúan ni comparan nodos (R5/ADR-036)', () => {
+    const serializado = JSON.stringify(ANCLA_TERRITORIAL_BLOQUE).toLowerCase();
     expect(serializado).not.toMatch(/puntaje|ranking|score|posicion|mejor|peor/);
   });
 });
