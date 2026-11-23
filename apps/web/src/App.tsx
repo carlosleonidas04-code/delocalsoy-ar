@@ -560,7 +560,7 @@ export function App() {
   const handleFocusOnGoogleMap = (territorioId: string) => {
     setFocusedGeometry(null);
     setFocusedTerritorioId(territorioId);
-    const mapEl = document.getElementById('cartografia-workspace');
+    const mapEl = document.getElementById('cartografia-entrada');
     if (mapEl) {
       mapEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -569,7 +569,7 @@ export function App() {
   const handleFocusGeometryOnGoogleMap = (geom: SpatialGeometryRecord) => {
     setFocusedTerritorioId(null);
     setFocusedGeometry(geom);
-    const mapEl = document.getElementById('cartografia-workspace');
+    const mapEl = document.getElementById('cartografia-entrada');
     if (mapEl) {
       mapEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -698,6 +698,20 @@ export function App() {
           lineageChainCount={lineageChain.length}
           evidenciasOkCount={evidenciasOkCount}
         />
+
+        {/* 0b. Entrada territorial mapa-primero (INTER-TERR IT-R1 #610, épica #607): el mapa es la
+            puerta del producto (ADR-085 propuesta, mandato DH 2026-11-23): visible sin #lab y sin
+            condición de lente; lectura real por DataSource (EV-010). Sin API key, el componente
+            entrega el equivalente textual honesto (WCAG 2.2 AA 1.4.1), nada simulado (R15). Los
+            focos de geolocalización hacen scroll hasta acá (#cartografia-entrada). */}
+        <div id="cartografia-entrada">
+          <TerritoriosMap
+            territorios={territoriosItems}
+            focusedTerritorioId={focusedTerritorioId}
+            spatialGeometries={spatialGeometries}
+            focusedGeometry={focusedGeometry}
+          />
+        </div>
 
         {/* ESTUDIO DE DISEÑO HEURÍSTICO Y RECURSIVO FRONTEND (Nivel Premiación Internacional · ADR-034 + Modelos Base) */}
         {isLabRoute && (
@@ -1227,18 +1241,13 @@ export function App() {
           />
         )}
 
-        {/* 8. Cartografía Real en Google Maps Platform y Exportación a Google Docs / Google Drive */}
+        {/* 8. Panel de exportación del workspace (WorkspacePanel): el mapa subió a la entrada del
+            producto como #cartografia-entrada (INTER-TERR IT-R1 #610, épica #607) y el foco de
+            geolocalización lo sigue ahí. */}
         {(effectiveDesignLens === 'all' ||
           effectiveDesignLens === 'lens_atlas_coco_baba' ||
           effectiveDesignLens === 'lens_sovereignty_fcm') && (
           <div id="cartografia-workspace">
-            <TerritoriosMap
-              territorios={territoriosItems}
-              focusedTerritorioId={focusedTerritorioId}
-              spatialGeometries={spatialGeometries}
-              focusedGeometry={focusedGeometry}
-            />
-
             <WorkspacePanel
               territorios={territoriosItems}
               features={features}
