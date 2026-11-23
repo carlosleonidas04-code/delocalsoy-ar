@@ -11,6 +11,7 @@ import {
   type AtlasNodoUI,
   type NodoAtlasKey,
 } from '../lib/atlasTerritorial';
+import { MAP_GEOMETRY_LAYER_GROUPS } from './TerritoriosMap';
 
 /**
  * Atlas Territorial por nodo — MVP-1 (RFC-021, #532, épica OBJE-CAMPUS #531).
@@ -113,6 +114,7 @@ export function AtlasTerritorialPanel({ dataSource }: { dataSource: DataSource }
         <ul className="atlas-bloques" aria-label={`Bloques del atlas del nodo ${nodoNombre}`}>
           {state.atlas.bloques.map((b) => {
             const meta = METADATOS_BLOQUE[b.bloque];
+            const ancla = anclaTerritorial(b.bloque);
             return (
               <li key={b.bloque} className="atlas-bloque" data-estado={b.estado} id={'atlas-bloque-' + b.bloque}>
                 <h3>{meta.titulo}</h3>
@@ -123,6 +125,12 @@ export function AtlasTerritorialPanel({ dataSource }: { dataSource: DataSource }
                 </p>
                 <p className="atlas-bloque-procedencia">
                   <strong>Procedencia:</strong> {procedenciaBloque(b)}
+                </p>
+                <p className="atlas-bloque-ancla">
+                  <strong>Ancla territorial:</strong>{' '}
+                  {ancla.capa
+                    ? 'capa ' + (MAP_GEOMETRY_LAYER_GROUPS.find((l) => l.key === ancla.capa)?.label ?? ancla.capa) + ' del mapa territorial. ' + ancla.nota
+                    : 'sin capa territorial acreditada en el mapa. ' + ancla.nota}
                 </p>
                 {/* nodoKey del componente es igual a la clave del atlas en estado ok
                    por el invariante R5 del normalizador: si no coinciden, lanza y el
