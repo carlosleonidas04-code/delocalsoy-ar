@@ -383,10 +383,37 @@ export function TerritoriosMap({
   const activeInspectionGeometry = clickedGeometry ?? focusedGeometry;
 
   if (!apiKey) {
+    // INTER-TERR IT-R1 (#610, épica #607): el mapa digital NO es el único canal del dato
+    // territorial (WCAG 2.2 AA, 1.4.1): sin API key el componente entrega el equivalente
+    // textual honesto de lo que el mapa muestra, jamás un error mudo ni un mapa simulado (R15).
     return (
-      <section className="card" data-state="error">
-        <h2>Mapa Territorial — Google Maps Platform</h2>
-        <p className="error">Falta configurar VITE_GOOGLE_MAPS_API_KEY</p>
+      <section className="card" data-state="ok">
+        <h2>Mapa Territorial — alternativa textual</h2>
+        <p role="status" aria-live="polite">
+          El mapa digital requiere Google Maps Platform (falta configurar <code>VITE_GOOGLE_MAPS_API_KEY</code>):
+          estos son los mismos territorios y capas que el mapa muestra, en texto.
+        </p>
+        {territorios.length === 0 ? (
+          <p>
+            Sin territorios cargados todavía: cuando el servicio cargue, cada territorio aparece
+            acá con su provincia y estado (nada se simula, R15).
+          </p>
+        ) : (
+          <ul>
+            {territorios.map((t) => (
+              <li key={t.id}>
+                {t.nombre} ({t.provincia}) — {t.activo ? 'Activo' : 'Inactivo'}
+              </li>
+            ))}
+          </ul>
+        )}
+        <ul>
+          {MAP_GEOMETRY_LAYER_GROUPS.map((group) => (
+            <li key={group.key}>
+              <strong>{group.label}:</strong> {layerCounts[group.key]} geometría(s) — {group.description}
+            </li>
+          ))}
+        </ul>
       </section>
     );
   }
