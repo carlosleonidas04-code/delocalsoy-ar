@@ -64,6 +64,38 @@ export const METADATOS_BLOQUE: Record<BloqueAtlasId, { titulo: string; descripci
   },
 };
 
+// OBJE-RFC-021-IMPL (#604, épica #531): F2 — superficie acreditada que emite
+// cada bloque del detalle (enlazar, no crear rutas: diseño EV-125). Los 5
+// endpoints son GET públicos REALES del openapi v7.54.0 (83 paths) — nada
+// fabricado; anti-ranking R5/ADR-036: navegación, jamás comparación.
+export const SUPERFICIES_BLOQUE: Record<BloqueAtlasId, { superficie: string; endpoint: string }> = {
+  vocabulario: {
+    superficie: 'Vocabulario público (CORE-002) · GET /api/nodos',
+    endpoint: '/api/nodos',
+  },
+  kpis: {
+    superficie: 'Observatorio de indicadores (LIC-R1) · GET /api/nodos/{key}/observatorio',
+    endpoint: '/api/nodos/{key}/observatorio',
+  },
+  amenazas: {
+    superficie: 'Capa de amenaza sísmica (LIC-R4) · GET /api/amenazas',
+    endpoint: '/api/amenazas',
+  },
+  convenios: {
+    superficie: 'Convenios declarados (LIC-R9) · GET /api/convenios',
+    endpoint: '/api/convenios',
+  },
+  curricular: {
+    superficie: 'Matriz curricular declarada (MVP-1 S2) · GET /api/curricular/rutas',
+    endpoint: '/api/curricular/rutas',
+  },
+};
+
+/** URL pública real de la superficie emisora del bloque (openapi v7.54.0, 0 rutas nuevas). */
+export function enlaceSuperficie(bloque: BloqueAtlasId, nodoKey: NodoAtlasKey): string {
+  return SUPERFICIES_BLOQUE[bloque].endpoint.replace('{key}', nodoKey);
+}
+
 export interface BloqueAtlasUI {
   bloque: BloqueAtlasId;
   estado: EstadoBloqueAtlasUI;
@@ -140,3 +172,14 @@ export function descripcionAccesibleBloque(bloque: BloqueAtlasUI): string {
   const estado = etiquetaEstadoBloque(bloque.estado);
   return meta.titulo + ' — ' + estado + '. ' + (bloque.detalle ?? meta.descripcion);
 }
+
+/**
+ * F3 — Procedencia por bloque (DL-13): qué superficie pública emite el
+ * bloque y en qué estado de custodia está, declarado en TEXTO (R15: ni la
+ * fuente ni la fecha de corte se fabrican; cuando el servidor las trae ya
+ * viajan dentro de `detalle`, que se muestra aparte).
+ */
+export function procedenciaBloque(bloque: BloqueAtlasUI): string {
+  return 'Emitido por ' + SUPERFICIES_BLOQUE[bloque.bloque].superficie + ' · custodia: ' + etiquetaEstadoBloque(bloque.estado);
+}
+
