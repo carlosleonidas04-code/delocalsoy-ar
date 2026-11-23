@@ -175,7 +175,7 @@ describe('OBJE-RFC-021-IMPL (#604, épica #531) — detalle con procedencia y en
     const atlas: AtlasNodoUI = normalizarAtlasNodo(PAYLOAD_OK.data, 'iglesia');
     const textos = atlas.bloques.map((b) => procedenciaBloque(b));
     expect(textos[0]).toContain('Emitido por');
-    expect(textos[0]).toContain(METADATOS_BLOQUE.vocabulario.titulo);
+    expect(textos[0]).toContain(SUPERFICIES_BLOQUE.vocabulario.superficie);
     expect(textos[0]).toContain('Publicado');
     expect(textos[2]).toContain('LIC-R4');
     expect(textos[2]).toContain('En custodia del pipeline');
