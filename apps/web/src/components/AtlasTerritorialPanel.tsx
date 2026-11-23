@@ -4,6 +4,7 @@ import {
   descripcionAccesibleBloque,
   etiquetaEstadoBloque,
   enlaceSuperficie,
+  anclaTerritorial,
   METADATOS_BLOQUE,
   NODOS_ATLAS,
   procedenciaBloque,
