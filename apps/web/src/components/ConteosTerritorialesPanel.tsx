@@ -29,7 +29,7 @@ export function ConteosTerritorialesPanel({
     return t ? t.nombre + ' (' + t.provincia + ')' : nodeKey;
   };
 
-  const coberturaLa = (c: { total: number; porEstado: Record<string, number>; estadoOtroCrudo: string[]; ultimoQuarter: string | null }) => {
+  const coberturaLa = (c: { total: number; porEstado: Partial<Record<string, number>>; estadoOtroCrudo: string[]; ultimoQuarter: string | null }) => {
     if (c.total === 0) return "0 — sin geometrías ingeridas en esta capa y nodo (ausencia declarada, R15)";
     const partes: string[] = [];
     for (const [estado, n] of Object.entries(c.porEstado)) {
