@@ -1,5 +1,5 @@
 import { MAP_GEOMETRY_LAYER_GROUPS } from './TerritoriosMap';
-import { conteosTerritoriales, FUENTE_CONTEOS_TERRITORIALES } from './conteosTerritoriales';
+import { conteosTerritoriales } from './conteosTerritoriales';
 import { STATUS_META } from '../data/federatedModel';
 import type { SpatialGeometryRecord } from '../data/federatedModel';
 import type { Territorio } from '../App';
