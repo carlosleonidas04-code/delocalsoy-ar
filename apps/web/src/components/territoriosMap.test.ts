@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 // NADA se traza. Anti-ranking R5/ADR-036; WCAG 2.2 AA ADR-061.
 
 import {
+  avisoConmutacionCapa,
   classifySpatialGeometryLayer,
   conteosIniciales,
   MAP_GEOMETRY_LAYER_GROUPS,
@@ -92,5 +93,35 @@ describe('IT-R3 (#612, épica #607) — capa Corredores v0.1 provisional (NCAP-R
     }
     const acentos = MAP_GEOMETRY_LAYER_GROUPS.map((g) => g.accentColor);
     expect(new Set(acentos).size).toBe(acentos.length);
+  });
+});
+
+describe("IT-R6 (#615, épica #607) — accesibilidad territorial de los controles del mapa (patrón EV-122)", () => {
+  it("avisoConmutacionCapa: mensaje humano que incluye el conteo REAL recibido (jamás cero simulado, R15)", () => {
+    expect(avisoConmutacionCapa('Assets (Activos)', true, 7)).toBe('Capa «Assets (Activos)» visible (7 geometría(s))');
+    expect(avisoConmutacionCapa('Corredores (hipótesis v0.1)', false, 0)).toBe('Capa «Corredores (hipótesis v0.1)» oculta (0 geometría(s))');
+  });
+
+  it("avisoConmutacionCapa: sin dato NO inventa cobertura — el conteo recibido es el declarado (R15: null ≠ 0)", () => {
+    const aviso = avisoConmutacionCapa('Problems (Problemáticas)', true, 0);
+    expect(aviso).toContain('(0 geometría(s))');
+    expect(aviso).not.toContain('cobertura');
+    expect(aviso).not.toContain('puntaje');
+  });
+
+  it("descripciones accesibles: los 4 grupos exponen description de 10+ chars para el aria-label del control (2.5.3/1.3.1)", () => {
+    expect(MAP_GEOMETRY_LAYER_GROUPS.length).toBe(4);
+    for (const g of MAP_GEOMETRY_LAYER_GROUPS) {
+      const ariaLabel = 'Mostrar u ocultar la capa ' + g.label + ': ' + g.description + ' (0 geometría(s) en la capa)';
+      expect(ariaLabel).toContain(g.label);
+      expect(ariaLabel.length).toBeGreaterThan(g.label.length + 10);
+    }
+  });
+
+  it("anti-ranking extendido al helper de aviso: jamás puntaje/posicion/mejor (R5/ADR-036)", () => {
+    const avisos = MAP_GEOMETRY_LAYER_GROUPS.map((g, i) => avisoConmutacionCapa(g.label, i % 2 === 0, i));
+    for (const aviso of avisos) {
+      expect(aviso.toLowerCase()).not.toMatch(/puntaje|ranking|score|posicion|mejor|peor/);
+    }
   });
 });

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   APIProvider,
   AdvancedMarker,
@@ -88,6 +88,21 @@ export function conteosIniciales(): Record<MapGeometryLayerKey, number> {
   const cero: Record<MapGeometryLayerKey, number> = {} as Record<MapGeometryLayerKey, number>;
   for (const g of MAP_GEOMETRY_LAYER_GROUPS) cero[g.key] = 0;
   return cero;
+}
+
+/**
+ * IT-R6 (#615, épica #607 INTER-TERR): mensaje humano y honesto para la región
+ * aria-live (patrón EV-122) al conmutar una capa. Incluye SOLO el conteo real
+ * que recibió — jamás un cero simulado (R15) ni comparación entre nodos
+ * (R5/ADR-036, anti-ranking).
+ */
+export function avisoConmutacionCapa(
+  label: string,
+  visible: boolean,
+  count: number,
+): string {
+  const estado = visible ? 'visible' : 'oculta';
+  return 'Capa «' + label + '» ' + estado + ' (' + String(count) + ' geometría(s))';
 }
 
 export function classifySpatialGeometryLayer(
@@ -256,7 +271,7 @@ function PlacesResolver({
   return (
     <>
       {resolving && (
-        <div className="map-status-pill">Geocodificando territorios vía Places API (New)…</div>
+        <div className="map-status-pill" role="status" aria-live="polite">Geocodificando territorios vía Places API (New)…</div>
       )}
       {resolved.map((item) => (
         <TerritorioMarker
@@ -367,6 +382,7 @@ export function TerritoriosMap({
     Record<MapGeometryLayerKey, boolean>
   >(visibilidadInicialCapas());
 
+
   // Cuando se enfoca explícitamente una geometría desde otro panel, aseguramos que su capa esté visible
   useEffect(() => {
     if (!focusedGeometry) return;
@@ -399,6 +415,22 @@ export function TerritoriosMap({
     }
     return counts;
   }, [spatialGeometries]);
+
+  // INTER-TERR IT-R6 (#615, épica #607): región aria-live (patrón EV-122) que
+  // anuncia cada conmutación de capa con su conteo real — se alimenta de
+  // layerVisibility + layerCounts (fuente única), jamás inventa datos (R15).
+  const [avisoCapas, setAvisoCapas] = useState<string | null>(null);
+  const primeraCapaAviso = useRef(true);
+  useEffect(() => {
+    if (primeraCapaAviso.current) {
+      primeraCapaAviso.current = false;
+      return;
+    }
+    const partes = MAP_GEOMETRY_LAYER_GROUPS.map((g) =>
+      avisoConmutacionCapa(g.label, layerVisibility[g.key], layerCounts[g.key]),
+    );
+    setAvisoCapas(partes.join(' · '));
+  }, [layerVisibility, layerCounts]);
 
   const visibleSpatialGeometries = useMemo(
     () =>
@@ -481,6 +513,11 @@ export function TerritoriosMap({
                 className={isOn ? 'btn-filter active' : 'btn-filter'}
                 onClick={() => toggleGeometryLayer(group.key)}
                 title={group.description}
+                aria-label={
+                  'Mostrar u ocultar la capa ' + group.label + ': ' + group.description +
+                  ' (' + layerCounts[group.key] + ' geometría(s) en la capa)'
+                }
+                style={{ minHeight: 'var(--touch-target-min)', minWidth: 'var(--touch-target-min)' }}
               >
                 <span
                   className="layer-color-dot"
@@ -491,6 +528,9 @@ export function TerritoriosMap({
             );
           })}
         </div>
+        <p className="map-live-status" role="status" aria-live="polite">
+          {avisoCapas ?? ''}
+        </p>
       </div>
 
       {activeInspectionGeometry && (
@@ -554,6 +594,11 @@ export function TerritoriosMap({
                           type="checkbox"
                           checked={isChecked}
                           onChange={() => toggleGeometryLayer(group.key)}
+                          aria-label={
+                            'Mostrar u ocultar la capa ' + group.label + ': ' + group.description +
+                            ' (' + count + ' geometría(s) en la capa)'
+                          }
+                          style={{ width: '1.5rem', height: '1.5rem' }}
                         />
                         <span
                           className="layer-color-dot"
@@ -573,6 +618,7 @@ export function TerritoriosMap({
                     type="button"
                     className="map-layer-mini-btn"
                     onClick={() => setAllGeometryLayers(true)}
+                    style={{ minHeight: 'var(--touch-target-min)', minWidth: 'var(--touch-target-min)' }}
                   >
                     Mostrar todas
                   </button>
@@ -580,6 +626,7 @@ export function TerritoriosMap({
                     type="button"
                     className="map-layer-mini-btn"
                     onClick={() => setAllGeometryLayers(false)}
+                    style={{ minHeight: 'var(--touch-target-min)', minWidth: 'var(--touch-target-min)' }}
                   >
                     Ocultar todas
                   </button>
