@@ -17,6 +17,8 @@ import { ShowcaseRecorridoPanel } from './components/ShowcaseRecorridoPanel';
 import { ServicioInformativoPanel } from './components/ServicioInformativoPanel';
 import { SyntheticModeWarningBanner } from './components/SyntheticModeWarningBanner';
 import { TerritoriosMap } from './components/TerritoriosMap';
+import { ItinerarioNodoPanel } from './components/ItinerarioNodoPanel';
+import { nodoKeyDesdeRuta } from './lib/nodosRuta';
 import { TerritorialPlatformHub } from './components/TerritorialPlatformHub';
 import { TopBarHeader } from './components/TopBarHeader';
 import { TraceabilityAndEvidenciasPanel } from './components/TraceabilityAndEvidenciasPanel';
@@ -616,6 +618,23 @@ export function App() {
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
+
+  // INTER-TERR IT-R5 (#614, épica #607): hash «#nodo/:key» — itinerario por
+  // nodo (navegación, no comparación, R5/ADR-036); patrón «#lab» parseado con
+  // hashchange; la existencia del nodo se valida contra territorios (t.key) en
+  // el render — sin hash de nodo no monta nada. M0: obra sobre App declarada.
+  const [rutaNodoKey, setRutaNodoKey] = useState<string | null>(() =>
+    typeof window !== 'undefined' ? nodoKeyDesdeRuta(window.location.hash) : null,
+  );
+  useEffect(() => {
+    const onHashChangeNodo = () => setRutaNodoKey(nodoKeyDesdeRuta(window.location.hash));
+    window.addEventListener('hashchange', onHashChangeNodo);
+    return () => window.removeEventListener('hashchange', onHashChangeNodo);
+  }, []);
+  useEffect(() => {
+    if (typeof document === 'undefined' || rutaNodoKey === null) return;
+    document.getElementById('itinerario-nodo')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [rutaNodoKey]);
   const effectiveDesignLens: DesignLensKey = isLabRoute
     ? activeDesignLens
     : 'all';
@@ -712,6 +731,21 @@ export function App() {
             focusedGeometry={focusedGeometry}
           />
         </div>
+
+        {/* 0b-2. Itinerario por nodo (INTER-TERR IT-R5 #614, épica #607): hash «#nodo/:key» —
+            mapa + observatorio + reportes + fichas de UN nodo (navegación, no comparación
+            R5/ADR-036); lectura 100 % pública sin JWT; hash de nodo inexistente declara vacío
+            honesto (R15); la escritura exige sesión y sigue en A1 (ADR-084). */}
+        {rutaNodoKey !== null && (
+          <div id="itinerario-nodo">
+            <ItinerarioNodoPanel
+              nodoKey={rutaNodoKey}
+              nodo={territoriosItems.find((t) => t.key === rutaNodoKey) ?? null}
+              cargandoDirectorio={territorios.status === 'loading'}
+              onEnfocarSobreMapa={handleFocusOnGoogleMap}
+            />
+          </div>
+        )}
 
         {/* ESTUDIO DE DISEÑO HEURÍSTICO Y RECURSIVO FRONTEND (Nivel Premiación Internacional · ADR-034 + Modelos Base) */}
         {isLabRoute && (
