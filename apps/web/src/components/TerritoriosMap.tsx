@@ -15,6 +15,7 @@ import {
 } from '@vis.gl/react-google-maps';
 import type { Territorio } from '../App';
 import type { SpatialGeometryRecord } from '../data/federatedModel';
+import { ConteosTerritorialesPanel } from './ConteosTerritorialesPanel';
 
 export type MapGeometryLayerKey = 'assets' | 'problems' | 'public_space' | 'corredores';
 
@@ -446,6 +447,7 @@ export function TerritoriosMap({
             </li>
           ))}
         </ul>
+        <ConteosTerritorialesPanel spatialGeometries={spatialGeometries} territorios={territorios} />
       </section>
     );
   }
@@ -599,6 +601,7 @@ export function TerritoriosMap({
           </Map>
         </APIProvider>
       </div>
+      <ConteosTerritorialesPanel spatialGeometries={spatialGeometries} territorios={territorios} />
     </section>
   );
 }
