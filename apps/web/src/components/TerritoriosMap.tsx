@@ -382,21 +382,6 @@ export function TerritoriosMap({
     Record<MapGeometryLayerKey, boolean>
   >(visibilidadInicialCapas());
 
-  // INTER-TERR IT-R6 (#615, épica #607): región aria-live (patrón EV-122) que
-  // anuncia cada conmutación de capa con su conteo real — se alimenta de
-  // layerVisibility + layerCounts (fuente única), jamás inventa datos (R15).
-  const [avisoCapas, setAvisoCapas] = useState<string | null>(null);
-  const primeraCapaAviso = useRef(true);
-  useEffect(() => {
-    if (primeraCapaAviso.current) {
-      primeraCapaAviso.current = false;
-      return;
-    }
-    const partes = MAP_GEOMETRY_LAYER_GROUPS.map((g) =>
-      avisoConmutacionCapa(g.label, layerVisibility[g.key], layerCounts[g.key]),
-    );
-    setAvisoCapas(partes.join(' · '));
-  }, [layerVisibility, layerCounts]);
 
   // Cuando se enfoca explícitamente una geometría desde otro panel, aseguramos que su capa esté visible
   useEffect(() => {
@@ -430,6 +415,22 @@ export function TerritoriosMap({
     }
     return counts;
   }, [spatialGeometries]);
+
+  // INTER-TERR IT-R6 (#615, épica #607): región aria-live (patrón EV-122) que
+  // anuncia cada conmutación de capa con su conteo real — se alimenta de
+  // layerVisibility + layerCounts (fuente única), jamás inventa datos (R15).
+  const [avisoCapas, setAvisoCapas] = useState<string | null>(null);
+  const primeraCapaAviso = useRef(true);
+  useEffect(() => {
+    if (primeraCapaAviso.current) {
+      primeraCapaAviso.current = false;
+      return;
+    }
+    const partes = MAP_GEOMETRY_LAYER_GROUPS.map((g) =>
+      avisoConmutacionCapa(g.label, layerVisibility[g.key], layerCounts[g.key]),
+    );
+    setAvisoCapas(partes.join(' · '));
+  }, [layerVisibility, layerCounts]);
 
   const visibleSpatialGeometries = useMemo(
     () =>
