@@ -5,7 +5,7 @@
  */
 export function GmpQuotaBanner() {
   return (
-    <div className="quota-banner">
+    <div className="quota-banner" role="alert" aria-live="polite">
       <span>
         Google Maps Platform quota reached. If you are the app owner, visit{' '}
         <a
