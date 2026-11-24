@@ -16,7 +16,7 @@ import {
 import type { Territorio } from '../App';
 import type { SpatialGeometryRecord } from '../data/federatedModel';
 
-export type MapGeometryLayerKey = 'assets' | 'problems' | 'public_space';
+export type MapGeometryLayerKey = 'assets' | 'problems' | 'public_space' | 'corredores';
 
 export interface LayerGroupConfig {
   key: MapGeometryLayerKey;
@@ -24,6 +24,12 @@ export interface LayerGroupConfig {
   shortLabel: string;
   description: string;
   accentColor: string;
+  /**
+   * IT-R3 (#612, épica #607 / NCAP-R4): régimen de frontera declarado.
+   * 'provisional' = hipótesis de diseño pendiente de contraste UNIDE/Catastro —
+   * jamás traza oficial; las geometrías solo surgen de fuentes ingeridas (R15).
+   */
+  boundaryStatus?: 'provisional';
 }
 
 export const MAP_GEOMETRY_LAYER_GROUPS: LayerGroupConfig[] = [
@@ -48,11 +54,47 @@ export const MAP_GEOMETRY_LAYER_GROUPS: LayerGroupConfig[] = [
     description: 'Microcuencas urbanas, espacio cívico y redes comunitarias',
     accentColor: '#38bdf8',
   },
+  {
+    // IT-R3 (#612, épica #607 INTER-TERR / NCAP-R4): capa de hipótesis de diseño
+    // del Nodo Capital, boundary_status: provisional (contraste UNIDE/Catastro
+    // pendiente — declarado, no ocultado). R15: las geometrías de corredores
+    // SOLO surgen de fuentes ingeridas; sin dato, la capa declara vacío
+    // (conteo 0) y nada se traza en el mapa.
+    key: 'corredores',
+    label: 'Corredores (hipótesis v0.1)',
+    shortLabel: 'Corredores',
+    description: 'Hipótesis de diseño de corredores del Nodo Capital (cor_centro_civico, cor_libertador_west, cor_centro_desamparados, cor_centro_micro_macro, cor_redtulum_centro); boundary_status: provisional hasta contraste UNIDE/Catastro — sin geometrías ingeridas la capa declara vacío y nada se traza (R15)',
+    accentColor: '#a855f7',
+    boundaryStatus: 'provisional',
+  },
 ];
+
+/**
+ * IT-R3: estado inicial de visibilidad DERIVADO de MAP_GEOMETRY_LAYER_GROUPS
+ * (fuente única): evita drift al crecer a 4 capas.
+ */
+export function visibilidadInicialCapas(): Record<MapGeometryLayerKey, boolean> {
+  const todos: Record<MapGeometryLayerKey, boolean> = {} as Record<MapGeometryLayerKey, boolean>;
+  for (const g of MAP_GEOMETRY_LAYER_GROUPS) todos[g.key] = true;
+  return todos;
+}
+
+/**
+ * IT-R3: conteo inicial 0 honesto para TODOS los grupos declarados (R15:
+ * el conteo parte de 0 y solo sube con geometrías reales clasificadas).
+ */
+export function conteosIniciales(): Record<MapGeometryLayerKey, number> {
+  const cero: Record<MapGeometryLayerKey, number> = {} as Record<MapGeometryLayerKey, number>;
+  for (const g of MAP_GEOMETRY_LAYER_GROUPS) cero[g.key] = 0;
+  return cero;
+}
 
 export function classifySpatialGeometryLayer(
   geom: SpatialGeometryRecord,
 ): MapGeometryLayerKey {
+  if ((geom.domain as string) === 'corredores') {
+    return 'corredores';
+  }
   if (geom.domain === 'problems') {
     return 'problems';
   }
@@ -319,14 +361,10 @@ export function TerritoriosMap({
     zoom: 6,
   });
 
-  // Visibilidad independiente de las 3 capas de geometrías espaciales: Assets, Problems, Public Space
+  // Visibilidad independiente de las 4 capas de geometrías espaciales: Assets, Problems, Public Space y Corredores (IT-R3, derivada de la fuente única)
   const [layerVisibility, setLayerVisibility] = useState<
     Record<MapGeometryLayerKey, boolean>
-  >({
-    assets: true,
-    problems: true,
-    public_space: true,
-  });
+  >(visibilidadInicialCapas());
 
   // Cuando se enfoca explícitamente una geometría desde otro panel, aseguramos que su capa esté visible
   useEffect(() => {
@@ -346,20 +384,14 @@ export function TerritoriosMap({
   }, []);
 
   const setAllGeometryLayers = useCallback((visible: boolean) => {
-    setLayerVisibility({
-      assets: visible,
-      problems: visible,
-      public_space: visible,
-    });
+    const todos = visibilidadInicialCapas();
+    for (const g of MAP_GEOMETRY_LAYER_GROUPS) todos[g.key] = visible;
+    setLayerVisibility(todos);
   }, []);
 
   // Conteo por capa y filtrado de geometrías visibles en el mapa
   const layerCounts = useMemo<Record<MapGeometryLayerKey, number>>(() => {
-    const counts: Record<MapGeometryLayerKey, number> = {
-      assets: 0,
-      problems: 0,
-      public_space: 0,
-    };
+    const counts = conteosIniciales();
     for (const g of spatialGeometries) {
       const k = classifySpatialGeometryLayer(g);
       counts[k] += 1;
@@ -427,7 +459,7 @@ export function TerritoriosMap({
           </span>
           <h2>Mapa Territorial y Geometrías PostGIS — Google Maps Platform</h2>
           <p className="section-caption">
-            Ubicaciones resueltas con Places API (New), Advanced Markers y control independiente de visibilidad por capa espacial: <strong>Assets</strong>, <strong>Problems</strong> y <strong>Public Space</strong>.
+            Ubicaciones resueltas con Places API (New), Advanced Markers y control independiente de visibilidad por capa espacial: <strong>Assets</strong>, <strong>Problems</strong>, <strong>Public Space</strong> y <strong>Corredores</strong> (hipótesis v0.1 con boundary provisional: contraste UNIDE/Catastro pendiente, R15).
           </p>
         </div>
 
