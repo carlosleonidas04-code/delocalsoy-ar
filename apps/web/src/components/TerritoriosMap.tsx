@@ -514,7 +514,7 @@ export function TerritoriosMap({
                 title={group.description}
                 aria-label={
                   'Mostrar u ocultar la capa ' + group.label + ': ' + group.description +
-                  ' (' + layerCounts[group.key] + ' geometría(s) en la capa)',
+                  ' (' + layerCounts[group.key] + ' geometría(s) en la capa)'
                 }
                 style={{ minHeight: 'var(--touch-target-min)', minWidth: 'var(--touch-target-min)' }}
               >
@@ -595,7 +595,7 @@ export function TerritoriosMap({
                           onChange={() => toggleGeometryLayer(group.key)}
                           aria-label={
                             'Mostrar u ocultar la capa ' + group.label + ': ' + group.description +
-                            ' (' + count + ' geometría(s) en la capa)',
+                            ' (' + count + ' geometría(s) en la capa)'
                           }
                           style={{ width: '1.5rem', height: '1.5rem' }}
                         />
