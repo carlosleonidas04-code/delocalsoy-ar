@@ -87,7 +87,7 @@
 }
 .delocal-focus-ring,
 .delocal-focusable:focus-visible {
-  outline: 2px solid #ffc72c;
+  outline: 3px solid var(--color-foco, #ffc72c);
   box-shadow: var(--platform-focus-ring);
   border-radius: 0.375rem;
 }
