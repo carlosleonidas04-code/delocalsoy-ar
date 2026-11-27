@@ -21,6 +21,7 @@ import { ItinerarioNodoPanel } from './components/ItinerarioNodoPanel';
 import { nodoKeyDesdeRuta } from './lib/nodosRuta';
 import { destinoDesdeHash, DESTINOS_IA, type DestinoIA } from './lib/navegacionIA';
 import { NavDestinos } from './components/NavDestinos';
+import { InicioNodoPanel } from './components/InicioNodoPanel';
 import { TerritorialPlatformHub } from './components/TerritorialPlatformHub';
 import { TopBarHeader } from './components/TopBarHeader';
 import { TraceabilityAndEvidenciasPanel } from './components/TraceabilityAndEvidenciasPanel';
@@ -745,13 +746,22 @@ export function App() {
         style={{ display: showFullPageCockpit ? 'block' : 'none' }}
       >
         {/* Hero / Síntesis Ejecutiva de Horizontes 1, 2, 3 y 4 en la Provincia de San Juan — extraída 1:1 a HeroBannerSection (FE-DEUDA-02 #293, corte 5) — REF-R3: destino Inicio */}
+        {/* REF-R6 (#639, épica REF #633): Inicio como puerta del nodo — nodo
+            actual, 3 acciones equivalentes y datos del observatorio con
+            DatoConFuente (REF-R5). Montaje M0: 1 import + 1 mount. */}
         {destinoIA === 'inicio' && (
-        <HeroBannerSection
-          territoriosCount={territoriosItems.length}
-          spatialGeometriesCount={spatialGeometries.length}
-          lineageChainCount={lineageChain.length}
-          evidenciasOkCount={evidenciasOkCount}
-        />
+        <>
+          <HeroBannerSection
+            territoriosCount={territoriosItems.length}
+            spatialGeometriesCount={spatialGeometries.length}
+            lineageChainCount={lineageChain.length}
+            evidenciasOkCount={evidenciasOkCount}
+          />
+          <InicioNodoPanel
+            nodoKey={selectedNodeKey}
+            nodo={territoriosItems.find((t) => t.key === selectedNodeKey) ?? null}
+          />
+        </>
         )}
 
         {/* 0b. Entrada territorial mapa-primero (INTER-TERR IT-R1 #610, épica #607): el mapa es la
