@@ -128,7 +128,7 @@ const ETIQUETAS_CAMPO_FICHA: Record<string, string> = {
   obstaculos: 'obstáculos',
   arbolado_presente: 'arbolado presente',
   sombra_horario_central: 'sombra al mediodía',
-  lectura_3_30_300: 'lectura 3-30-300 (texto con método, R5)',
+  lectura_3_30_300: 'lectura 3-30-300 (texto con método)',
   riego: 'riego',
   perdidas_visibles: 'pérdidas de agua visibles',
   especies_apto_clima: 'especies aptas al clima',
@@ -152,7 +152,7 @@ const ETIQUETAS_CAMPO_FICHA: Record<string, string> = {
 function valorFichaLegible(valor: unknown): string {
   if (Array.isArray(valor)) return valor.length > 0 ? valor.map(String).join(', ') : '[vacío declarado]';
   if (typeof valor === 'boolean') return valor ? 'sí' : 'no';
-  if (valor === null || valor === undefined) return 'sin dato (null honesto, R15)';
+  if (valor === null || valor === undefined) return 'sin dato (no es un cero)';
   const s = String(valor).trim();
   return s === '' ? '[vacío declarado]' : s;
 }
@@ -321,12 +321,12 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
         setLng(pos.coords.longitude.toFixed(6));
         setGeoCargando(false);
         setGeoAviso(
-          'punto tomado del navegador (precisión ≈ ' + Math.round(pos.coords.accuracy) + ' m): ajustalo al LUGAR público del hecho — el punto que enviás es del hecho observable, jamás tu domicilio (ADR-036); nada se envió todavía.'
+          'punto tomado del navegador (precisión ≈ ' + Math.round(pos.coords.accuracy) + ' m): ajustalo al LUGAR público del hecho — el punto que enviás es del hecho observable, jamás tu domicilio; nada se envió todavía.'
         );
       },
       (err) => {
         setGeoCargando(false);
-        setGeoAviso('geolocalización no disponible (' + err.message + '): declará el punto a mano — lat/lng siguen EXIGIDOS (R5).');
+        setGeoAviso('geolocalización no disponible (' + err.message + '): declará el punto a mano — las coordenadas siguen siendo obligatorias.');
       },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
     );
@@ -759,7 +759,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
         <p>
           {caps.esVisitante ? 'Visitante' : 'Con sesión'} · techo {caps.techoReqsMin} req/min ·{' '}
           {caps.esDemo
-            ? 'modo SINTÉTICO: demo declarada — las escrituras no se acreditan (R15)'
+            ? 'modo demo: los cambios no se acreditan'
             : modo === 'jwt'
               ? 'origen: API real'
               : 'origen: API sintética'}
@@ -891,15 +891,15 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
         </button>
         <br />
         <small>
-          ADR-036 (geolocalización sensible): el punto que enviás es el del hecho observable en un LUGAR público —
-          nunca tu domicilio. El botón solo rellena los campos: no envía nada. Sin permiso, se avisa y se declara a mano (R5).
+          geolocalización sensible: el punto que enviás es el del hecho observable en un LUGAR público —
+          nunca tu domicilio. El botón solo rellena los campos: no envía nada. Sin permiso, se avisa y se declara a mano.
         </small>
         {geoAviso !== null && <p><small>{geoAviso}</small></p>}
         <br />
         <button type="button" onClick={buscarDuplicadosPrevios} disabled={enviandoReporte} style={{ minHeight: 'var(--touch-target-min)', minWidth: 'var(--touch-target-min)' }}>
           chequear duplicados sugeridos antes de confirmar
         </button>{' '}
-        <small>ADR-039: corroborar ≠ duplicar — la decisión es tuya, nada se fusiona</small>
+        <small>corroborar no es duplicar: la decisión es tuya, nada se fusiona</small>
         {errorSugeridosPrevios !== null && <p role="alert" aria-live="polite">{errorSugeridosPrevios}</p>}
         {sugeridosPrevios !== null &&
           (sugeridosPrevios.length === 0 ? (
@@ -920,7 +920,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
           <p role="status" aria-live="polite">
             corroboración registrada ({exitoCorroborar.id}):{' '}
             {exitoCorroborar.peso
-              ? 'tu peso quedó sellado — un reportante distinto = un peso (R15)'
+              ? 'tu peso quedó sellado — cada reportante aporta un peso'
               : 'sin peso nuevo'}
             {exitoCorroborar.idempotente ? ' · ya habías corroborado este reporte (idempotente)' : ''}
           </p>
@@ -941,8 +941,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
       )}
       {exitoReporte !== null && !exitoReporte.duplicados_verificados && (
         <p>
-          el servidor NO pudo verificar la búsqueda de duplicados (duplicados_verificados: false — fail-open honesto,
-          R15): no se declara «sin duplicados»; la moderación los revisará.
+          el servidor NO pudo verificar la búsqueda de duplicados: no se declara «sin duplicados»; la moderación los revisará.
         </p>
       )}
       {exitoReporte !== null && exitoReporte.duplicados_verificados && exitoReporte.duplicados_sugeridos.length === 0 && (
@@ -950,7 +949,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
       )}
       {exitoReporte !== null && exitoReporte.duplicados_verificados && exitoReporte.duplicados_sugeridos.length > 0 && (
         <div>
-          <p role="status" aria-live="polite">duplicados sugeridos por la API (ADR-039 — SUGERENCIA de lectura: NADA se fusiona; corroborar ≠ duplicar):</p>
+          <p role="status" aria-live="polite">duplicados sugeridos (solo sugerencia de lectura: nada se fusiona; corroborar no es duplicar):</p>
           <ul>
             {exitoReporte.duplicados_sugeridos.map((s) => (
               <li key={s.id}>
@@ -985,7 +984,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
                         {t.estado_anterior} → {t.estado_nuevo}: «{t.justificacion}» (moderador {t.moderador_hash.slice(0, 8)}…)
                       </li>
                     ))}
-                    {r.transiciones.length === 0 && <li>sin transiciones aún — honesto (R15)</li>}
+                    {r.transiciones.length === 0 && <li>sin transiciones aún</li>}
                   </ul>
                 </li>
               ))}
@@ -1212,7 +1211,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
           ))}
         </fieldset>
         <fieldset>
-          <legend>custodia del espacio (anclada al espacio, sin nombres — R9)</legend>
+          <legend>custodia del espacio (anclada al espacio, sin nombres)</legend>
           <label>
             <input type="checkbox" checked={respuestas.custodia.custodia_presente} onChange={(e) => setRespuestas((r) => ({ ...r, custodia: { ...r.custodia, custodia_presente: e.target.checked } }))} disabled={!caps.puedeEscribir} />{" "}
             custodia presente
@@ -1251,7 +1250,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
         <BotonCargar id="oportunidades" texto="cargar oportunidades del nodo" alCargar={() => void cargarOportunidades()} />
       )}
       {paginaOp !== null && paginaOp.items.length === 0 && (
-        <p>sin oportunidades publicadas aún — «discarded» nunca se publica (R15)</p>
+        <p>sin oportunidades publicadas aún — lo descartado nunca se publica</p>
       )}
       {paginaOp !== null && paginaOp.items.length > 0 && (
         <ul>
@@ -1266,7 +1265,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
       {paginaOp !== null && (
         <p>
           <small>
-            {'página del Banco: ' + paginaOp.items.length + ' en esta página · ' + (paginaOp.total !== null ? paginaOp.total + ' publicadas en total (header X-DELocalSoy-Total-Count: ' + paginaOp.total + ')' : 'total: sin dato en la respuesta (honesto, R15)') + ' · offset: ' + paginaOp.offset}
+            {'página del Banco: ' + paginaOp.items.length + ' en esta página · ' + (paginaOp.total !== null ? paginaOp.total + ' publicadas en total' : 'total: sin dato en la respuesta') + ' · offset: ' + paginaOp.offset}
           </small>
         </p>
       )}
@@ -1322,7 +1321,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
         </label>
         <br />
         <label>
-          actor (nombre OPCIONAL — solo si confirma consentimiento, ADR-027)
+          actor (nombre OPCIONAL — solo si confirma consentimiento, nunca pre-marcado)
           <input value={opActorNombre} onChange={(e) => setOpActorNombre(e.target.value)} disabled={!caps.puedeEscribir} placeholder="vacío = sin actor nombrado" />
         </label>{' '}
         <label>
@@ -1342,7 +1341,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
       )}
       {exitoOp !== null && !exitoOp.idempotente && offsetOp !== 0 && (
         <p role="status" aria-live="polite">
-          envío sin recarga (0 consultas: PIZ-R9): la oportunidad creada figura en la primera
+          envío sin recarga (0 consultas): la oportunidad creada figura en la primera
           página del Banco (offset 0) — esta vista muestra la página {offsetOp}; «← anteriores 20»
           te acerca a ella. La lista NO se recargó al enviar (techo del rol).
         </p>
@@ -1354,17 +1353,17 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
       {vista === 'directorio' && (
         <>
       <h3>Directorio y producción (lectura)</h3>
-      <p>listado real de activos aprobados del nodo (GET /api/activos — lectura anónima); elegí uno para ver sus productos y operativa (solo lo aprobado+public; restricted = 404 sin eco, ADR-036).</p>
+      <p>listado real de activos aprobados del nodo (lectura anónima); elegí uno para ver sus productos y operativa (solo lo aprobado y publicado; lo restringido no se publica).</p>
       {activos === null && (
         <BotonCargar id="directorio" texto="cargar directorio del nodo" alCargar={() => void cargarDirectorio()} />
       )}
       {errorDirectorio !== null && <p role="alert" aria-live="polite">{errorDirectorio}</p>}
       {activos !== null && activos.length === 0 && (
-        <p>el nodo aún no publica activos aprobados ([] declarado: solo se publica lo verificado, R15)</p>
+        <p>el nodo aún no publica activos aprobados (solo se publica lo verificado)</p>
       )}
       {conteoTipos.length > 0 && (
         <>
-          <p><small>facetado por tipo — presentación sobre lo ya cargado (MK-3c): no vuelve a consultar la API</small></p>
+          <p><small>facetado por tipo — presentación sobre lo ya cargado: no vuelve a consultar la plataforma</small></p>
           <button type="button" aria-pressed={tipoFaceta === ''} onClick={() => setTipoFaceta('')} style={{ minHeight: 'var(--touch-target-min)', minWidth: 'var(--touch-target-min)' }}>todos ({activos?.length ?? 0})</button>{' '}
           {conteoTipos.map(([tipo, n]) => (
             <button key={tipo} type="button" aria-pressed={tipoFaceta === tipo} onClick={() => setTipoFaceta(tipo)} style={{ minHeight: 'var(--touch-target-min)', minWidth: 'var(--touch-target-min)' }}>{tipo} ({n})</button>
@@ -1377,7 +1376,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
             <li key={a.id}>
               <strong>{a.titulo}</strong> · {a.tipo}
               {a.subnodo_key !== null ? ' · ' + a.subnodo_key : ''}
-              {a.is_synthetic ? ' ✦ demo sintética declarada (R15)' : ''}
+              {a.is_synthetic ? ' ✦ demo declarada' : ''}
               <button type="button" onClick={() => void consultarActivo(a.id)} style={{ minHeight: 'var(--touch-target-min)', minWidth: 'var(--touch-target-min)' }}>productos y operativa</button>
             </li>
           ))}
@@ -1390,7 +1389,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
           {productos.map((p) => (
             <li key={p.id}>
               <strong>{p.nombre}</strong> · {p.estado}
-              {p.temporada_meses.length > 0 ? ' · temporada: ' + p.temporada_meses.join('/') : ' · temporada: sin dato (R15)'}
+              {p.temporada_meses.length > 0 ? ' · temporada: ' + p.temporada_meses.join('/') : ' · temporada: sin dato'}
             </li>
           ))}
         </ul>
@@ -1401,7 +1400,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
       )}
       {vista === 'kpis' && (
         <>
-      <h3>Observatorio del nodo (LIC-01/LIC-02 — conteo con cobertura y fecha, jamás puntaje global: R5/ADR-036)</h3>
+      <h3>Observatorio del nodo (conteo con cobertura y fecha, jamás puntaje global)</h3>
       {observatorio === null && (
         <BotonCargar id="observatorio" texto="cargar observatorio del nodo" alCargar={() => void cargarObservatorio()} />
       )}
@@ -1409,19 +1408,19 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
         <>
           {observatorio.kpis.total === 0 ? (
             <p>
-              el nodo aún no tiene snapshots — no es un cero: el cálculo aún no corrió, count 0 honesto (R15, null ≠ 0).
+              el nodo aún no tiene snapshots — no es un cero: el cálculo aún no corrió.
             </p>
           ) : (
             <p>
               {observatorio.kpis.total} KPIs con snapshot · fecha de corte:{' '}
-              {observatorio.kpis.fecha_corte ?? 'sin fecha aún (null honesto, R15)'}
+              {observatorio.kpis.fecha_corte ?? 'sin fecha aún'}
             </p>
           )}
           <ul>
             {observatorio.kpis.snapshots.map((k) => (
               <li key={k.kpi_key}>
                 <strong>{k.kpi_key}</strong> ={' '}
-                {k.valor === null ? 'null (sin métrica computada — null ≠ 0, R15)' : String(k.valor)}
+                {k.valor === null ? 'sin métrica computada (no es un cero)' : String(k.valor)}
                 {Object.keys(k.detalles).length > 0
                   ? ' · ' + Object.entries(k.detalles).map(([clave, valor]) => clave + ': ' + valor).join(', ')
                   : ''}
@@ -1429,7 +1428,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
             ))}
           </ul>
           {observatorio.kpis.nota !== '' && <p><small>{observatorio.kpis.nota}</small></p>}
-          <h4>Fichas metodológicas (DL-1: fórmula + fuente + cobertura — patrón IDERA v2.0)</h4>
+          <h4>Fichas metodológicas (fórmula + fuente + cobertura)</h4>
           <ul>
             {observatorio.fichas_metodologicas.map((f) => (
               <li key={f.clave}>
@@ -1439,7 +1438,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
           </ul>
           {observatorio.familias_sin_fuente_ingestada.length > 0 && (
             <>
-              <h4>Familias del temario sin fuente ingestado (null ≠ 0, R15)</h4>
+              <h4>Familias del temario aún sin fuente (no es un cero)</h4>
               <ul>
                 {observatorio.familias_sin_fuente_ingestada.map((f) => (
                   <li key={f.familia}>
@@ -1478,13 +1477,13 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
         </button>
       </form>
       {filtroN1 !== '' && (
-        <p><small>filtro de capital aplicado: {etiquetaN1(filtroN1)} — la API recupera solo fragmentos de activos con esa N1 primaria (aprobados, no restricted: ADR-036)</small></p>
+        <p><small>filtro aplicado: {etiquetaN1(filtroN1)} — la plataforma recupera solo fragmentos de activos con esa temática primaria (aprobados, sin lo restringido)</small></p>
       )}
       {errorAsk !== null && <p role="alert" aria-live="polite">{errorAsk}</p>}
       {respuestaAsk !== null && (
         <div>
           {respuestaAsk.recovered === 0 ? (
-            <p>sin fragmentos recuperados: interpretación y sugerencia son null honesto (R15) — probá con otros términos.</p>
+            <p>sin fragmentos recuperados: interpretación y sugerencia: sin dato aún — probá con otros términos.</p>
           ) : (
             <>
               <h4>
@@ -1516,8 +1515,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
             Cobertura de fuentes: {conFuenteAsk} de {respuestaAsk.recovered} fragmentos con fuente citada ·
             revisión humana: pendiente
             <small>
-              {' '}(rótulos crudos de la API, sin reescribir — R15: confidence {respuestaAsk.confidence},
-              derivado de la cobertura de fuentes · human_review {respuestaAsk.human_review})
+              {' '}(confianza del cálculo: {respuestaAsk.confidence}, derivado de la cobertura de fuentes · revisión humana: {respuestaAsk.human_review})
             </small>
           </p>
         </div>
@@ -1535,7 +1533,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
                 {historial === null ? (
                   <p role="status" aria-live="polite">cargando historial…</p>
                 ) : historial.transiciones.length === 0 ? (
-                  <p>sin transiciones aún — nació recibido y nadie lo movió: honesto (R15)</p>
+                  <p>sin transiciones aún — nació recibido y nadie lo movió</p>
                 ) : (
                   <ul>
                     {historial.transiciones.map((t, i) => (
@@ -1554,7 +1552,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
                 {(() => {
                   const f = (fichas ?? []).find((x) => x.id === detalle.id);
                   if (f === undefined) {
-                    return <p>la ficha {detalle.id} no está en la lista cargada — volvé y cargá de nuevo (R15).</p>;
+                    return <p>la ficha {detalle.id} no está en la lista cargada — volvé y cargá de nuevo.</p>;
                   }
                   return (
                     <div>
@@ -1565,7 +1563,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
                         {' '}· nodo {f.nodo_key} · relevada: {f.created_at} · autor pseudónimo: {f.created_by_hash.slice(0, 8)}…
                       </p>
                       <p><small>
-                        Las 7 dimensiones se muestran tal como quedaron relevadas (R15: valores crudos sin reescribir).
+                        Las 7 dimensiones se muestran tal como quedaron relevadas (valores tal como se relevan).
                         «no_sabe» = «No lo sé» declarado por quien relevó; «desconocido» = estado del espacio no observado;
                         un campo del contrato no relevado se anuncia como tal, nunca se maquilla.
                       </small></p>
@@ -1583,7 +1581,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
                                   <strong>{ETIQUETAS_CAMPO_FICHA[c2] ?? c2}</strong>: {valorFichaLegible(campos[c2])}
                                 </li>
                               ))}
-                              {presentes.length === 0 && <li>sin campos relevados en esta dimensión (honesto, R15)</li>}
+                              {presentes.length === 0 && <li>sin campos relevados en esta dimensión</li>}
                             </ul>
                             {ausentes.length > 0 && (
                               <small>campos del contrato no relevados: {ausentes.map((c2) => ETIQUETAS_CAMPO_FICHA[c2] ?? c2).join(", ")}</small>
@@ -1623,11 +1621,11 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
                           <p>
                             <strong>evidencia:</strong>{' '}
                             {evTipo === ''
-                              ? 'sin evidencia declarada en la respuesta (honesto, R15)'
+                              ? 'sin evidencia declarada en la respuesta'
                               : evEtiqueta + " (crudo: " + evTipo + ") — " + (evDesc !== "" ? evDesc : "[vacío declarado]")}
                           </p>
                           {evUrl !== null && <p><small>referencia declarada de la evidencia: {evUrl}</small></p>}
-                          {evEstado !== null && <p><small>validación de la evidencia (moderación): {evEstado} — el autor nunca auto-corrobora (R15)</small></p>}
+                          {evEstado !== null && <p><small>validación de la evidencia (moderación): {evEstado} — el autor nunca auto-corrobora</small></p>}
                         </div>
                       );
                     })()}
@@ -1649,10 +1647,10 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
         )}
       </div>
 
-      <h3>Sin cablear aún (honesto, R15)</h3>
+      <h3>Sin conectar aún</h3>
       <ul>
         <li>observaciones patrimoniales — PR #253 (VIG-009) en cola, sin merge: no se simula</li>
-        <li>comercios (lectura) — MK-1 #246–#250 en cola de merge: no se simula</li>
+        <li>comercios (lectura) — aún sin conectar: no se simula</li>
       </ul>
     </section>
   );
