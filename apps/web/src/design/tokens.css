@@ -267,3 +267,16 @@
     --duration-slow: 0.01ms;
   }
 }
+
+
+/* REF-R5 (#638, épica REF #633): cierre del insumo de REF-R2 — estados en claro.
+   Contrastes medidos (fórmula WCAG 2.2, mismo cálculo EV-135/136):
+   pendiente 5,55/5,93 · en revisión 5,62/6,00 · verificado 4,76/5,08 ·
+   publicado 7,25/7,74 · rechazado 6,16/6,57 (canvas claro / blanco). Dark intacto. */
+:root[data-theme='light'] {
+  --state-pendiente-fg: #8a5a00;
+  --state-en-revision-fg: #7a6000;
+  --state-verificado-fg: #1a7f37;
+  --state-publicado-fg: #1a5490;
+  --state-rechazado-fg: #b42318;
+}
