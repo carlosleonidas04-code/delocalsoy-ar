@@ -231,6 +231,9 @@ model usuarios {
   created_at    DateTime @default(now()) @map("created_at")
   updated_at    DateTime @updatedAt @map("updated_at")
 
+  // OBJE-CAMPUS RFC-002 (#573, épica #531): portafolios de la cuenta.
+  portafolios portafolios[]
+
   @@map("usuarios")
 }
 
@@ -1152,4 +1155,55 @@ model learning_path_steps {
   @@index([path_key])
   @@index([course_key])
   @@map("learning_path_steps")
+}
+
+// ─── OBJE-CAMPUS RFC-002 (#573, épica #531): dominio de portafolios ───
+
+/// Portafolio territorial de una cuenta (RFC-002 — slice de MODELO, sin
+/// rutas: las rutas/sellos/certificación son RFC-007 #577 y RFC-022).
+/// Pertenece a una CUENTA (FK usuarios) — jamás nombre civil ni contacto en
+/// columnas (Ley 25.326/ADR-027); la exposición futura será pseudónima y con
+/// k-anonimato ≥5 compuertado en la lectura (ADR-069). Nace VACÍA (R15):
+/// declarar la estructura NO es simular datos. Sin geometría propia.
+model portafolios {
+  id          String   @id @default(cuid())
+  usuario_id  String   @map("usuario_id")
+  slug        String   @map("slug")
+  titulo      String   @map("titulo") // anti-PII: compuerta en la ruta futura
+  descripcion String?  @map("descripcion")
+  estado      String   @default("declarado") @map("estado") // EstadoPortafolioSchema: declarado | en_construccion | publicado | archivado
+  visibilidad String   @default("privado") @map("visibilidad") // VisibilidadPortafolioSchema: privado | nodo | publico — cerrado por defecto
+  hash        String   @unique @map("hash") // idempotencia del alta
+  creado_en   DateTime @default(now()) @map("creado_en")
+  updated_at  DateTime @updatedAt @map("updated_at")
+
+  usuario    usuarios                 @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+  evidencias portafolio_evidencias[]
+
+  @@unique([usuario_id, slug])
+  @@index([estado])
+  @@map("portafolios")
+}
+
+/// Evidencia del portafolio: REFERENCIA superficies ya acreditadas del repo
+/// (activo | reporte | ficha_valoracion) o fuentes externas con procedencia
+/// (ADR-035) — jamás las copia (criterio estructural #149, patrón
+/// oportunidades). Sin duplicar dominios ni geometría. Nace VACÍA (R15).
+model portafolio_evidencias {
+  id              String   @id @default(cuid())
+  portafolio_id   String   @map("portafolio_id")
+  tipo            String   @map("tipo") // TipoEvidenciaPortafolioSchema: practica_territorial | activo | reporte_resuelto | ficha_valoracion | externo
+  ref_tipo        String   @map("ref_tipo") // RefTipoEvidenciaPortafolioSchema: activo | reporte | ficha_valoracion | externo
+  ref_key         String?  @map("ref_key") // clave/id de la superficie referida (cuando existe)
+  titulo          String   @map("titulo") // anti-PII: compuerta en la ruta futura
+  nota            String?  @map("nota")
+  procedencia     Json?    @map("procedencia") // ProcedenciaEvidenciaSchema (ADR-035) — de hecho obligatoria para ref externo
+  created_by_hash String   @map("created_by_hash") // pseudónimo sha256(usuario_id) truncado — sin PII
+  hash            String   @unique @map("hash") // idempotencia del alta
+  creado_en       DateTime @default(now()) @map("creado_en")
+
+  portafolio portafolios @relation(fields: [portafolio_id], references: [id], onDelete: Cascade)
+
+  @@index([portafolio_id])
+  @@map("portafolio_evidencias")
 }

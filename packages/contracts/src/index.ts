@@ -57,6 +57,9 @@ export const UsuarioRegistroSchema = z.object({
 // re-export del modulo comercios (conflict-neutral v2: zona prefijo común).
 export * from './comercios.js';
 
+// OBJE-CAMPUS RFC-002 (#573, épica #531): dominio de portafolios (slice de modelo).
+export * from './portafolios.js';
+
 export const UsuarioLoginSchema = z.object({
   email: z.string().trim().toLowerCase().email("Email inválido"),
   password: z.string().min(1, "La contraseña es requerida"),
