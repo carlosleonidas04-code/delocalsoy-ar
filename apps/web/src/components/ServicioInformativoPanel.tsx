@@ -94,7 +94,7 @@ export function ServicioInformativoPanel({ dataSource }: { dataSource: DataSourc
     >
       <div className="section-header">
         <div>
-          <span className="kicker-text">NODO-CAU · NC-R5 (#142)</span>
+          <span className="kicker-text">Nodo Caucete · fuentes espaciales</span>
           <h3 id="servicio-informativo-caucete-titulo">
             Servicio informativo ciudadano — nodo Caucete
           </h3>
@@ -102,8 +102,8 @@ export function ServicioInformativoPanel({ dataSource }: { dataSource: DataSourc
       </div>
       <p className="territory-meta">
         Qué hay en el territorio y en qué estado está cada dato: capas del vocabulario v6,
-        catálogo de fuentes espaciales (ADR-035) y procedencia publicada por conjunto
-        (NC-EV-09). Lenguaje claro: Verificado ≠ Validado por la comunidad ≠ Pendiente.
+        catálogo de fuentes espaciales y procedencia publicada por conjunto
+       . Lenguaje claro: Verificado ≠ Validado por la comunidad ≠ Pendiente.
       </p>
       <p className="territory-meta" style={{ fontSize: '0.7rem' }}>
         Etiqueta dual R15: el material que aún no acreditó GitHub se rotula
@@ -162,7 +162,7 @@ export function ServicioInformativoPanel({ dataSource }: { dataSource: DataSourc
             Catálogo de fuentes espaciales ({String(state.fuentes.length)})
           </h4>
           <table
-            aria-label="Catálogo de fuentes espaciales del nodo Caucete (ADR-035)"
+            aria-label="Catálogo de fuentes espaciales del nodo Caucete"
             style={{ width: '100%', fontSize: '0.72rem', borderCollapse: 'collapse' }}
           >
             <caption className="territory-meta" style={{ textAlign: 'left', fontSize: '0.68rem' }}>
@@ -205,7 +205,7 @@ export function ServicioInformativoPanel({ dataSource }: { dataSource: DataSourc
                 {g.capas.map((c) => (
                   <li key={c.id}>
                     {c.nombre} ({c.key}) · geometría {c.geometria}
-                    {CAPAS_V6_CAUCETE.includes(c.key) ? ' · capa v6 (#141)' : ''}
+                    {CAPAS_V6_CAUCETE.includes(c.key) ? ' · capa versión 6' : ''}
                     {' · ' + (c.default_on ? 'visible por defecto' : 'apagada por defecto')}
                   </li>
                 ))}
@@ -218,7 +218,7 @@ export function ServicioInformativoPanel({ dataSource }: { dataSource: DataSourc
           </h4>
           {featuresReales.length === 0 ? (
             <p className="territory-meta" style={{ fontSize: '0.75rem' }}>
-              Sin features reales publicadas aún — 0 es un dato honesto (R15), no un error.
+              Sin features reales publicadas aún — 0 es un dato honesto, no un error.
             </p>
           ) : (
             <ul
@@ -234,7 +234,7 @@ export function ServicioInformativoPanel({ dataSource }: { dataSource: DataSourc
           )}
 
           <h4 style={{ fontSize: '0.85rem', margin: '0.75rem 0 0.3rem' }}>
-            Features sintéticas de la demo (R15) — {String(featuresSinteticas.length)}
+            Capas de demostración — {String(featuresSinteticas.length)}
           </h4>
           {featuresSinteticas.length === 0 ? (
             <p className="territory-meta" style={{ fontSize: '0.75rem' }}>

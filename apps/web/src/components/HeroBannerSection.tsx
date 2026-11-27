@@ -58,7 +58,7 @@ export function HeroBannerSection({
           <strong>
             13/13 main · {evidenciasOkCount}/18 staging
           </strong>
-          <span>EV-001..006 + EV-019..025 en main</span>
+          <span>evidencias de verdad técnica acreditadas en la plataforma</span>
         </div>
       </div>
     </section>

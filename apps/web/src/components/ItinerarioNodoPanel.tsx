@@ -16,7 +16,7 @@ const MENSAJES_SUPERFICIE: Record<EstadoSuperficie, string> = {
   ok: '',
   vacias: 'la superficie no devolvió datos aún (ausencia declarada, null ≠ 0 — R15)',
   noencontrado: 'el nodo no fue encontrado en esta superficie (HTTP 404)',
-  sinconexion: 'sin conexión a la plataforma en este momento (R5)',
+  sinconexion: 'sin conexión a la plataforma en este momento',
 };
 
 export interface ItinerarioNodoPanelProps {
@@ -128,7 +128,7 @@ export function ItinerarioNodoPanel(props: ItinerarioNodoPanelProps) {
 
       {!cargandoDirectorio && nodo === null && (
         <p role="alert" aria-live="polite">
-          No hay nodo «{nodoKey}» en el directorio vivo: la clave pedida en el hash se declara, jamás se inventa (R15). Volvé a la entrada del mapa.
+          No hay nodo «{nodoKey}» en el directorio vivo: la clave pedida en el vínculo se declara, jamás se inventa. Volvé a la entrada del mapa.
         </p>
       )}
 
@@ -167,7 +167,7 @@ export function ItinerarioNodoPanel(props: ItinerarioNodoPanelProps) {
             Fecha de corte: {observatorio.kpis.fecha_corte === null ? "sin dato" : observatorio.kpis.fecha_corte} · regla: {observatorio.regla}
           </p>
           <p>
-            Familias sin fuente ingestado: {observatorio.familias_sin_fuente_ingestada.length} — la ausencia se declara, jamás se estima (R15).
+            Familias sin fuente ingestado: {observatorio.familias_sin_fuente_ingestada.length} — la ausencia se declara, jamás se estima.
           </p>
         </div>
       ) : (

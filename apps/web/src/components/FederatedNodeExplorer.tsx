@@ -53,22 +53,22 @@ const EPISTEMIC_TO_R5_UI: Record<
 > = {
   verified: {
     r5State: 'publicado',
-    badgeLabel: 'R5-UI: publicado / verificado',
+    badgeLabel: 'estado: publicado / verificado',
     tokenClass: 'r5-state-badge r5-state-publicado',
   },
   community_validated: {
     r5State: 'verificado',
-    badgeLabel: 'R5-UI: verificado (comunidad)',
+    badgeLabel: 'estado: verificado por la comunidad',
     tokenClass: 'r5-state-badge r5-state-verificado',
   },
   pending: {
     r5State: 'pendiente',
-    badgeLabel: 'R5-UI: pendiente',
+    badgeLabel: 'estado: pendiente',
     tokenClass: 'r5-state-badge r5-state-pendiente',
   },
   synthetic_demo: {
     r5State: 'en_revision',
-    badgeLabel: 'R5-UI: en_revision (semilla)',
+    badgeLabel: 'estado: en revisión (semilla)',
     tokenClass: 'r5-state-badge r5-state-en_revision',
   },
 };
@@ -90,8 +90,8 @@ const COCO_BABA_INTEGRATION_MATRIX: EcosystemIntegrationItem[] = [
     demoOrigin:
       'FederatedView en docs/demo/delocalsoy-demo-territorial-federado.jsx (tabla de 7 dominios y barra Activos vs. Problemáticas).',
     ecosystemIntegration:
-      'Integrada en vivo con /api/modelo-federado, tokens cromáticos de San Juan (ADR-034) y salto interactivo por celda hacia el mapa del nodo.',
-    verificationRef: 'ADR-021 · ADR-034 · EV-006',
+      'Integrada en vivo con el modelo federado, los colores de San Juan y salto interactivo por celda hacia el mapa del nodo.',
+    verificationRef: 'acreditación en GitHub: ADR y evidencias',
   },
   {
     id: 'int-02',
@@ -100,8 +100,8 @@ const COCO_BABA_INTEGRATION_MATRIX: EcosystemIntegrationItem[] = [
     demoOrigin:
       'NodeExplorerView del Demo Base: filtros Comunidad / Instituciones / Comercios y pestañas Mapa · Reportar · Panel del Nodo.',
     ecosystemIntegration:
-      'Conectado a capas reales por departamento, estados R5-UI (Issue #109), coordenadas PostGIS SRID=4326 y galería de activos verificados.',
-    verificationRef: 'Issue #109 · EV-005 · EV-010',
+      'Conectado a capas reales por departamento, con estados editoriales, coordenadas territoriales y galería de activos verificados.',
+    verificationRef: 'acreditación en GitHub: issue y evidencias',
   },
   {
     id: 'int-03',
@@ -111,17 +111,17 @@ const COCO_BABA_INTEGRATION_MATRIX: EcosystemIntegrationItem[] = [
       'ArchitectureView del Demo Base: 5 pasos (Evento → Validación → Proyección → Tablero → Evidencia) e inspector JSON.',
     ecosystemIntegration:
       'Evolucionado a delocalsoy.node.v2 con paridad en vivo hacia events_raw, @delocalsoy/contracts, PostGIS GiST y Firestore.',
-    verificationRef: 'CORE-001 6/6 · CORE-002 6/6 · EV-036',
+    verificationRef: 'acreditación en GitHub: núcleo 12/12 y evidencias',
   },
   {
     id: 'int-04',
     category: 'ecosystem_new',
-    title: 'Contrato IDataSource Honesto (R5) & Máquina de Estados R5-UI',
+    title: 'Contrato de datos honesto y máquina de estados editorial',
     demoOrigin:
-      'En el demo original los datos vivían en useState local sin distinción de modo operativo ni estados editoriales R5-UI.',
+      'En el demo original los datos vivían en useState local sin distinción de modo operativo ni estados editoriales.',
     ecosystemIntegration:
-      'Sustituido por ApiDataSource / SyntheticDataSource sin fallback silencioso (Regla R5) y 5 estados R5-UI (pendiente, en_revision, verificado, publicado, rechazado).',
-    verificationRef: 'PR #41 · PR #60 · Issue #109',
+      'Sustituido por fuentes de datos reales o demostrativas, sin respaldo silencioso, y 5 estados editoriales (pendiente, en revisión, verificado, publicado, rechazado).',
+    verificationRef: 'acreditación en GitHub: PRs e issue',
   },
   {
     id: 'int-05',
@@ -130,18 +130,18 @@ const COCO_BABA_INTEGRATION_MATRIX: EcosystemIntegrationItem[] = [
     demoOrigin:
       'El demo original solo mostraba un bloque estático de texto para el Copiloto IA y carecía de alertas a custodios.',
     ecosystemIntegration:
-      'Integrado con despacho de alertas Push FCM / Firestore ante cambios críticos de soberanía o reportes y firma humana ética (POST /api/ethical-review).',
-    verificationRef: 'ADR-004 · ADR-020 · EV-014 · EV-017',
+      'Integrado con despacho de alertas ante cambios críticos de soberanía o reportes, y firma humana ética.',
+    verificationRef: 'acreditación en GitHub: ADRs y evidencias',
   },
   {
     id: 'int-06',
     category: 'governance_discarded',
-    title: 'Lo Descartado del Demo Base (Filtro de Gobernanza R-Scope y ADR-034)',
+    title: 'Lo descartado del demo base (filtro de gobernanza)',
     demoOrigin:
       'El archivo .jsx aislado incluía un 4.º nodo fuera de San Juan, estilos oscuros hardcodeados (#0e1013) y mutaciones sin autenticación.',
     ecosystemIntegration:
       'Descartado: alcance exclusivo en los 3 departamentos de San Juan (Capital [Centro y Desamparados], Caucete e Iglesia), tokens CSS Light/Dark y guardia requireWriteAuth (R8).',
-    verificationRef: 'ADR-021 (#33) · ADR-027 · ADR-034 (#114)',
+    verificationRef: 'acreditación en GitHub: ADRs',
   },
 ];
 
@@ -151,8 +151,8 @@ const FIVE_STEP_ARCHITECTURE_FLOW = [
     title: 'Evento Crudo (events_raw)',
     subtitle: 'Ingesta Append-Only + Anti-PII',
     detail:
-      'Toda observación comunitaria, reporte o cambio de soberanía ingresa como evento inmutable con hash SHA-256 único (EV-005) y filtro Anti-PII Ley 25.326 (EV-023).',
-    badge: 'POST /api/events · HTTP 409 en duplicado',
+      'Toda observación comunitaria, reporte o cambio de soberanía ingresa como evento inmutable con huella única e inalterable, y filtro anti-datos personales Ley 25.326.',
+    badge: 'eventos inmutables · duplicados rechazados',
   },
   {
     step: '02',
@@ -160,15 +160,15 @@ const FIVE_STEP_ARCHITECTURE_FLOW = [
     subtitle: '@delocalsoy/contracts + R8',
     detail:
       'Validación estricta con esquemas Zod compartidos, guardia de escritura requireWriteAuth / JWT RBAC (ciudadano, moderador, admin) y preservación del vocabulario local del nodo.',
-    badge: 'EV-019 · EV-022 · EV-032',
+    badge: 'acreditación en GitHub: evidencias',
   },
   {
     step: '03',
     title: 'Proyección Territorial',
-    subtitle: 'PostGIS SRID=4326 + R5-UI',
+    subtitle: 'georreferenciación precisa + estados editoriales',
     detail:
-      'Indexación espacial GiST (idx_territorios_geom_gist), consulta por ?bbox= y transición trazable en la máquina de estados R5-UI (pendiente → en_revision → verificado → publicado).',
-    badge: 'PR #46 (2482f63d) · Issue #109',
+      'índice espacial, consulta por caja de mapa y transición trazable en la máquina de estados editoriales (pendiente → en revisión → verificado → publicado).',
+    badge: 'acreditación en GitHub: PR e issue',
   },
   {
     step: '04',
@@ -176,15 +176,15 @@ const FIVE_STEP_ARCHITECTURE_FLOW = [
     subtitle: 'Design Tokens ADR-034 + Custodios',
     detail:
       'Visualización en el lienzo esquemático y Google Maps con paleta 60-30-10 (tokens.css) y disparo de notificaciones Push FCM / Firestore a los custodios del nodo.',
-    badge: 'ADR-034 (#114) · FCM / Firestore',
+    badge: 'acreditación en GitHub: ADR · notificaciones',
   },
   {
     step: '05',
     title: 'Evidencia Auditable',
     subtitle: 'HITUB + Firma Humana Ética',
     detail:
-      'Cada hito alimenta el scorecard ejecutable (EV-001..EV-036), exige requiresHumanReview: true en el Copiloto Ético y permite exportar dossieres verificados a Google Drive.',
-    badge: 'R1–R15 · EV-014 · Drive/Docs',
+      'Cada hito alimenta el tablero ejecutable, exige revisión humana en el Copiloto Ético y permite exportar dossieres verificados a Google Drive.',
+    badge: 'reglas del método · resguardo externo',
   },
 ];
 
@@ -598,7 +598,7 @@ export function FederatedNodeExplorer({
             Síntesis sinérgica entre la claridad pedagógica del Demo Base (
             <code>FederatedView · NodeExplorer · Compare · Architecture</code>) y la
             infraestructura real del monorepo (<code>IDataSource R5</code>,{' '}
-            <code>tokens.css ADR-034</code>, <code>R5-UI #109</code>,{' '}
+            los tokens cromáticos, los estados editoriales,{' '}
             <code>PostGIS SRID=4326</code> y <code>Alertas Push FCM/Firestore</code>).
           </p>
         </div>
@@ -1269,7 +1269,7 @@ export function FederatedNodeExplorer({
                     <div className="territory-meta">
                       {pickMode
                         ? 'Modo selección activo: hacé clic en el mapa para fijar coordenadas (x, y)'
-                        : 'Hacé clic en cualquier punto para inspeccionar su estado epistémico y equivalencia R5-UI'}
+                        : 'Hacé clic en cualquier punto para inspeccionar su estado y trazabilidad'}
                     </div>
                   </div>
                   <button
@@ -1431,7 +1431,7 @@ export function FederatedNodeExplorer({
                 ) : (
                   <div className="feature-inspector-box muted">
                     Seleccioná un punto en el mapa esquemático para inspeccionar su
-                    trazabilidad, fuente y estado <code>R5-UI</code>.
+                    trazabilidad, fuente y estado.
                   </div>
                 )}
               </div>
@@ -1443,7 +1443,7 @@ export function FederatedNodeExplorer({
                   <>
                     <div className="report-box">
                       <strong>
-                        Distribución por Estado Epistémico y R5-UI · {activeNode.nombre}
+                        Distribución por Estado Epistémico · {activeNode.nombre}
                       </strong>
                       <p className="pane-hint">
                         Proporción verificable de observaciones ({assetsRatioPct}% activos vs.{' '}
@@ -1505,7 +1505,7 @@ export function FederatedNodeExplorer({
                     <div className="ethical-contract-box">
                       <div className="pane-header">
                         <strong>
-                          Copiloto IA · Contrato Ético Tripartito (ADR-004)
+                          Copiloto IA · Contrato Ético Tripartito
                         </strong>
                         <span className="badge-ethical">
                           requiresHumanReview: true
