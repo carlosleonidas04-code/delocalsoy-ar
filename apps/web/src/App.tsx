@@ -24,6 +24,9 @@ import { NavDestinos } from './components/NavDestinos';
 import { TerritorialPlatformHub } from './components/TerritorialPlatformHub';
 import { TopBarHeader } from './components/TopBarHeader';
 import { TraceabilityAndEvidenciasPanel } from './components/TraceabilityAndEvidenciasPanel';
+import { DatoConFuente } from './components/base/DatoConFuente';
+import { GaleriaEstados } from './components/base/GaleriaEstados';
+import { PieDeFuente } from './components/base/PieDeFuente';
 import { WorkspacePanel } from './components/WorkspacePanel';
 import { MontajePlataforma } from './components/MontajePlataforma';
 import { useFederatedMutationHandlers } from './hooks/useFederatedMutationHandlers';
@@ -1208,6 +1211,41 @@ export function App() {
             onTestDuplicateHashIdempotency={handleTestDuplicateHashIdempotency}
             onVerifyEvidencia={handleVerifyEvidencia}
           />
+
+        {/* 6. bis — REF-R5 (#638): demo de componentes base bajo #lab (los códigos
+            se quedan bajo #lab según REF-R4): galería de estados honestos y
+            DatoConFuente con datos de ejemplo, nada medido. */}
+        {isLabRoute && (
+          <section className="card" id="galeria-estados-demo" aria-labelledby="galeria-estados-demo-titulo">
+            <h2 id="galeria-estados-demo-titulo">Componentes base: estados honestos (REF-R5)</h2>
+            <GaleriaEstados />
+            <div className="dato-con-fuente-demo">
+              <DatoConFuente
+                etiqueta="Ejemplo completo"
+                valor={12}
+                unidad="familias"
+                fuenteLabel="datos de ejemplo (demostración)"
+                fechaCorte="2026-11-27"
+                cobertura={{ con: 12, total: 12 }}
+              />
+              <DatoConFuente
+                etiqueta="Ejemplo parcial"
+                valor={5}
+                unidad="familias"
+                fuenteLabel="datos de ejemplo (demostración)"
+                fechaCorte="2026-11-27"
+                cobertura={{ con: 5, total: 12 }}
+              />
+              <DatoConFuente
+                etiqueta="Ejemplo sin dato"
+                valor={null}
+                fuenteLabel="demostración honesta: la ausencia se declara"
+                fechaCorte={null}
+                cobertura={null}
+              />
+            </div>
+            <PieDeFuente texto="Demo de REF-R5 (#638, épica #633): nada de esto se mide, es la superficie de prueba de los componentes base." />
+          </section>
         )}
 
         {/* 6b. Recorrido del Showcase (VIG-007 — Demo final): Caucete → Capital → Valle de Iglesia con estado real (R15) */}
