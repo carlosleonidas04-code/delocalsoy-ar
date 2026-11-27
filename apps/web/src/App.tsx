@@ -1211,6 +1211,7 @@ export function App() {
             onTestDuplicateHashIdempotency={handleTestDuplicateHashIdempotency}
             onVerifyEvidencia={handleVerifyEvidencia}
           />
+        )}
 
         {/* 6. bis — REF-R5 (#638): demo de componentes base bajo #lab (los códigos
             se quedan bajo #lab según REF-R4): galería de estados honestos y
