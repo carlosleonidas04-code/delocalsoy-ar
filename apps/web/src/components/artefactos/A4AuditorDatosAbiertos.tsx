@@ -88,7 +88,7 @@ function A4AuditorDatosAbiertos() {
           Sesión:{' '}
           {caps.esVisitante
             ? caps.esDemo
-              ? 'demo SINTÉTICO declarada — nada se acredita (R15)'
+              ? 'modo demo: los cambios no se acreditan'
               : 'sin sesión (datos abiertos: lectura completa igual)'
             : caps.esAuditor
               ? 'auditor (rol declarativo — la API aún no lo emite, hallazgo 1)'
@@ -100,7 +100,7 @@ function A4AuditorDatosAbiertos() {
           <strong>Qué ve:</strong> todo lo publicado con procedencia, historiales sellados con
           justificaciones y moderador_hash, KPIs con estados honestos, la cadena de acreditación
           EV-xxx. <strong>Qué jamás ve:</strong> PII en claro (los sellos viven sin PII),
-          sensible/sensible_nota (ADR-036), geometría exacta de sitios protegidos, registros
+          las notas sensibles (gestión interna), geometría exacta de sitios protegidos, registros
           descartados de terceros, identidades detrás de los pseudónimos. Y{' '}
           <strong>jamás escribe</strong>: el auditor no muta (sus hallazgos van a GitHub, R12).
         </p>
@@ -129,10 +129,10 @@ function A4AuditorDatosAbiertos() {
       <LibroContable cliente={cliente} />
       <CoberturaMatriz cliente={cliente} />
 
-      <section aria-label="Sin cablear aún">
-        <h3>Sin cablear aún (honesto, R15)</h3>
+      <section aria-label="Sin conectar aún">
+        <h3>Sin conectar aún</h3>
         <ul>
-          <li>historial de comercios (MK-2, F-3): PR #254 en cola de merge — sin cablear.</li>
+          <li>historial de comercios: pendiente de conectar.</li>
           <li>
             tamiz de 13 dimensiones (P-10) + historial de acreditación (P-09): ◇ por diseñar
             como checklist operativo.
@@ -225,7 +225,7 @@ function CadenaAcreditacion({ cliente }: PropsSeccion) {
     <section aria-label="Cadena de acreditación">
       <h3>Cadena de acreditación (EV-xxx)</h3>
       <p>
-        GitHub acredita (R9): issue ↔ PR ↔ EV ↔ SHA ↔ docs, con compuerta EVIDENCIA.md y label{' '}
+        GitHub acredita: issue, PR, evidencia y SHA enlazados, con compuerta de registro y etiqueta{' '}
         <code>r9-ratificado</code>.
       </p>
       <p>
@@ -428,7 +428,7 @@ function FuentesEIngestas({ cliente }: PropsSeccion) {
         <p>
           ingestas <strong>publicadas</strong>: {ingestas.length}. El pipeline en curso NO es
           listable (GET público solo expone publicado): la auditoría de lo en curso se hace por
-          id, cuando el admin lo publica (R15).
+          identificador, cuando el administrador lo publica.
         </p>
       )}
     </section>
@@ -551,7 +551,7 @@ function FichaPatrimonial({ cliente }: PropsSeccion) {
           </li>
           <li>
             sensible_status {ficha.sensible_status} — el contenido de custodia{' '}
-            <strong>jamás sale</strong> en lectura pública (ADR-036).
+            <strong>jamás sale</strong> en lectura pública.
           </li>
         </ul>
       )}
@@ -641,7 +641,7 @@ function LibroContable({ cliente }: PropsSeccion) {
     <section aria-label="Libro contable de sellos (AR4)">
       <h3>Libro contable — sellos de events_raw (AR4, #403)</h3>
       <p>
-        Lectura pública de la fuente append-only (ADR-032). Sin PII: la compuerta anti-PII vive
+        Lectura pública de la fuente de solo-agregado. Sin datos personales: la compuerta anti-PII vive
         en la ingesta (Ley 25.326).
       </p>
       <p>
@@ -719,7 +719,7 @@ function CoberturaMatriz({ cliente }: PropsSeccion) {
       <h3>Cobertura contra docs/MATRIZ_SELLOS.md v0.2 (AR4, #403)</h3>
       <p>
         <button type="button" onClick={() => void cargar()} disabled={cargando}>
-          {cargando ? 'cargando…' : 'calcular cobertura (GET /api/sellos/tipos)'}
+          {cargando ? 'cargando…' : 'calcular cobertura'}
         </button>
       </p>
       {error !== null && <p role="alert" aria-live="polite">{error}</p>}
