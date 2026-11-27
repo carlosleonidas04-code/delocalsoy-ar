@@ -62,7 +62,7 @@ export interface InicioNodoPanelProps {
 }
 
 /** Cobertura honesta desde los detalles del snapshot: solo si la fuente declara con/total. */
-function coberturaDeDetalles(detalles: Record<string, number>): { con: number; total: number } | null {
+export function coberturaDeDetalles(detalles: Record<string, number>): { con: number; total: number } | null {
   const con = detalles['con'];
   const total = detalles['total'];
   return typeof con === 'number' && typeof total === 'number' && Number.isFinite(con) && Number.isFinite(total)
