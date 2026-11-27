@@ -21,6 +21,7 @@ import { ItinerarioNodoPanel } from './components/ItinerarioNodoPanel';
 import { nodoKeyDesdeRuta } from './lib/nodosRuta';
 import { destinoDesdeHash, DESTINOS_IA, type DestinoIA } from './lib/navegacionIA';
 import { NavDestinos } from './components/NavDestinos';
+import { InicioNodoPanel } from './components/InicioNodoPanel';
 import { TerritorialPlatformHub } from './components/TerritorialPlatformHub';
 import { TopBarHeader } from './components/TopBarHeader';
 import { TraceabilityAndEvidenciasPanel } from './components/TraceabilityAndEvidenciasPanel';
@@ -751,6 +752,14 @@ export function App() {
           spatialGeometriesCount={spatialGeometries.length}
           lineageChainCount={lineageChain.length}
           evidenciasOkCount={evidenciasOkCount}
+        />
+
+        {/* REF-R6 (#639, épica REF #633): Inicio como puerta del nodo — nodo
+            actual, 3 acciones equivalentes y datos del observatorio con
+            DatoConFuente (REF-R5). Montaje M0: 1 import + 1 mount. */}
+        <InicioNodoPanel
+          nodoKey={selectedNodeKey}
+          nodo={territoriosItems.find((t) => t.key === selectedNodeKey) ?? null}
         />
         )}
 
