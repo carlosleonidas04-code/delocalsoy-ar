@@ -1649,7 +1649,7 @@ export function A1VecinoCiudadano({ nodoKey = 'capital' }: PropsA1) {
 
       <h3>Sin conectar aún</h3>
       <ul>
-        <li>observaciones patrimoniales — PR #253 (VIG-009) en cola, sin merge: no se simula</li>
+        <li>observaciones patrimoniales — en cola, sin acreditar todavía: no se simula</li>
         <li>comercios (lectura) — aún sin conectar: no se simula</li>
       </ul>
     </section>

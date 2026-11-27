@@ -154,16 +154,16 @@ function A3GestorAdmin() {
           se administran por identificador, como las ingestas
         </li>
         <li>
-          alcance por nodo (NODE_SCOPE_FORBIDDEN) — ◇ diseño lote-2 / #136 (trabado), a ratificar
+          alcance por nodo restringido — decisión de diseño pendiente de ratificación por la DH
         </li>
         <li>
-          roles granulares gestor/custodio_territorial — la API real solo reconoce
-          ciudadano|moderador|admin (ADR-031); la normalización de 'admin' vivió en artefactoA3
-          (propuesta de corrección de sesion.puedeModerar a decisión DH)
+          roles granulares (gestor y custodio territorial) — aún no existen en la plataforma real:
+          solo hay ciudadano, moderador y administrador; la normalización del rol administrador
+          (corrección propuesta, a decisión de la DH)
         </li>
         <li>
-          bandeja del pipeline de ingestas en curso — no existe superficie de lectura (GET
-          /api/ingestas solo publica); el panel administra por id devuelto por el POST, sin simular
+          bandeja del pipeline de ingestas en curso — no existe superficie de lectura (solo lectura pública de lo publicado
+          ); el panel administra por el identificador devuelto, sin simular
           pendientes
         </li>
       </ul>
@@ -305,7 +305,7 @@ function ColaPendientes({ cliente, caps }: PropsSeccion) {
 
   return (
     <section aria-label="Cola unificada de pendientes">
-      <h3>Cola unificada de pendientes (AR3)</h3>
+      <h3>Cola unificada de pendientes</h3>
       <p>
         <select value={nodo} onChange={(e) => setNodo(e.target.value)} aria-label="nodo de la cola">
           {NODOS.map((n) => (
@@ -531,8 +531,7 @@ function ColaPendientes({ cliente, caps }: PropsSeccion) {
 
       <p>
         <strong>No listables:</strong> productos propuestos (solo por activo — sección de
-        productos), comercios propuestos (por id arriba), ingestas en curso (GET público solo expone
-        publicado).
+        productos), comercios propuestos (por id arriba), ingestas en curso (solo lectura pública expone lo publicado).
       </p>
       {exito !== null && <p role="status" aria-live="polite">{exito}</p>}
       {errorAccion !== null && <p role="alert" aria-live="polite">{errorAccion}</p>}
@@ -1406,7 +1405,7 @@ function FuentesEIngestas({ cliente, caps }: PropsSeccion) {
       {ingestas !== null && (
         <p>
           ingestas <strong>publicadas</strong>: {ingestas.length}. El pipeline en curso NO es
-          listable (GET público solo expone publicado): se administra por id, sin simular
+          listable (solo lectura pública expone lo publicado): se administra por identificador, sin simular
           pendientes.
         </p>
       )}

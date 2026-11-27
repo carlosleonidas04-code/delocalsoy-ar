@@ -427,7 +427,7 @@ function FuentesEIngestas({ cliente }: PropsSeccion) {
       {ingestas !== null && (
         <p>
           ingestas <strong>publicadas</strong>: {ingestas.length}. El pipeline en curso NO es
-          listable (GET público solo expone publicado): la auditoría de lo en curso se hace por
+          listable (solo lectura pública expone lo publicado): la auditoría de lo en curso se hace por
           identificador, cuando el administrador lo publica.
         </p>
       )}
@@ -639,7 +639,7 @@ function LibroContable({ cliente }: PropsSeccion) {
 
   return (
     <section aria-label="Libro contable de sellos (AR4)">
-      <h3>Libro contable — sellos de events_raw (AR4, #403)</h3>
+      <h3>Libro contable — sellos de eventos crudos</h3>
       <p>
         Lectura pública de la fuente de solo-agregado. Sin datos personales: la compuerta anti-PII vive
         en la ingesta (Ley 25.326).
@@ -716,7 +716,7 @@ function CoberturaMatriz({ cliente }: PropsSeccion) {
 
   return (
     <section aria-label="Cobertura de la matriz de sellos (AR4)">
-      <h3>Cobertura contra docs/MATRIZ_SELLOS.md v0.2 (AR4, #403)</h3>
+      <h3>Cobertura contra la matriz de sellos</h3>
       <p>
         <button type="button" onClick={() => void cargar()} disabled={cargando}>
           {cargando ? 'cargando…' : 'calcular cobertura'}
