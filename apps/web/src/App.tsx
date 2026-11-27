@@ -10,6 +10,7 @@ import { HeroBannerSection } from './components/HeroBannerSection';
 import { NodoCapitalDashboard } from './components/NodoCapitalDashboard';
 import { VialidadMovilidadPanel } from './components/VialidadMovilidadPanel';
 import { AtlasTerritorialPanel } from './components/AtlasTerritorialPanel';
+import { MapaLecturaPanel } from './components/MapaLecturaPanel';
 import { StageCapital215Dashboard } from './components/stage-capital/StageCapital215Dashboard';
 import { NodeTransitionNavigator } from './components/stage-vig/NodeTransitionNavigator';
 import { NodoValleDeIglesiaDashboard } from './components/stage-vig/NodoValleDeIglesiaDashboard';
@@ -777,6 +778,14 @@ export function App() {
             spatialGeometries={spatialGeometries}
             focusedGeometry={focusedGeometry}
           />
+          {/* REF-R7 (#640, épica REF #633): lectura del mapa en texto (lista
+              equivalente accesible, WCAG 1.4.1 persistente) + «Fuente de esta
+              capa» por capa (corte + cobertura + fuente exacta). Presentación
+              pura; anti-ranking R5/ADR-036; R15 null ≠ 0. */}
+          <MapaLecturaPanel
+            territorios={territoriosItems}
+            spatialGeometries={spatialGeometries}
+          />
         </div>
         )}
 
@@ -1297,8 +1306,8 @@ export function App() {
             composición de SOLO-LECTURA de superficies ya acreditadas (ADR-084) con
             estados honestos por bloque — acople por contrato DataSource (ADR-040).
             Sin nueva escritura territorial, sin geometrías sensibles (patrón Iglesia)
-            y jamás ranking entre nodos (R5/ADR-036); WCAG 2.2 AA (ADR-061). */}
-        {destinoIA === 'mas' && (effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') && (
+            y jamás ranking entre nodos (R5/ADR-036); WCAG 2.2 AA (ADR-061). REF-R7 (#640, épica REF #633): el Atlas deja el destino «Más» y se funda en el destino Mapa — reemplaza al «Atlas» como destino suelto del PDF (decisión DH 2026-11-27). */}
+        {destinoIA === 'mapa' && (effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') && (
           <AtlasTerritorialPanel dataSource={defaultDataSource} />
         )}
 
