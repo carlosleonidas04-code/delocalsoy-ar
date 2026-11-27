@@ -40,7 +40,7 @@ describe('REF-R3 (#636, épica #633) — navegación IA: parseo estricto del has
       expect(destinoDesdeHash(d.hash)).toBe(d.id);
       expect(hashDeDestino(d.id)).toBe(d.hash);
     }
-    expect(hashDeDestino('inicio')).toBe('');
+    expect(hashDeDestino('inicio')).toBe('#inicio');
     expect(destinoDesdeHash(hashDeDestino('lab'))).toBe('lab');
   });
 

@@ -45,7 +45,7 @@ export function destinoDesdeHash(hash: string): DestinoIA | null {
   return null;
 }
 
-/** Hash canónico del destino (aria-current, enlaces). Inicio → ''. */
+/** Hash canónico del destino (aria-current, enlaces). */
 export function hashDeDestino(d: DestinoIA): string {
-  return d === 'inicio' ? '' : '#' + d;
+  return '#' + d;
 }
