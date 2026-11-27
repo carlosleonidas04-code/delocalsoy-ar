@@ -19,6 +19,8 @@ import { SyntheticModeWarningBanner } from './components/SyntheticModeWarningBan
 import { TerritoriosMap } from './components/TerritoriosMap';
 import { ItinerarioNodoPanel } from './components/ItinerarioNodoPanel';
 import { nodoKeyDesdeRuta } from './lib/nodosRuta';
+import { destinoDesdeHash, DESTINOS_IA, type DestinoIA } from './lib/navegacionIA';
+import { NavDestinos } from './components/NavDestinos';
 import { TerritorialPlatformHub } from './components/TerritorialPlatformHub';
 import { TopBarHeader } from './components/TopBarHeader';
 import { TraceabilityAndEvidenciasPanel } from './components/TraceabilityAndEvidenciasPanel';
@@ -635,6 +637,26 @@ export function App() {
     if (typeof document === 'undefined' || rutaNodoKey === null) return;
     document.getElementById('itinerario-nodo')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [rutaNodoKey]);
+
+  // REF-R3 (#636, épica REF #633): IA de 5 destinos + 3 capas — la vista ES el
+  // hash (patrón #nodo/:key, parseo estricto en lib/navegacionIA.ts). Sin hash
+  // el destino es Inicio; #lab mantiene su guard (Transparencia); un hash no
+  // reconocido NO cambia el destino (R15: jamás asume).
+  const [destinoIA, setDestinoIA] = useState<DestinoIA>(() =>
+    typeof window !== 'undefined' ? (destinoDesdeHash(window.location.hash) ?? 'inicio') : 'inicio',
+  );
+  useEffect(() => {
+    const onHashChangeDestino = () => {
+      const destino = destinoDesdeHash(window.location.hash);
+      if (destino !== null) setDestinoIA(destino);
+    };
+    window.addEventListener('hashchange', onHashChangeDestino);
+    return () => window.removeEventListener('hashchange', onHashChangeDestino);
+  }, []);
+  const tituloDestinoIA =
+    destinoIA === 'lab'
+      ? 'Transparencia'
+      : (DESTINOS_IA.find((d) => d.id === destinoIA)?.titulo ?? destinoIA);
   const effectiveDesignLens: DesignLensKey = isLabRoute
     ? activeDesignLens
     : 'all';
@@ -666,6 +688,15 @@ export function App() {
 
       {/* Top Bar Contract: 3 zonas (Brand | 5 Nav links | 1 Primary Action) — extraída 1:1 a TopBarHeader (FE-DEUDA-02 #293, corte 6) */}
       <TopBarHeader onSyncCore={sincronizarTodo} />
+
+      {/* REF-R3 (#636, épica REF #633): navegación de 5 destinos + entrada a
+          Transparencia (#lab, guard intacto). Links de hash reales con
+          aria-current; el cambio de destino se anuncia en la región de estado
+          (SC 4.1.3, patrón EV-122). */}
+      <NavDestinos destinoActivo={destinoIA} />
+      <p role="status" aria-live="polite" className="sr-only">
+        destino: {tituloDestinoIA}
+      </p>
 
       {isLabRoute && (
         <>
@@ -710,19 +741,22 @@ export function App() {
         className="container"
         style={{ display: showFullPageCockpit ? 'block' : 'none' }}
       >
-        {/* Hero / Síntesis Ejecutiva de Horizontes 1, 2, 3 y 4 en la Provincia de San Juan — extraída 1:1 a HeroBannerSection (FE-DEUDA-02 #293, corte 5) */}
+        {/* Hero / Síntesis Ejecutiva de Horizontes 1, 2, 3 y 4 en la Provincia de San Juan — extraída 1:1 a HeroBannerSection (FE-DEUDA-02 #293, corte 5) — REF-R3: destino Inicio */}
+        {destinoIA === 'inicio' && (
         <HeroBannerSection
           territoriosCount={territoriosItems.length}
           spatialGeometriesCount={spatialGeometries.length}
           lineageChainCount={lineageChain.length}
           evidenciasOkCount={evidenciasOkCount}
         />
+        )}
 
         {/* 0b. Entrada territorial mapa-primero (INTER-TERR IT-R1 #610, épica #607): el mapa es la
             puerta del producto (ADR-085 propuesta, mandato DH 2026-11-23): visible sin #lab y sin
             condición de lente; lectura real por DataSource (EV-010). Sin API key, el componente
             entrega el equivalente textual honesto (WCAG 2.2 AA 1.4.1), nada simulado (R15). Los
             focos de geolocalización hacen scroll hasta acá (#cartografia-entrada). */}
+        {destinoIA === 'mapa' && (
         <div id="cartografia-entrada">
           <TerritoriosMap
             territorios={territoriosItems}
@@ -731,12 +765,13 @@ export function App() {
             focusedGeometry={focusedGeometry}
           />
         </div>
+        )}
 
         {/* 0b-2. Itinerario por nodo (INTER-TERR IT-R5 #614, épica #607): hash «#nodo/:key» —
             mapa + observatorio + reportes + fichas de UN nodo (navegación, no comparación
             R5/ADR-036); lectura 100 % pública sin JWT; hash de nodo inexistente declara vacío
             honesto (R15); la escritura exige sesión y sigue en A1 (ADR-084). */}
-        {rutaNodoKey !== null && (
+        {rutaNodoKey !== null && destinoIA === 'mapa' && (
           <div id="itinerario-nodo">
             <ItinerarioNodoPanel
               nodoKey={rutaNodoKey}
@@ -949,7 +984,7 @@ export function App() {
         )}
 
         {/* PLATAFORMA TERRITORIAL REAL DELOCALSOY.AR: 13 MÓDULOS DE DOMINIO Y PRIMER FLUJO VERTICAL (ACTIVO VERIFICADO E2E) */}
-        {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_vertical_r5ui') && (
+        {destinoIA === 'inicio' && (effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_vertical_r5ui') && (
           <TerritorialPlatformHub
             onFocusTerritoryOnMap={(territoryId) => {
               handleFocusOnGoogleMap(territoryId);
@@ -982,7 +1017,7 @@ export function App() {
 
 
         {/* 0. Consola Administrativa Consolidada: Salud de Nodos, Soberanía Federal y Actividad de Auditoría */}
-        {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_sovereignty_fcm') &&
+        {destinoIA === 'mas' && (effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_sovereignty_fcm') &&
           federalSovereignty.length > 0 && (
             <AdminSovereigntyDashboard
               federalSovereignty={federalSovereignty}
@@ -1017,7 +1052,7 @@ export function App() {
           )}
 
         {/* Tendencia Trimestral Recharts (2026-Q1 a 2026-Q4): Registros Territoriales y Verificación de Evidencias */}
-        {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_vertical_r5ui') && (
+        {destinoIA === 'inicio' && (effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_vertical_r5ui') && (
           <div id="tendencias-trimestrales">
             <QuarterlyTrendsSection
               territorios={territoriosItems}
@@ -1065,7 +1100,7 @@ export function App() {
 
 
         {/* 2. Horizonte 1: Explorador Exhaustivo de Nodos Federados (Cockpit Integrado Demo Base + Ecosistema General) */}
-        {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') &&
+        {destinoIA === 'mapa' && (effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') &&
           territoriosItems.length > 0 && (
             <FederatedNodeExplorer
               territorios={territoriosItems}
@@ -1151,7 +1186,7 @@ export function App() {
 
 
         {/* 5. Comparación Transversal Federada sin Homogeneización */}
-        {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') &&
+        {destinoIA === 'mapa' && (effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') &&
           territoriosItems.length >= 2 && (
             <FederatedCompareView
               territorios={territoriosItems}
@@ -1166,7 +1201,7 @@ export function App() {
           )}
 
         {/* 6. Trazabilidad Append-Only (events_raw) y Evidencias Ejecutables (EV-001 a EV-014) */}
-        {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_epistemic_contracts') && (
+        {isLabRoute && (
           <TraceabilityAndEvidenciasPanel
             eventsRaw={eventsRaw}
             evidencias={evidencias}
@@ -1176,27 +1211,27 @@ export function App() {
         )}
 
         {/* 6b. Recorrido del Showcase (VIG-007 — Demo final): Caucete → Capital → Valle de Iglesia con estado real (R15) */}
-        {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') && (
+        {destinoIA === 'mas' && (effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') && (
           <ShowcaseRecorridoPanel />
         )}
 
         {/* 6c. Servicio informativo ciudadano del nodo Caucete (NC-R5 #142, NODO-CAU): capas v6,
             fuentes ADR-035 y ingestas publicadas (NC-EV-09) — acople por contrato DataSource (ADR-029) */}
-        {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') && (
+        {destinoIA === 'mas' && (effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') && (
           <ServicioInformativoPanel dataSource={defaultDataSource} />
         )}
 
         {/* 6d. Mercado de Proximidad (MARKET-CAP MK-1 #243, sub-épica #152): directorio de
             comercios federado con estados epistémicos honestos — acople por contrato
             DataSource (ADR-029), multinodo desde día 1 (decisión DH) */}
-        {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') && (
+        {destinoIA === 'mas' && (effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') && (
           <ComerciosPanel dataSource={defaultDataSource} />
         )}
 
         {/* 6e. Vista del nodo Capital (NCAP-FE #163, cascada NODO-CAPITAL ratificada DH
             2026-11-05): Banco de Potencialidades (NCAP-R6), corredores v0.1 (NCAP-R4) y
             accesibilidad peatonal (NCAP-R5) — acople por contrato DataSource (ADR-029) */}
-        {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') && (
+        {destinoIA === 'mas' && (effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') && (
           <NodoCapitalDashboard dataSource={defaultDataSource} />
         )}
 
@@ -1205,7 +1240,7 @@ export function App() {
             pedidos a DPV (VIG-012), formulario y seguimiento AMC (VIG-011) y planilla de
             papel — acople por contrato DataSource (ADR-029), degradación synthetic
             etiquetada (R15) */}
-        {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') && (
+        {destinoIA === 'mas' && (effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') && (
           <VialidadMovilidadPanel dataSource={defaultDataSource} />
         )}
 
@@ -1214,7 +1249,7 @@ export function App() {
             estados honestos por bloque — acople por contrato DataSource (ADR-040).
             Sin nueva escritura territorial, sin geometrías sensibles (patrón Iglesia)
             y jamás ranking entre nodos (R5/ADR-036); WCAG 2.2 AA (ADR-061). */}
-        {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') && (
+        {destinoIA === 'mas' && (effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') && (
           <AtlasTerritorialPanel dataSource={defaultDataSource} />
         )}
 
@@ -1227,7 +1262,7 @@ export function App() {
             «validado» del fixture NO son acreditación GitHub — la lectura REAL vive en
             ComerciosPanel (6d) y NodoCapitalDashboard (6e) por contrato DataSource
             (ADR-029). */}
-        {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') && (
+        {isLabRoute && (
           <section className="card" data-state="ok" id="stage-capital-215">
             <h2>Stage Capital #215 — comercios × espacios públicos [STAGE · ILUSTRATIVO, R15]</h2>
             <StageCapital215Dashboard />
@@ -1241,7 +1276,7 @@ export function App() {
             MONTAR-2 cada distrito del stage expone su clave sj_iglesia_* del seed VIG-001.
             El monitor de cuencas sigue siendo fixture ilustrativo sin procedencia ADR-035
             y la «transición federada» es demo local de UX, no un cambio real de sesión. */}
-        {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') && (
+        {isLabRoute && (
           <section className="card" data-state="ok" id="stage-valle-de-iglesia">
             <h2>Stage Valle de Iglesia [STAGE · ILUSTRATIVO, R15]</h2>
             <NodeTransitionNavigator
@@ -1253,7 +1288,7 @@ export function App() {
         )}
 
         {/* 7. Estado de Integración API y Registro Maestro de Nodos Territoriales — extraída 1:1 a MasterRegistrySection (FE-DEUDA-02 #293, corte 21) */}
-        {(effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') && (
+        {destinoIA === 'mas' && (effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') && (
           <MasterRegistrySection
             health={health}
             territorios={territorios}
@@ -1278,7 +1313,7 @@ export function App() {
         {/* 8. Panel de exportación del workspace (WorkspacePanel): el mapa subió a la entrada del
             producto como #cartografia-entrada (INTER-TERR IT-R1 #610, épica #607) y el foco de
             geolocalización lo sigue ahí. */}
-        {(effectiveDesignLens === 'all' ||
+        {destinoIA === 'mapa' && (effectiveDesignLens === 'all' ||
           effectiveDesignLens === 'lens_atlas_coco_baba' ||
           effectiveDesignLens === 'lens_sovereignty_fcm') && (
           <div id="cartografia-workspace">
@@ -1297,8 +1332,12 @@ export function App() {
           </div>
         )}
 
-        {/* 9. Artefactos A1–A4 (épica #268): sesión + paneles por rol — montaje único vía ArtefactosRoot (ART-R5 #274, regla M0) */}
-        <ArtefactosRoot />
+        {/* 9. Artefactos A1–A4 (épica #268): sesión + paneles por rol — montaje único vía ArtefactosRoot (ART-R5 #274, regla M0).
+            REF-R3 (#636): puente declarado (R15) — el A1 completo queda accesible desde Reportar, Preguntar y Más;
+            R8/R9 separarán las vistas reportes/asistente como destinos propios. */}
+        {(destinoIA === 'reportar' || destinoIA === 'preguntar' || destinoIA === 'mas') && (
+          <ArtefactosRoot />
+        )}
         {/* 10. Vista consolidadora del montaje (MONTAR-2 #445): el apilado completo del
             artefacto de la plataforma — superficie real, nodos federados con su montaje
             ratificado, artefactos A1–A4, stages armonizados y acreditación de compilación,

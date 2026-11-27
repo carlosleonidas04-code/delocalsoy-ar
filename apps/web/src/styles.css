@@ -2343,3 +2343,71 @@ code {
   color: var(--text-primary, var(--color-text-primary));
   font-style: italic;
 }
+
+/* ==========================================================================
+   REF-R3 (#636, épica REF #633): navegación de 5 destinos + entrada a
+   Transparencia. Móvil: barra inferior fija (targets 44 px, patrón EV-122,
+   safe-area iOS). Escritorio: barra horizontal bajo el top bar. SOLO tokens
+   (REF-R2): borde fuerte para el separador, --color-accion para el destino
+   activo; el anillo de foco global de 3 px cubre los links. aria-current
+   (NO role=tab, decisión REF-R1).
+   ========================================================================== */
+.nav-destinos {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 60;
+  background: var(--color-bg-topbar, rgba(13, 11, 8, 0.96));
+  border-top: 1px solid var(--color-border-strong);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.nav-destinos ul {
+  display: flex;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.nav-destinos li {
+  flex: 1 1 0;
+}
+
+.nav-destinos a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--touch-target-min);
+  min-width: var(--touch-target-min);
+  padding: 0.5rem 0.25rem;
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  text-align: center;
+}
+
+.nav-destinos a[aria-current='page'] {
+  color: var(--color-text-primary);
+  font-weight: 700;
+  box-shadow: inset 0 -3px 0 var(--color-accion, var(--color-accent-primary, #ffc72c));
+}
+
+@media (max-width: 899px) {
+  body {
+    padding-bottom: calc(var(--touch-target-min) + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (min-width: 900px) {
+  .nav-destinos {
+    position: static;
+    border-top: none;
+    border-bottom: 1px solid var(--color-border-strong);
+    background: transparent;
+  }
+
+  .nav-destinos a {
+    padding: 0.6rem 1rem;
+  }
+}
