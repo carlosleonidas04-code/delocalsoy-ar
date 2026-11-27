@@ -15,6 +15,10 @@
  *                                 cuenta — residencia = atributo del vecino (NO rol) y
  *                                 cuenta ligera visitante (solo lectura v0.2): la API es
  *                                 la compuerta
+ *     <InstitucionPanel />        INSTITUCION-1 (#628): panel de institución de la
+ *                                 plataforma como desarrollo territorial íntegro
+ *                                 (decisión DH 2026-11-27; contenido declarado en
+ *                                 lib/institucion.ts, 0 rutas nuevas, M0 intacto)
  *     <A1VecinoCiudadano />        ART-R1 (#270): escritura ciudadana y lectura pública
  *     <A2Comerciante />            ART-R4 (#273): comerciante y titular verificado — alta
  *                                 ciudadana, reclamo de titularidad SOLO-hash, habilitación
@@ -52,6 +56,7 @@ import A2Comerciante from './A2Comerciante';
 import A3GestorAdmin from './A3GestorAdmin';
 import A4AuditorDatosAbiertos from './A4AuditorDatosAbiertos';
 import MiCuenta from './MiCuenta';
+import InstitucionPanel from './InstitucionPanel';
 
 /**
  * PIZ-R7 (#550, épica #543): título unificado del panel de Sesión — el
@@ -192,6 +197,7 @@ export function ArtefactosRoot() {
           ADR-038) y A4 auditoría y datos abiertos (el auditor no muta). La titularidad comercial
           es estado de ficha, no rol: la API es la compuerta (403 real) — nada se simula (R15).
         </p>
+        <InstitucionPanel />
         <BarraSesion />
         <MiCuenta />
         <A1VecinoCiudadano />
