@@ -746,21 +746,22 @@ export function App() {
         style={{ display: showFullPageCockpit ? 'block' : 'none' }}
       >
         {/* Hero / Síntesis Ejecutiva de Horizontes 1, 2, 3 y 4 en la Provincia de San Juan — extraída 1:1 a HeroBannerSection (FE-DEUDA-02 #293, corte 5) — REF-R3: destino Inicio */}
-        {destinoIA === 'inicio' && (
-        <HeroBannerSection
-          territoriosCount={territoriosItems.length}
-          spatialGeometriesCount={spatialGeometries.length}
-          lineageChainCount={lineageChain.length}
-          evidenciasOkCount={evidenciasOkCount}
-        />
-
         {/* REF-R6 (#639, épica REF #633): Inicio como puerta del nodo — nodo
             actual, 3 acciones equivalentes y datos del observatorio con
             DatoConFuente (REF-R5). Montaje M0: 1 import + 1 mount. */}
-        <InicioNodoPanel
-          nodoKey={selectedNodeKey}
-          nodo={territoriosItems.find((t) => t.key === selectedNodeKey) ?? null}
-        />
+        {destinoIA === 'inicio' && (
+        <>
+          <HeroBannerSection
+            territoriosCount={territoriosItems.length}
+            spatialGeometriesCount={spatialGeometries.length}
+            lineageChainCount={lineageChain.length}
+            evidenciasOkCount={evidenciasOkCount}
+          />
+          <InicioNodoPanel
+            nodoKey={selectedNodeKey}
+            nodo={territoriosItems.find((t) => t.key === selectedNodeKey) ?? null}
+          />
+        </>
         )}
 
         {/* 0b. Entrada territorial mapa-primero (INTER-TERR IT-R1 #610, épica #607): el mapa es la
