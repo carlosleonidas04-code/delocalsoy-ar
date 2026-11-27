@@ -52,7 +52,7 @@ export function ConteosTerritorialesPanel({
       {conteo.nodos.length === 0 ? (
         <p>
           Sin geometrías territoriales ingeridas todavía: el conteo 0 por capa y nodo es el
-          estado REAL del corpus (R15) — es ausencia declarada de dato ingerido, no un
+          estado real del corpus — es ausencia declarada de dato ingerido, no un
           «cero completo» con cobertura.
         </p>
       ) : (

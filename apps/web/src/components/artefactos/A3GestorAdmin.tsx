@@ -112,7 +112,7 @@ function A3GestorAdmin() {
           Sesión:{' '}
           {caps.esVisitante
             ? caps.esDemo
-              ? 'demo SINTÉTICO declarada — la gestión NO se acredita (R15)'
+              ? 'modo demo: los cambios no se acreditan'
               : 'sin sesión (lectura pública)'
             : 'rol ' + caps.rol}{' '}
           · techo {caps.techoReqsMin} req/min
@@ -147,23 +147,23 @@ function A3GestorAdmin() {
       <FuentesEIngestas cliente={cliente} caps={caps} />
       <KpisNodo cliente={cliente} />
 
-      <h3>Sin cablear aún (honesto, R15)</h3>
+      <h3>Sin conectar aún</h3>
       <ul>
         <li>
-          comercios propuestos — NO listables (GET /api/comercios solo publica aprobados): la cola
-          AR3 los administra por id, patrón ingestas (R15)
+          comercios propuestos — no listables (el directorio público solo publica aprobados): la cola
+          se administran por identificador, como las ingestas
         </li>
         <li>
-          alcance por nodo (NODE_SCOPE_FORBIDDEN) — ◇ diseño lote-2 / #136 (trabado), a ratificar
+          alcance por nodo restringido — decisión de diseño pendiente de ratificación por la DH
         </li>
         <li>
-          roles granulares gestor/custodio_territorial — la API real solo reconoce
-          ciudadano|moderador|admin (ADR-031); la normalización de 'admin' vivió en artefactoA3
-          (propuesta de corrección de sesion.puedeModerar a decisión DH)
+          roles granulares (gestor y custodio territorial) — aún no existen en la plataforma real:
+          solo hay ciudadano, moderador y administrador; la normalización del rol administrador
+          (corrección propuesta, a decisión de la DH)
         </li>
         <li>
-          bandeja del pipeline de ingestas en curso — no existe superficie de lectura (GET
-          /api/ingestas solo publica); el panel administra por id devuelto por el POST, sin simular
+          bandeja del pipeline de ingestas en curso — no existe superficie de lectura (solo lectura pública de lo publicado
+          ); el panel administra por el identificador devuelto, sin simular
           pendientes
         </li>
       </ul>
@@ -305,7 +305,7 @@ function ColaPendientes({ cliente, caps }: PropsSeccion) {
 
   return (
     <section aria-label="Cola unificada de pendientes">
-      <h3>Cola unificada de pendientes (AR3)</h3>
+      <h3>Cola unificada de pendientes</h3>
       <p>
         <select value={nodo} onChange={(e) => setNodo(e.target.value)} aria-label="nodo de la cola">
           {NODOS.map((n) => (
@@ -324,7 +324,7 @@ function ColaPendientes({ cliente, caps }: PropsSeccion) {
         <ul>
           <li>
             <strong>reportes</strong> (sello <code>{SELLOS_ESPERADOS_A3.reportes}</code>): received →
-            evaluating · evaluating → in_progress · in_progress → resolved · cualquier abierto → descartado (ADR-038)
+            evaluating · evaluating → in_progress · in_progress → resolved · cualquier abierto → descartado
           </li>
           <li>
             <strong>activos</strong> (sello <code>{SELLOS_ESPERADOS_A3.activos}</code>): sin matriz — la API
@@ -349,7 +349,7 @@ function ColaPendientes({ cliente, caps }: PropsSeccion) {
           </li>
           <li>
             <strong>patrimonio</strong> (sello <code>{SELLOS_ESPERADOS_A3.patrimonio}</code>): upsert de
-            custodia con visibilidad (ADR-036)
+            custodia con visibilidad
           </li>
           <li>
             <strong>ingestas</strong> (sello <code>{SELLOS_ESPERADOS_A3.ingestas}</code>): forward-only
@@ -479,10 +479,10 @@ function ColaPendientes({ cliente, caps }: PropsSeccion) {
       )}
 
       <div>
-        <h4>comercios: moderación por id (MK-2)</h4>
+        <h4>comercios: moderación por identificador</h4>
         <p>
-          los comercios propuestos NO son listables (GET /api/comercios solo publica aprobados) — se
-          administra por id, patrón ingestas (R15).
+          los comercios propuestos no son listables (el directorio público solo publica aprobados) — se
+          administra por identificador, como las ingestas.
         </p>
         {caps.puedeModerar ? (
           <form
@@ -513,7 +513,7 @@ function ColaPendientes({ cliente, caps }: PropsSeccion) {
               <input
                 value={justificacionComercio}
                 onChange={(e) => setJustificacionComercio(e.target.value)}
-                placeholder="justificación pública (>=10 caracteres, ADR-038)"
+                placeholder="justificación pública (al menos 10 caracteres)"
                 aria-label="justificación para el comercio"
               />
             </p>
@@ -530,9 +530,8 @@ function ColaPendientes({ cliente, caps }: PropsSeccion) {
       </div>
 
       <p>
-        <strong>No listables (honesto, R15):</strong> productos propuestos (solo por activo — sección de
-        productos), comercios propuestos (por id arriba), ingestas en curso (GET público solo expone
-        publicado).
+        <strong>No listables:</strong> productos propuestos (solo por activo — sección de
+        productos), comercios propuestos (por id arriba), ingestas en curso (solo lectura pública expone lo publicado).
       </p>
       {exito !== null && <p role="status" aria-live="polite">{exito}</p>}
       {errorAccion !== null && <p role="alert" aria-live="polite">{errorAccion}</p>}
@@ -633,7 +632,7 @@ function FilaReporte({
             <input
               value={justificacion}
               onChange={(e) => setJustificacion(e.target.value)}
-              placeholder="justificación pública (>=10 caracteres, ADR-038)"
+              placeholder="justificación pública (al menos 10 caracteres)"
               aria-label={'justificación para ' + reporte.id}
             />{' '}
             <button type="button" onClick={() => void transicionar()} disabled={trabajando}>
@@ -1180,7 +1179,7 @@ function CustodiaPatrimonial({ cliente, caps }: PropsSeccion) {
           <strong>{ficha.titulo}</strong> — visibilidad {ficha.visibilidad}
           {ficha.proteccion_nivel !== '' ? ' · protección ' + ficha.proteccion_nivel : ''}
           {ficha.conservacion_estado !== null && ficha.conservacion_estado !== '' ? ' · conservación ' + ficha.conservacion_estado : ''}
-          . La ficha pública NUNCA incluye sensible/sensible_nota (ADR-036).
+          . La ficha pública nunca incluye las notas sensibles.
         </p>
       )}
       {caps.puedeModerar ? (
@@ -1242,7 +1241,7 @@ function CustodiaPatrimonial({ cliente, caps }: PropsSeccion) {
             <textarea
               value={sensibleNota}
               onChange={(e) => setSensibleNota(e.target.value)}
-              placeholder="nota sensible (canal de gestión: se escribe pero JAMÁS vuelve por GET — ADR-036)"
+              placeholder="nota sensible (solo gestión interna: se escribe, nunca vuelve por lectura)"
               aria-label="nota sensible"
               rows={2}
             />
@@ -1406,8 +1405,8 @@ function FuentesEIngestas({ cliente, caps }: PropsSeccion) {
       {ingestas !== null && (
         <p>
           ingestas <strong>publicadas</strong>: {ingestas.length}. El pipeline en curso NO es
-          listable (GET público solo expone publicado): se administra por id, sin simular
-          pendientes (R15).
+          listable (solo lectura pública expone lo publicado): se administra por identificador, sin simular
+          pendientes.
         </p>
       )}
       {caps.puedeAdministrarIngestas ? (
@@ -1558,7 +1557,7 @@ function KpisNodo({ cliente }: { cliente: ClienteA3 }) {
               <li key={k.kpi_key}>
                 <strong>{k.kpi_key}</strong>:{' '}
                 {k.valor === null
-                  ? 'null (sin datos — NO es 0, R15)'
+                  ? 'sin datos (no es un cero)'
                   : k.valor + ' ' + JSON.stringify(k.detalles)}{' '}
                 <small>(calculado {k.computed_at})</small>
               </li>

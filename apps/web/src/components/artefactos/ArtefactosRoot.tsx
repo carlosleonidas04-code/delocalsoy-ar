@@ -120,7 +120,7 @@ function BarraSesion() {
                 ? ', práctica acreditada: no'
                 : ', práctica acreditada: sin dato aún (se lee al refrescar la sesión)')
           : estado.tipo === 'demo_sintetico'
-            ? 'demo SINTÉTICO declarada: las escrituras no se acreditan (R15)'
+            ? 'modo demo: los cambios no se acreditan'
             : 'sin sesión (visitante: lectura pública, techo ' + RATE_LIMIT_VISITANTE + ' req/min)'}
       </p>
       {estado.tipo === 'sesion' ? (
@@ -173,7 +173,7 @@ function BarraSesion() {
       <p>
         <small>
           el alta pública solo crea cuentas ciudadano; moderador y admin son operación de
-          sistema (R15) — la API rechaza con 403 real a quien no tiene el rol.
+          sistema — la plataforma rechaza con su error real a quien no tiene el rol.
         </small>
       </p>
     </section>
@@ -195,7 +195,7 @@ export function ArtefactosRoot() {
           de proximidad: alta, reclamo de titularidad solo-hash, habilitación SIIC con estados
           epistémicos e historial F-3), A3 gestor y admin (moderación con justificación pública,
           ADR-038) y A4 auditoría y datos abiertos (el auditor no muta). La titularidad comercial
-          es estado de ficha, no rol: la API es la compuerta (403 real) — nada se simula (R15).
+          es estado de ficha, no rol: la plataforma es la compuerta — nada se simula.
         </p>
         <InstitucionPanel />
         <BarraSesion />

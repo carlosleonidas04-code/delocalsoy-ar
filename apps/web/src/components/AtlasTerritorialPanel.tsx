@@ -75,10 +75,10 @@ export function AtlasTerritorialPanel({ dataSource }: { dataSource: DataSource }
     <section className="card" data-state={state.status === 'ok' ? 'ok' : state.status} id="atlas-territorial-mvp1">
       <h2>Atlas Territorial — MVP-1 «Atlas Territorial» [RFC-021 · composición solo-lectura, ADR-084]</h2>
       <p>
-        Composición de superficies ya acreditadas bajo una única vista por nodo (ADR-084): sin nueva
+        Composición de superficies ya acreditadas bajo una única vista por nodo: sin nueva
         escritura territorial, sin geometrías de dominios sensibles (patrón Iglesia) y jamás ranking
         entre nodos (R5/ADR-036). Cada bloque declara su estado honesto — si la fuente no tiene datos,
-        el bloque se declara vacío, nada se fabrica (R15).
+        el bloque se declara vacío, nada se fabrica.
       </p>
 
       <div className="atlas-selector">

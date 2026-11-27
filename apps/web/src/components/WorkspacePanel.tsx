@@ -117,7 +117,7 @@ const TEMPLATE_OPTIONS: Array<{
     label: '01. Acta Territorial Pública Integral (H1 + H2 + H3 + HITUB)',
     defaultTitle: 'Acta Territorial Pública Integral — DELocalSoy.AR',
     description:
-      'Incluye nodos federados, activos y problemáticas (H1), morfologías PostGIS y custodia cruzada (H2), síntesis multi-escala, linaje SHA-256 y evidencias EV-001..EV-014 (H3).',
+      'Incluye nodos federados, activos y problemáticas, morfologías territoriales y custodia cruzada, síntesis multi-escala, linaje de datos y las evidencias de la auditoría.',
   },
   {
     key: 'reportes-h1',
@@ -142,8 +142,8 @@ const TEMPLATE_OPTIONS: Array<{
   },
   {
     key: 'auditoria-hitub',
-    label: '05. Auditoría de Evidencias Ejecutables HITUB (EV-001 a EV-014)',
-    defaultTitle: 'Auditoría de Verdad Técnica HITUB (EV-001..EV-014) — DELocalSoy.AR',
+    label: '05. Auditoría de Evidencias Ejecutables',
+    defaultTitle: 'Auditoría de Verdad Técnica — DELocalSoy.AR',
     description:
       'Estado de verificación técnica, resultados comprobables y marcas temporales de las 14 evidencias del monorepo.',
   },
@@ -1022,7 +1022,7 @@ export function WorkspacePanel({
       <div className="section-header">
         <div>
           <span className="kicker-text">
-            05. Interoperabilidad Documental y Resguardo Externo (EV-014)
+            05. Interoperabilidad Documental y Resguardo Externo
           </span>
           <h2>Exportación de Reportes Territoriales — Google Docs & Google Drive</h2>
           <p className="section-caption">

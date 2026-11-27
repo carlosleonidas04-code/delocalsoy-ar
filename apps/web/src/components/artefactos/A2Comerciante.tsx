@@ -125,13 +125,13 @@ const HABILITACION_BASE: HabilitacionComercio = { estado: 'sin_dato' };
  * sprint — el diccionario es aditivo.
  */
 const T_DIRECTORIO = {
-  legend: 'facetas del directorio — búsqueda real contra la API (GET /api/comercios)',
+  legend: 'facetas del directorio — búsqueda real contra el directorio público',
   notaCounts:
-    'counts por faceta derivados del directorio cargado (hasta 100, take MK-0 §2.5) — facetado de presentación; la búsqueda SIEMPRE va a la API',
+    'conteos por faceta derivados del directorio cargado — facetado de presentación; la búsqueda siempre va al directorio público',
   quitarFiltro: 'quitar filtro',
-  jsonLdTitulo: 'Descubribilidad ética — JSON-LD (MK-3c C3, EV-096)',
+  jsonLdTitulo: 'Descubribilidad ética — datos estructurados',
   jsonLdNota:
-    'schema.org/LocalBusiness — SOLO campos que esta ficha ya publica. JAMÁS telephone/address (la ficha no publica contacto directo — Ley 25.326; el canal es el relay MK-4), JAMÁS aggregateRating/review (sin estrellas v1: fabricar confianza estructurada es peor que no tenerla), geo solo si existe punto público (ADR-036), sin openingHours ni url (R15: sin dato ratificado no hay campo).',
+    'datos estructurados — solo campos que esta ficha ya publica: sin contacto directo (Ley 25.326), sin calificaciones fabricadas, ubicación solo si existe punto público (ADR-036), sin openingHours ni url (R15: sin dato ratificado no hay campo).',
 } as const;
 
 /**
@@ -533,7 +533,7 @@ export function A2Comerciante() {
       setErrorAlta(null);
       setExitoAlta(null);
       if (!caps.puedeEscribir) {
-        setErrorAlta('el alta exige sesión iniciada — en modo synthetic la escritura no se acredita (R15)');
+        setErrorAlta('el alta exige sesión iniciada — en modo demo la escritura no se acredita');
         return;
       }
       const nueva = {
@@ -597,7 +597,7 @@ export function A2Comerciante() {
       setErrorReclamo(null);
       setExitoReclamo(null);
       if (!caps.puedeEscribir) {
-        setErrorReclamo('el reclamo exige sesión iniciada — es un acto con consentimiento, no una demo (R15)');
+        setErrorReclamo('el reclamo exige sesión iniciada — es un acto con consentimiento, no una demo');
         return;
       }
       const errValidacion = validarReclamoTitularidad(reclamoMetodo, reclamoIdentificador, reclamoConsentimiento);
@@ -641,11 +641,11 @@ export function A2Comerciante() {
       setErrorDesistir(null);
       setExitoDesistir(null);
       if (!caps.puedeEscribir) {
-        setErrorDesistir('el desistimiento exige sesión iniciada — solo quien reclamó puede desistir (R15)');
+        setErrorDesistir('el desistimiento exige sesión iniciada — solo quien reclamó puede desistir');
         return;
       }
       if (!desistirConsentimiento) {
-        setErrorDesistir('la declaración de consentimiento es explícita y obligatoria — nunca pre-marcada (ADR-027)');
+        setErrorDesistir('la declaración de consentimiento es explícita y obligatoria — nunca pre-marcada');
         return;
       }
       setEnviandoDesistir(true);
@@ -777,7 +777,7 @@ export function A2Comerciante() {
         <p>
           {caps.esVisitante ? 'Visitante' : 'Con sesión'} · techo {caps.techoReqsMin} req/min ·{' '}
           {caps.esDemo
-            ? 'modo SINTÉTICO: demo declarada — las escrituras no se acreditan (R15)'
+            ? 'modo demo: los cambios no se acreditan'
             : modo === 'jwt'
               ? 'origen: API real'
               : 'origen: API sintética'}
@@ -819,7 +819,7 @@ export function A2Comerciante() {
               <h3>Inicio</h3>
               <p>
                 artefacto del comerciante y titular verificado — techo honesto {caps.techoReqsMin} req/min ·{' '}
-                {caps.esDemo ? 'modo SINTÉTICO: demo declarada (R15)' : 'API real'} · {VISTAS_A2.length} vistas · detalle de ficha con volver
+                {caps.esDemo ? 'modo demo: los cambios no se acreditan' : 'plataforma real'} · {VISTAS_A2.length} vistas · detalle de ficha con volver
               </p>
               <ul>
                 {VISTAS_A2.map((v) => (
@@ -853,7 +853,7 @@ export function A2Comerciante() {
           )}
           {vista === 'directorio' && (
           <>
-      <h3>Directorio público (solo aprobado y público, ADR-036)</h3>
+      <h3>Directorio público (solo aprobado y publicado)</h3>
       {error !== null && <p role="alert">{error}</p>}
       <p>
         <button type="button" onClick={() => void cargarDirectorio()} disabled={cargando === 'directorio'}>
@@ -980,9 +980,9 @@ export function A2Comerciante() {
       {errorBusqueda !== null && <p role="alert">{errorBusqueda}</p>}
       <p>
         <small>
-          búsqueda = facetas reales de GET /api/comercios (?nodo ?subnodo ?rubro ?habilitacion), el
+          búsqueda = facetas reales del directorio público (nodo, subnodo, rubro, habilitación), el
           rubro y el subnodo viajan por CÓDIGO, nunca por nombre; la búsqueda por título NO existe en
-          la superficie MK-1 v1 — sin campo no hay filtro (R15, no se filtra en el cliente: sería maqueta).
+          el contrato del directorio — sin campo no hay filtro (no se filtra en el cliente: sería maqueta).
         </small>
       </p>
       {/* MK-3c C1 (SC 4.1.3): región de estado del directorio — vive desde el
@@ -1024,7 +1024,7 @@ export function A2Comerciante() {
       {!caps.puedeEscribir && (
         <p role="note">
           {caps.esDemo
-            ? 'modo SINTÉTICO: la escritura no se ofrece — demo declarada, no acreditada (R15).'
+            ? 'modo demo: la escritura no se ofrece — declarada, no acreditada.'
             : 'el alta exige sesión iniciada (la escritura ciudadana es testimonio con autor, no anónima).'}
         </p>
       )}
@@ -1090,7 +1090,7 @@ export function A2Comerciante() {
               {exitoAlta.idempotente
                 ? ' — reintento idempotente: ya estaba propuesto (P2002 → 200, sin duplicado)'
                 : ''}
-              . Moderación lo aprueba con justificación pública (ADR-038): propuesto no es aprobado.
+              . La moderación lo aprueba con justificación pública: propuesto no es aprobado.
             </p>
           )}
         </form>
@@ -1104,9 +1104,9 @@ export function A2Comerciante() {
       {!caps.puedeEscribir && <p role="note">el reclamo exige sesión iniciada — es un acto con consentimiento.</p>}
       <p>
         <small>
-          transparencia del reclamo (AR2): el estado es público en la ficha (sin_reclamo → reclamada →
+          transparencia del reclamo: el estado es público en la ficha (sin_reclamo → reclamada →
           verificada), cada paso queda en el historial F-3 (sellos comercio.titularidad_*) y la
-          moderación justifica en público (ADR-038) — después de reclamar, volvé a «ver ficha» para
+          la moderación justifica en público — después de reclamar, volvé a «ver ficha» para
           seguir el estado.
         </small>
       </p>
@@ -1140,7 +1140,7 @@ export function A2Comerciante() {
               checked={reclamoConsentimiento}
               onChange={(e) => setReclamoConsentimiento(e.target.checked)}
             />{' '}
-            declaro ser el titular y consiento el tratamiento (ADR-027 — nunca pre-marcado)
+            declaro ser el titular y consiento el tratamiento (nunca pre-marcado)
           </label>{' '}
           <button type="submit" disabled={enviandoReclamo}>
             {enviandoReclamo ? 'reclamando…' : 'reclamar titularidad'}
@@ -1163,7 +1163,7 @@ export function A2Comerciante() {
               checked={desistirConsentimiento}
               onChange={(e) => setDesistirConsentimiento(e.target.checked)}
             />{' '}
-            declaro desistir el reclamo de titularidad (ADR-027)
+            declaro desistir el reclamo de titularidad
           </label>{' '}
           <button type="submit" disabled={enviandoDesistir}>
             {enviandoDesistir ? 'desistiendo…' : 'desistir'}
@@ -1176,7 +1176,7 @@ export function A2Comerciante() {
       <h3>Verificar titularidad (moderación)</h3>
       {!caps.puedeModerar && (
         <p role="note">
-          la verificación es moderación — sin el rol la API responde 403 real (R15). La verificación habilita
+          la verificación es moderación — sin el rol la plataforma rechaza con su error real. La verificación habilita
           la edición del titular.
         </p>
       )}
@@ -1222,10 +1222,10 @@ export function A2Comerciante() {
           </p>
           <p>
             <small>
-              frontera honesta de la edición v0.2 (AR2, verificada en vivo contra PATCH /api/comercios/:id):
+              frontera honesta de la edición (verificada en vivo):
               las categorías operativas (venta directa, delivery, pagos, accesibilidad, feria) SÍ se editan;
               la descripción NO se edita — vive en el alta y cambiarla exige extensión de contrato sellada;
-              el horario declarado NO existe en el contrato MK-1 — sin campo no hay vista (R15).
+              el horario declarado no existe aún en el contrato del directorio — sin campo no hay vista.
             </small>
           </p>
         </form>
@@ -1235,7 +1235,7 @@ export function A2Comerciante() {
           )}
           {vista === 'habilitacion' && (
           <>
-      <h3>Habilitación comercial (Ley 104-A / SIIC, ADR-035)</h3>
+      <h3>Habilitación comercial (Ley 104-A / SIIC)</h3>
       {!caps.puedeEscribir && !caps.puedeModerar && (
         <p role="note">el cambio exige sesión: titular verificado con evidencia primaria, o moderación.</p>
       )}
@@ -1249,7 +1249,7 @@ export function A2Comerciante() {
           </p>
           <p>
             <label>
-              justificación pública ({'>='}10, ADR-038){' '}
+              justificación pública (al menos 10 caracteres){' '}
               <input value={habJustificacion} onChange={(e) => setHabJustificacion(e.target.value)} required />
             </label>
           </p>
@@ -1262,7 +1262,7 @@ export function A2Comerciante() {
           {exitoHab !== null && <p role="status">{exitoHab}</p>}
           <p>
             <small>
-              «verificada» SOLO con evidencia primaria completa (tipo, número, fuente, url, fecha — ADR-035);
+              «verificada» SOLO con evidencia primaria completa (tipo, número, fuente, url y fecha);
               «silencio_positivo» = ley 02-07-2026 (30 días hábiles); «sin_dato» no es clandestino.
             </small>
           </p>
@@ -1291,7 +1291,7 @@ export function A2Comerciante() {
             {etiquetaTitularidad(detalle.ficha.titularidad_estado)}
             {detalle.ficha.lat !== null && detalle.ficha.lng !== null
               ? ' · lat ' + detalle.ficha.lat + ' lng ' + detalle.ficha.lng
-              : ' · sin punto (R15: punto propio solo con fuente)'}
+              : ' · sin punto (punto propio solo con fuente)'}
           </p>
           <p>
             productos aprobados: {detalle.count_productos}
@@ -1326,7 +1326,7 @@ export function A2Comerciante() {
         <div>
           <h4>Historial de confianza (F-3, sellos comercio.*)</h4>
           {historial.length === 0 ? (
-            <p>sin sellos aún — el historial es append-only: nace con el primer sello (R15)</p>
+            <p>sin sellos aún — el historial es append-only: nace con el primer sello</p>
           ) : (
             <ul>
               {historial.map((h, i) => (
@@ -1346,28 +1346,28 @@ export function A2Comerciante() {
             <p>
               {errorFicha === null
                 ? 'cargando ficha e historial… (2 req)'
-                : 'la ficha no quedó cargada — corregí el id o volvé al directorio (R15: nada se simula).'}
+                : 'la ficha no quedó cargada — corregí el identificador o volvé al directorio (nada se simula).'}
             </p>
           )}
         </>
         )}
       </div>
-      <h3>Sin cablear aún (honesto, R15)</h3>
+      <h3>Sin conectar aún</h3>
       <ul>
-        <li>marketplace — deliberadamente Fase 2 (roadmap §5.6): sin pagos, sin promesas (MK-5 con ADR propio)</li>
-        <li>bandeja del relay MK-4a — la API ya la expone (POST/GET /api/comercios/:id/relay, EV-098); la vista del titular en este panel es el slice siguiente con issue propio — sin PII de contacto jamás (Ley 25.326)</li>
+        <li>marketplace — deliberadamente para una fase posterior: sin pagos, sin promesas</li>
+        <li>bandeja de mensajes del comercio — la plataforma ya la expone; la vista del titular es el slice siguiente con issue propio — sin datos personales de contacto jamás (Ley 25.326)</li>
         <li>
           consentimiento granular por campo — vive en activos.consentimiento (VIG-002), el panel declara el
           alto nivel; el detalle por campo no se duplica
         </li>
         <li>cambio de estado del comercio (aprobado, rechazado) — es moderación del A3, no del titular</li>
         <li>
-          horario declarado — NO existe en el contrato MK-1 v0.2: sin campo no hay vista (R15); extensión
+          horario declarado — no existe aún en el contrato del directorio: sin campo no hay vista; extensión
           de contrato con sello propio si la DH la pide
         </li>
         <li>
           edición de la descripción — solo en el alta v0.2 (AR2 verificado en vivo): cambiar el texto del
-          activo exige extensión sellada de PATCH /api/comercios/:id
+          activo exige una extensión del contrato
         </li>
       </ul>
     </section>

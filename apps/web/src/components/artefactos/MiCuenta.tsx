@@ -93,14 +93,14 @@ export function MiCuenta() {
       e.preventDefault();
       setErrorResidencia(null);
       if (subnodoElegido === '') {
-        setErrorResidencia('elegí el subnodo del vocabulario — la residencia se ancla a un subnodo real (R15)');
+        setErrorResidencia('elegí el subnodo del vocabulario — la residencia se ancla a un subnodo real');
         return;
       }
       setCargando('residencia');
       try {
         const r = await cliente.declararResidencia(subnodoElegido);
         setAviso(
-          'residencia declarada en ' + r.residencia_subnodo_key + ' — auto-declarada (R15), sin domicilio jamás (Ley 25.326)'
+          'residencia declarada en ' + r.residencia_subnodo_key + ' — auto-declarada, sin domicilio jamás (Ley 25.326)'
         );
         await refrescar();
       } catch (err) {
@@ -196,7 +196,7 @@ export function MiCuenta() {
           {estado.tipo === 'sesion'
             ? 'perfil: ' + perfil + ' · rol ' + (enSesion?.rol ?? '—')
             : estado.tipo === 'demo_sintetico'
-              ? 'modo SINTÉTICO: demo declarada — nada de esto se acredita (R15)'
+              ? 'modo demo: los cambios no se acreditan'
               : 'sin sesión — podés crear una cuenta ligera visitante'}
           {modo === 'jwt' ? ' · origen: API real' : ' · origen: API sintética'}
         </p>
@@ -220,7 +220,7 @@ export function MiCuenta() {
           <p>
             alias público: {enSesion.display_name ?? 'sin alias'} · subnodo de tránsito declarado:{' '}
             {enSesion.transito_subnodo_key ?? 'sin dato'} — declarado, jamás geolocalizado (Ley 25.326).
-            La escritura ciudadana exige una cuenta ciudadana: la API responde 403 real (R15).
+            La escritura ciudadana exige una cuenta ciudadana: la plataforma rechaza con su error real.
           </p>
         </div>
       )}
@@ -273,7 +273,7 @@ export function MiCuenta() {
           </form>
           <p>
             <small>
-              auto-declaración honesta (R15): sin verificación, sin domicilio jamás — solo la clave
+              auto-declaración honesta: sin verificación, sin domicilio jamás — solo la clave
               del subnodo y su fecha (Ley 25.326 / ADR-027). Re-declarar renueva el atributo y
               sella de nuevo.
             </small>
@@ -321,7 +321,7 @@ export function MiCuenta() {
           <p>
             <small>
               el tránsito se declara contra el vocabulario del nodo — jamás geolocalizado; el
-              consentimiento de contacto es literal y nunca se pre-marca (ADR-027).
+              consentimiento de contacto es literal y nunca se pre-marca.
             </small>
           </p>
           <form onSubmit={registrarVisitante}>
