@@ -3,9 +3,11 @@
  * Dominio de [agent: google] bajo ADR-034 (Issue #114 · PR base #115 en main @ 1272e45)
  * Paleta de Referencia Consolidada:
  * - Fondo: negro cálido #0D0B08
- * - Tarjetas, líneas y texto: tarjeta #181410 (hover #1F1A14), borde #332C22, texto #F5F1E8 (suave #B8AFA0, tenue #7A7264)
+ * - Tarjetas, líneas y texto: tarjeta #181410 (hover #1F1A14), borde #332C22, texto #F5F1E8 (suave #B8AFA0, tenue #9A9283 desde REF-R2)
  * - Dorado: #FFC72C para el «.AR», el rol activo, los botones y las pestañas activas
  * - Secundarios: celeste #75AADB y ámbar #F2A71B (más verde #4ADE80 para resuelto)
+ * - REF-R2 (#635): accesibilidad WCAG 2.2 AA — tenue #9A9283 (≥4.5), border-strong
+ *   #7A715F (≥3), tokens --accion/--foco, paleta clara ratificada por la DH (2026-11-27).
  * - Tipografía: Fraunces para los títulos e Inter para el cuerpo (+ JetBrains Mono para métricas tabulares)
  */
 
@@ -35,7 +37,7 @@
   --delocal-verde: #4ade80;
   --delocal-texto: #f5f1e8;
   --delocal-texto-suave: #b8afa0;
-  --delocal-texto-tenue: #7a7264;
+  --delocal-texto-tenue: #9a9283;
 
   /* Alias semánticos de superficie para consumo transversal en styles.css */
   --surface-canvas: var(--color-bg-canvas);
@@ -49,7 +51,7 @@
   /* Tinta y jerarquía de lectura sobre #0D0B08 y #181410 */
   --color-text-primary: #f5f1e8;
   --color-text-secondary: #b8afa0;
-  --color-text-muted: #7a7264;
+  --color-text-muted: #9a9283;
   --color-text-on-dark: #f5f1e8;
 
   --text-primary: var(--color-text-primary);
@@ -59,7 +61,7 @@
   /* Divisorias estructurales (Borde #332C22) */
   --color-border-hairline: rgba(245, 241, 232, 0.08);
   --color-border-default: #332c22;
-  --color-border-strong: #4a4031;
+  --color-border-strong: #7a715f;
   --color-border-accent: rgba(255, 199, 44, 0.45);
 
   --border-subtle: var(--color-border-default);
@@ -74,7 +76,11 @@
   --color-accent-secondary: #75aadb;
   --color-accent-secondary-hover: #8fbeec;
   --color-accent-secondary-subtle: rgba(117, 170, 219, 0.15);
-  --color-focus-ring: rgba(255, 199, 44, 0.48);
+  --color-accion: #ffc72c;
+  --accion: var(--color-accion);
+  --color-foco: #ffc72c;
+  --foco: var(--color-foco);
+  --color-focus-ring: var(--color-foco);
 
   --brand-primary: var(--color-accent-primary);
   --brand-secondary: var(--color-accent-secondary);
@@ -164,7 +170,7 @@
   --font-display: 'Fraunces', Georgia, serif;
   --font-mono: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  --text-xs: 0.75rem;
+  --text-xs: 0.875rem;
   --text-sm: 0.875rem;
   --text-base: 0.96875rem;
   --text-lg: 1.125rem;
@@ -217,29 +223,41 @@
 :root[data-theme='light'] {
   color-scheme: light;
 
-  --color-bg-canvas: #f5f1e8;
+  --color-bg-canvas: #f4f8fc;
   --color-bg-surface: #ffffff;
-  --color-bg-elevated: #ece5d8;
-  --color-bg-subtle: #e2d9c8;
-  --color-bg-inset: #efe9dc;
+  --color-bg-elevated: #e6f0fa;
+  --color-bg-subtle: #eaf1f8;
+  --color-bg-inset: #edf3fa;
   --color-bg-topbar: rgba(13, 11, 8, 0.96);
   --color-bg-scrim: rgba(13, 11, 8, 0.72);
 
-  --color-text-primary: #181410;
-  --color-text-secondary: #4a4031;
-  --color-text-muted: #7a7264;
+  --color-text-primary: #0e1b2a;
+  --color-text-secondary: #33465a;
+  --color-text-muted: #506378;
   --color-text-on-dark: #f5f1e8;
 
   --color-border-hairline: rgba(24, 20, 16, 0.1);
   --color-border-default: #d4c9b8;
-  --color-border-strong: #b8afa0;
+  --color-border-strong: #66788c;
   --color-border-accent: rgba(242, 167, 27, 0.5);
 
-  --color-accent-primary: #d99b00;
-  --color-accent-primary-hover: #b88200;
-  --color-accent-primary-active: #946800;
-  --color-accent-subtle: rgba(255, 199, 44, 0.18);
+  /* REF-R2: acción y foco en claro (AA, paleta ratificada por la DH 2026-11-27).
+     Celeste y dorado quedan SOLO relleno en claro (el color nunca es la única
+     señal, 1.4.1): la identidad de nodo lleva el color en bg/borde y el texto
+     de identidad va en tinta legible. */
+  --color-accent-primary: #1a5490;
+  --color-accent-primary-hover: #15416f;
+  --color-accent-primary-active: #0f3358;
+  --color-accent-subtle: rgba(26, 84, 144, 0.12);
   --color-accent-secondary: #2b6cb0;
+  --color-accion: #1a5490;
+  --accion: var(--color-accion);
+  --color-foco: #0b3c74;
+  --foco: var(--color-foco);
+  --color-focus-ring: var(--color-foco);
+  --node-capital-text: #0e1b2a;
+  --node-caucete-text: #0e1b2a;
+  --node-iglesia-text: #0e1b2a;
 }
 
 @media (prefers-reduced-motion: reduce) {
