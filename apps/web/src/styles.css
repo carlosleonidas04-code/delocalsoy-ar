@@ -2550,3 +2550,30 @@ code {
 .inicio-nodo__familias {
   font-size: 0.875rem;
 }
+
+/* REF-R7 (#640, épica REF #633): lectura del mapa en texto + fuente por capa.
+   Solo tokens REF-R2; touch targets 44 px; texto mínimo 0.875 rem (regla
+   REF-R4); sin hex nuevos (paleta accesible). */
+.mapa-lectura {
+  margin-top: 0.85rem;
+}
+
+.mapa-lectura__lista {
+  margin: 0.5rem 0 1rem;
+  padding-left: 1.25rem;
+}
+
+.mapa-lectura__lista li {
+  margin-bottom: 0.35rem;
+  font-size: 0.875rem;
+}
+
+.mapa-lectura__enlace {
+  display: inline-block;
+  min-height: var(--touch-target-min);
+  line-height: var(--touch-target-min);
+}
+
+.mapa-lectura__capa {
+  margin-top: 0.5rem;
+}
