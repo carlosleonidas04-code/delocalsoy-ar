@@ -11,7 +11,7 @@ import {
 
 describe('INSTITUCION-1 (#628): contenido declarado del panel de institución', () => {
   it('declara el acto con fecha 2026-12-01 y la declaración de institución', () => {
-    expect(ESTADO_ACTO).toContain('2026-12-01');
+    expect(ESTADO_ACTO).toContain('1 de diciembre de 2026');
     expect(ESTADO_ACTO).toContain('R15');
     expect(DECLARACION).toContain('desarrollo territorial íntegro');
   });
