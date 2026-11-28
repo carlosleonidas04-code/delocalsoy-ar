@@ -64,21 +64,21 @@ const ETIQUETA_ESTADO: Record<string, string> = {
    Los valores (n1, dominio) y el confidence viven tal como los emite la
    API — A1 no los reescribe (R15), los PRESENTA con su significado y
    conserva el valor crudo entre paréntesis para trazabilidad. */
-const ETIQUETA_N1: Record<NonNullable<PreguntaAsk['n1']>, string> = {
+export const ETIQUETA_N1: Record<NonNullable<PreguntaAsk['n1']>, string> = {
   productivo_rural: 'capital productivo rural',
   turistico: 'capital turística',
   patrimonial: 'capital patrimonial',
   civico_social: 'capital cívico social/ambiental',
 };
 
-const ETIQUETA_DOMINIO: Record<string, string> = {
+export const ETIQUETA_DOMINIO: Record<string, string> = {
   productivo_rural: 'productivo rural',
   turistico: 'turístico',
   patrimonial: 'patrimonial',
   territorial: 'estructura territorial y KPIs del nodo',
 };
 
-function etiquetaN1(valor: string): string {
+export function etiquetaN1(valor: string): string {
   if (valor === '') return 'sin filtro';
   return ETIQUETA_N1[valor as NonNullable<PreguntaAsk['n1']>] ?? valor;
 }
