@@ -22,7 +22,7 @@ import {
   type PreguntaAsk,
   type RespuestaAsk,
 } from '../../lib/artefactoA1';
-import { ETIQUETA_DOMINIO, ETIQUETA_N1, etiquetaN1 } from './A1VecinoCiudadano';
+import { ETIQUETA_DOMINIO, ETIQUETA_N1, etiquetaN1 } from '../../lib/rotulosPIZR3';
 
 /** PIZ-R3: etiqueta humana del dominio con el valor crudo preservado
  * entre paréntesis (R15: el dato del servidor no se reescribe). */
