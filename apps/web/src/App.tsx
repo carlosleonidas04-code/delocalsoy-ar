@@ -28,9 +28,7 @@ import { InicioNodoPanel } from './components/InicioNodoPanel';
 import { TerritorialPlatformHub } from './components/TerritorialPlatformHub';
 import { TopBarHeader } from './components/TopBarHeader';
 import { TraceabilityAndEvidenciasPanel } from './components/TraceabilityAndEvidenciasPanel';
-import { DatoConFuente } from './components/base/DatoConFuente';
-import { GaleriaEstados } from './components/base/GaleriaEstados';
-import { PieDeFuente } from './components/base/PieDeFuente';
+import { TransparenciaPanel } from './components/transparencia/TransparenciaPanel';
 import { WorkspacePanel } from './components/WorkspacePanel';
 import { MontajePlataforma } from './components/MontajePlataforma';
 import { useFederatedMutationHandlers } from './hooks/useFederatedMutationHandlers';
@@ -1041,7 +1039,7 @@ export function App() {
 
 
         {/* 0. Consola Administrativa Consolidada: Salud de Nodos, Soberanía Federal y Actividad de Auditoría */}
-        {destinoIA === 'mas' && (effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_sovereignty_fcm') &&
+        {isLabRoute && (effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_sovereignty_fcm') &&
           federalSovereignty.length > 0 && (
             <AdminSovereigntyDashboard
               federalSovereignty={federalSovereignty}
@@ -1238,36 +1236,10 @@ export function App() {
             se quedan bajo #lab según REF-R4): galería de estados honestos y
             DatoConFuente con datos de ejemplo, nada medido. */}
         {isLabRoute && (
-          <section className="card" id="galeria-estados-demo" aria-labelledby="galeria-estados-demo-titulo">
-            <h2 id="galeria-estados-demo-titulo">Componentes base: estados honestos (REF-R5)</h2>
-            <GaleriaEstados />
-            <div className="dato-con-fuente-demo">
-              <DatoConFuente
-                etiqueta="Ejemplo completo"
-                valor={12}
-                unidad="familias"
-                fuenteLabel="datos de ejemplo (demostración)"
-                fechaCorte="2026-11-27"
-                cobertura={{ con: 12, total: 12 }}
-              />
-              <DatoConFuente
-                etiqueta="Ejemplo parcial"
-                valor={5}
-                unidad="familias"
-                fuenteLabel="datos de ejemplo (demostración)"
-                fechaCorte="2026-11-27"
-                cobertura={{ con: 5, total: 12 }}
-              />
-              <DatoConFuente
-                etiqueta="Ejemplo sin dato"
-                valor={null}
-                fuenteLabel="demostración honesta: la ausencia se declara"
-                fechaCorte={null}
-                cobertura={null}
-              />
-            </div>
-            <PieDeFuente texto="Demo de REF-R5 (#638, épica #633): nada de esto se mide, es la superficie de prueba de los componentes base." />
-          </section>
+          /* REF-R11 (#644, épica REF #633): panel organizador de Transparencia.
+          M0 declarada: 1 import + 1 mount; la galería de estados de REF-R5
+          (y sus demos DatoConFuente) viven dentro del panel, mismo id. */
+          <TransparenciaPanel />
         )}
 
         {/* 6b. Recorrido del Showcase (VIG-007 — Demo final): Caucete → Capital → Valle de Iglesia con estado real (R15) */}
@@ -1291,7 +1263,7 @@ export function App() {
         {/* 6e. Vista del nodo Capital (NCAP-FE #163, cascada NODO-CAPITAL ratificada DH
             2026-11-05): Banco de Potencialidades (NCAP-R6), corredores v0.1 (NCAP-R4) y
             accesibilidad peatonal (NCAP-R5) — acople por contrato DataSource (ADR-029) */}
-        {destinoIA === 'mas' && (effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') && (
+        {isLabRoute && (effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') && (
           <NodoCapitalDashboard dataSource={defaultDataSource} />
         )}
 
@@ -1300,7 +1272,7 @@ export function App() {
             pedidos a DPV (VIG-012), formulario y seguimiento AMC (VIG-011) y planilla de
             papel — acople por contrato DataSource (ADR-029), degradación synthetic
             etiquetada (R15) */}
-        {destinoIA === 'mas' && (effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') && (
+        {isLabRoute && (effectiveDesignLens === 'all' || effectiveDesignLens === 'lens_atlas_coco_baba') && (
           <VialidadMovilidadPanel dataSource={defaultDataSource} />
         )}
 
