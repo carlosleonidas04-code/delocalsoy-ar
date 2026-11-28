@@ -2,6 +2,7 @@ import { type FormEvent, lazy, Suspense, useCallback, useEffect, useState } from
 import { AdminSovereigntyDashboard } from './components/AdminSovereigntyDashboard';
 import { ArtefactosRoot } from './components/artefactos/ArtefactosRoot';
 import { ReportarDestino } from './components/artefactos/ReportarDestino';
+import { PreguntarDestino } from './components/artefactos/PreguntarDestino';
 import { ComerciosPanel } from './components/ComerciosPanel';
 import { FederatedCompareView } from './components/FederatedCompareView';
 import { FederatedNodeDetailModal } from './components/FederatedNodeDetailModal';
@@ -1393,15 +1394,18 @@ export function App() {
 
         {/* 9. Artefactos A1–A4 (épica #268): sesión + paneles por rol — montaje único vía ArtefactosRoot (ART-R5 #274, regla M0).
             REF-R3 (#636): puente declarado (R15); REF-R8 (#641): el destino Reportar tiene vista
-            propia (ReportarDestino) y el A1 completo queda accesible desde Preguntar y Más;
-            R9 separará la vista asistente como destino propio. */}
+            propia (ReportarDestino); REF-R9 (#642): el destino Preguntar tiene vista propia
+            (PreguntarDestino) y el A1 completo queda accesible desde Más. */}
         {/* 9-bis. REF-R8 (#641, épica REF #633): destino Reportar — wizard de 3 pasos que
             reencuadra el flujo PIZ-R6/EV-120 (misma ruta acreditada POST /api/reportes vía
             ClienteA1, 0 rutas nuevas). El A1 completo sigue accesible desde el destino Más. */}
         {destinoIA === 'reportar' && (
           <ReportarDestino nodoKey={selectedNodeKey ?? 'capital'} />
         )}
-        {(destinoIA === 'preguntar' || destinoIA === 'mas') && (
+        {destinoIA === 'preguntar' && (
+          <PreguntarDestino nodoKey={selectedNodeKey ?? 'capital'} />
+        )}
+        {destinoIA === 'mas' && (
           <ArtefactosRoot />
         )}
         {/* 10. Vista consolidadora del montaje (MONTAR-2 #445): el apilado completo del
