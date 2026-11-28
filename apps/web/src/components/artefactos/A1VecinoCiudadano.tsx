@@ -53,35 +53,13 @@ import {
   type TransicionReporte,
   type VistaA1,
 } from '../../lib/artefactoA1';
+import { ETIQUETA_DOMINIO, ETIQUETA_N1, etiquetaN1 } from '../../lib/rotulosPIZR3';
 
 const ETIQUETA_ESTADO: Record<string, string> = {
   en_main: 'en main',
   en_rama: 'en rama (PR en cola)',
   propuesto: 'propuesto',
 };
-
-/* PIZ-R3 (#546, épica #543): rótulos humanos sobre rótulos crudos.
-   Los valores (n1, dominio) y el confidence viven tal como los emite la
-   API — A1 no los reescribe (R15), los PRESENTA con su significado y
-   conserva el valor crudo entre paréntesis para trazabilidad. */
-export const ETIQUETA_N1: Record<NonNullable<PreguntaAsk['n1']>, string> = {
-  productivo_rural: 'capital productivo rural',
-  turistico: 'capital turística',
-  patrimonial: 'capital patrimonial',
-  civico_social: 'capital cívico social/ambiental',
-};
-
-export const ETIQUETA_DOMINIO: Record<string, string> = {
-  productivo_rural: 'productivo rural',
-  turistico: 'turístico',
-  patrimonial: 'patrimonial',
-  territorial: 'estructura territorial y KPIs del nodo',
-};
-
-export function etiquetaN1(valor: string): string {
-  if (valor === '') return 'sin filtro';
-  return ETIQUETA_N1[valor as NonNullable<PreguntaAsk['n1']>] ?? valor;
-}
 
 function mensajeDe(e: unknown, porDefecto: string): string {
   return e instanceof ErrorA1 ? e.message : e instanceof Error ? e.message : porDefecto;
