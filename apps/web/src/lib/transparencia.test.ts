@@ -22,7 +22,7 @@ describe('Transparencia — registro de aterrizajes (REF-R11 #644, épica REF #6
   });
 
   it('cada entrada referencia issue y PR numéricos válidos con título humano', () => {
-    for (const entrada de REGISTRO_EV) {
+    for (const entrada of REGISTRO_EV) {
       expect(Number.isInteger(entrada.issue)).toBe(true);
       expect(Number.isInteger(entrada.pr)).toBe(true);
       expect(entrada.titulo.length).toBeGreaterThan(3);
