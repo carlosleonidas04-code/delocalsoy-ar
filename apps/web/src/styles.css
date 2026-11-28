@@ -2577,3 +2577,74 @@ code {
 .mapa-lectura__capa {
   margin-top: 0.5rem;
 }
+
+/* REF-R8 (#641, épica REF #633): destino Reportar — wizard de 3 pasos.
+   Solo tokens REF-R2; touch targets 44 px; texto mínimo 0.875 rem (regla
+   REF-R4); sin hex nuevos (paleta accesible). */
+.reportar-destino {
+  margin: 1rem 0;
+}
+
+.reportar-destino__pasos {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.5rem 0 1rem;
+  padding-left: 0;
+  list-style: none;
+}
+
+.reportar-destino__pasos li {
+  font-size: 0.875rem;
+}
+
+.reportar-destino__pasos li[aria-current='step'] {
+  font-weight: 600;
+}
+
+.reportar-destino__cuerpo label {
+  display: block;
+  margin-top: 0.6rem;
+  font-size: 0.875rem;
+}
+
+.reportar-destino__cuerpo input,
+.reportar-destino__cuerpo textarea {
+  width: 100%;
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.reportar-destino__acciones {
+  margin-top: 0.75rem;
+}
+
+.reportar-destino__boton {
+  min-height: var(--touch-target-min);
+  min-width: var(--touch-target-min);
+  font-size: 0.875rem;
+  margin-top: 0.35rem;
+  margin-right: 0.5rem;
+}
+
+.reportar-destino__nota {
+  font-size: 0.875rem;
+}
+
+.reportar-destino__aviso {
+  font-size: 0.875rem;
+}
+
+.reportar-destino__resumen {
+  margin: 0.5rem 0 1rem;
+  padding-left: 1.25rem;
+}
+
+.reportar-destino__resumen li,
+.reportar-destino__sugeridos li {
+  margin-bottom: 0.35rem;
+  font-size: 0.875rem;
+}
+
+.reportar-destino__exito {
+  margin-top: 0.85rem;
+}
