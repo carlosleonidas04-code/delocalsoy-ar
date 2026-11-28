@@ -4,7 +4,8 @@
 // respuesta (recovered 0 = sin dato, null ≠ 0; anti-ranking R5/ADR-036).
 
 import { describe, expect, it } from 'vitest';
-import { dominioHumano, ETIQUETA_N1, etiquetaN1, textoCobertura, textoSinFragmentos } from './PreguntarDestino';
+import { ETIQUETA_N1, etiquetaN1 } from '../../lib/rotulosPIZR3';
+import { dominioHumano, textoCobertura, textoSinFragmentos } from './PreguntarDestino';
 
 describe('PreguntarDestino — filtro por tema (AskPreguntaSchema, PIZ-R3/EV-117)', () => {
   it('las 4 opciones reales de n1 con etiquetas humanas (jamás inventadas)', () => {
