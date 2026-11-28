@@ -17,7 +17,7 @@ describe('PreguntarDestino — filtro por tema (AskPreguntaSchema, PIZ-R3/EV-117
   });
 
   it('dominio humanizado conserva el valor crudo entre paréntesis (R15)', () => {
-    expect(dominioHumano('territorial')).toContain('territorial (dominio crudo: territorial)');
+    expect(dominioHumano('territorial')).toBe('estructura territorial y KPIs del nodo (dominio crudo: territorial)');
     expect(dominioHumano(null)).toBeNull();
   });
 });
