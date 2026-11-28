@@ -43,11 +43,25 @@ describe('ReportarDestino — pre-chequeo de duplicados (PIZ-R6/EV-120)', () => 
 
   it('orden por distancia y tope 5 (ayuda para decidir, no autoridad)', () => {
     const bandeja = [
-      fila({ id: 'a', lat: -31.5399, lng: -68.5399 }),
-      fila({ id: 'b', lat: -31.5376, lng: -68.5365 }),
+      fila({ id: 'lejos', lat: -31.5399, lng: -68.5399 }), // ~426 m: fuera del radio, no sugiere
+      fila({ id: 'a', lat: -31.5381, lng: -68.5368 }), // ~77 m: dentro del radio, más lejos que b
+      fila({ id: 'b', lat: -31.5376, lng: -68.5365 }), // ~15 m: el más cercano
     ];
     const s = sugeridosDeBandeja(bandeja, punto.lat, punto.lng);
     expect(s.map((x) => x.id)).toEqual(['b', 'a']);
+    expect(s.every((x) => x.distancia_m <= 100)).toBe(true);
+  });
+
+  it('tope 5: nunca sugiere más de 5 candidatos dentro del radio', () => {
+    const ids = ['d1', 'd2', 'd3', 'd4', 'd5', 'd6'];
+    const bandeja = ids.map((id, i) =>
+      fila({ id, lat: -31.5375, lng: -68.5364 - 0.0001 * (i + 1) })
+    );
+    const s = sugeridosDeBandeja(bandeja, punto.lat, punto.lng);
+    expect(s).toHaveLength(5);
+    for (let i = 1; i < s.length; i++) {
+      expect(s[i].distancia_m).toBeGreaterThanOrEqual(s[i - 1].distancia_m);
+    }
   });
 
   it('bandeja null declara vacío sin inventar (R15)', () => {
